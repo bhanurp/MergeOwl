@@ -40,4 +40,17 @@ final class AccountConnectionStateTests: XCTestCase {
         XCTAssertEqual(state.title, "No GitHub account connected")
         XCTAssertEqual(state.detail, "Add a personal access token to get started.")
     }
+
+    func testDisconnectedAccountViewIncludesOfficialTokenSetupLink() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = repositoryRoot
+            .appendingPathComponent("Sources/PRPulseApp/UI/Settings/AccountSettingsView.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+
+        XCTAssertTrue(source.contains("Link("))
+        XCTAssertTrue(source.contains("https://github.com/settings/personal-access-tokens/new"))
+    }
 }
