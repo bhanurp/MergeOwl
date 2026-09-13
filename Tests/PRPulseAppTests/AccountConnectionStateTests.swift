@@ -23,4 +23,14 @@ final class AccountConnectionStateTests: XCTestCase {
         XCTAssertTrue(state.detail.localizedCaseInsensitiveContains("save"))
         XCTAssertFalse(state.detail.contains("stored securely in Keychain"))
     }
+
+    func testTestingStateDisablesTokenMutations() {
+        XCTAssertFalse(AccountConnectionState.testing.allowsTokenMutation)
+    }
+
+    func testNonTestingStatesAllowTokenMutations() {
+        XCTAssertTrue(AccountConnectionState.disconnected.allowsTokenMutation)
+        XCTAssertTrue(AccountConnectionState.connected(login: "octocat").allowsTokenMutation)
+        XCTAssertTrue(AccountConnectionState.failed("Invalid token.").allowsTokenMutation)
+    }
 }

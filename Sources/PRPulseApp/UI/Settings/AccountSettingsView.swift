@@ -60,6 +60,13 @@ enum AccountConnectionState {
             .red
         }
     }
+
+    var allowsTokenMutation: Bool {
+        if case .testing = self {
+            return false
+        }
+        return true
+    }
 }
 
 struct AccountSettingsView: View {
@@ -105,7 +112,7 @@ struct AccountSettingsView: View {
                     Button(hasStoredToken ? "Update token" : "Connect GitHub") {
                         saveToken()
                     }
-                    .disabled(trimmedTokenInput.isEmpty)
+                    .disabled(trimmedTokenInput.isEmpty || !connectionState.allowsTokenMutation)
 
                     Button(isTestingConnection ? "Testing connection…" : "Test connection") {
                         Task { await testConnection() }
@@ -118,6 +125,7 @@ struct AccountSettingsView: View {
                         Button("Remove token", role: .destructive) {
                             showsRemovalConfirmation = true
                         }
+                        .disabled(!connectionState.allowsTokenMutation)
                     }
                 }
             }
