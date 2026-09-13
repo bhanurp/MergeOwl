@@ -9,4 +9,13 @@ final class SettingsPaneTests: XCTestCase {
             [.account, .refresh, .notifications, .repositories, .advanced]
         )
     }
+
+    func testRepositoryAdditionRejectsTrimmedCaseInsensitiveDuplicate() {
+        XCTAssertFalse(
+            RepositoryPreferenceValidation.canAdd(
+                "owner/repo",
+                to: [RepositorySubscription(nameWithOwner: " owner/Repo ", notificationsEnabled: true)]
+            )
+        )
+    }
 }

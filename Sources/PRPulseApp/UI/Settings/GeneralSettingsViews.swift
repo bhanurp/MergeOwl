@@ -1,6 +1,21 @@
 import AppKit
 import SwiftUI
 
+enum RepositoryPreferenceValidation {
+    static func canAdd(_ candidate: String, to repositories: [RepositorySubscription]) -> Bool {
+        let normalizedCandidate = normalizedName(candidate)
+        guard !normalizedCandidate.isEmpty else { return false }
+
+        return !repositories.contains {
+            normalizedName($0.nameWithOwner).caseInsensitiveCompare(normalizedCandidate) == .orderedSame
+        }
+    }
+
+    private static func normalizedName(_ name: String) -> String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
 struct RefreshSettingsView: View {
     @ObservedObject var viewModel: DashboardViewModel
 
@@ -112,9 +127,10 @@ struct RepositoriesSettingsView: View {
     }
 
     private var canAddRepository: Bool {
-        !trimmedRepository.isEmpty && !viewModel.settings.watchedRepositories.contains {
-            $0.nameWithOwner == trimmedRepository
-        }
+        RepositoryPreferenceValidation.canAdd(
+            trimmedRepository,
+            to: viewModel.settings.watchedRepositories
+        )
     }
 
     private func addRepository() {
@@ -141,17 +157,6 @@ struct AdvancedSettingsView: View {
 
     var body: some View {
         Form {
-            Section("Status") {
-                LabeledContent("Last refresh") {
-                    Text(lastRefreshDescription)
-                        .foregroundStyle(.secondary)
-                }
-                LabeledContent("Current interval") {
-                    Text("\(viewModel.currentRefreshIntervalMinutes) min")
-                        .foregroundStyle(.secondary)
-                }
-            }
-
             Section("Tools") {
                 Button("Test Notification") {
                     viewModel.testNotification()
@@ -183,10 +188,5 @@ struct AdvancedSettingsView: View {
         }
         .formStyle(.grouped)
         .padding(.horizontal, 8)
-    }
-
-    private var lastRefreshDescription: String {
-        guard let lastRefreshAt = viewModel.lastRefreshAt else { return "Never" }
-        return lastRefreshAt.formatted(date: .abbreviated, time: .standard)
     }
 }
