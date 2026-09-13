@@ -112,6 +112,18 @@ struct NotificationSettingsView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
+
+            Section("Snooze reminders") {
+                Stepper(
+                    value: Binding(
+                        get: { viewModel.settings.snoozeDefaultHour },
+                        set: { viewModel.settings.snoozeDefaultHour = $0 }
+                    ),
+                    in: 6...14
+                ) {
+                    Text("Default reminder time: \(viewModel.settings.snoozeDefaultHour):00")
+                }
+            }
         }
         .formStyle(.grouped)
         .padding(.horizontal, 8)
