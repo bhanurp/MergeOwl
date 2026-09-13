@@ -8,7 +8,7 @@ All notable changes to PR Pulse are documented in this file.
 
 - Native macOS menu-bar dashboard for authored PRs, review requests, and watched repositories.
 - Local triage actions, snooze reminders, notifications, digest snapshots, and Keychain-backed GitHub token storage.
-- Stable DMG and ZIP release artifacts for macOS 13 and newer.
+- Stable DMG and ZIP release artifacts for macOS 14 and newer.
 
 ### Known limitations
 

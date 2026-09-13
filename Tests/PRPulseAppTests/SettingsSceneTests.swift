@@ -1,6 +1,12 @@
 import XCTest
 
 final class SettingsSceneTests: XCTestCase {
+    func testPackageRequiresMacOS14ForNativeSettings() throws {
+        let packageManifest = try source(named: "Package.swift")
+
+        XCTAssertTrue(packageManifest.contains(".macOS(.v14)"))
+    }
+
     func testSettingsUseTheNativeSettingsScene() throws {
         let appSource = try source(named: "Sources/PRPulseApp/App/PRPulseApp.swift")
 
