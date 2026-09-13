@@ -94,7 +94,9 @@ struct ContentView: View {
                 .keyboardShortcut("r")
 
                 Button {
-                    openSettings()
+                    SettingsPresenter.showNativeSettings {
+                        openSettings()
+                    }
                 } label: {
                     Image(systemName: "gearshape")
                 }

@@ -1,6 +1,19 @@
 import XCTest
+@testable import PRPulseApp
 
 final class SettingsSceneTests: XCTestCase {
+    @MainActor
+    func testSettingsPresenterActivatesBeforeOpeningNativeSettings() {
+        var events: [String] = []
+
+        SettingsPresenter.open(
+            activate: { events.append("activate") },
+            open: { events.append("open") }
+        )
+
+        XCTAssertEqual(events, ["activate", "open"])
+    }
+
     func testPackageRequiresMacOS14ForNativeSettings() throws {
         let packageManifest = try source(named: "Package.swift")
 
