@@ -10,7 +10,7 @@ enum AccountConnectionState {
     var title: String {
         switch self {
         case .disconnected:
-            "Connect your GitHub account"
+            "No GitHub account connected"
         case .testing:
             "Checking your GitHub account"
         case let .connected(login, _):
@@ -143,6 +143,14 @@ struct AccountSettingsView: View {
                         Text(connectionState.detail)
                             .font(.footnote)
                             .foregroundStyle(.secondary)
+
+                        if case .disconnected = connectionState {
+                            Link(
+                                "Create a GitHub personal access token",
+                                destination: URL(string: "https://github.com/settings/personal-access-tokens/new")!
+                            )
+                            .font(.footnote)
+                        }
                     }
                 }
                 .padding(.vertical, 4)

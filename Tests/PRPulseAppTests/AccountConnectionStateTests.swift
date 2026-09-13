@@ -33,4 +33,11 @@ final class AccountConnectionStateTests: XCTestCase {
         XCTAssertTrue(AccountConnectionState.connected(login: "octocat").allowsTokenMutation)
         XCTAssertTrue(AccountConnectionState.failed("Invalid token.").allowsTokenMutation)
     }
+
+    func testDisconnectedStateGuidesAccountSetup() {
+        let state = AccountConnectionState.disconnected
+
+        XCTAssertEqual(state.title, "No GitHub account connected")
+        XCTAssertEqual(state.detail, "Add a personal access token to get started.")
+    }
 }
