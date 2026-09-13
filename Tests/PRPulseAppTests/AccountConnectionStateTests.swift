@@ -1,0 +1,19 @@
+import XCTest
+@testable import PRPulseApp
+
+final class AccountConnectionStateTests: XCTestCase {
+    func testConnectedStateDescribesAuthenticatedAccount() {
+        let state = AccountConnectionState.connected(login: "octocat")
+
+        XCTAssertEqual(state.title, "Connected as octocat")
+        XCTAssertEqual(state.detail, "Your token is stored securely in Keychain.")
+        XCTAssertEqual(state.symbolName, "checkmark.circle.fill")
+    }
+
+    func testFailedStateOffersARecoveryMessage() {
+        let state = AccountConnectionState.failed("Invalid token (401 Unauthorized).")
+
+        XCTAssertEqual(state.title, "Couldn’t connect to GitHub")
+        XCTAssertEqual(state.detail, "Invalid token (401 Unauthorized).")
+    }
+}
