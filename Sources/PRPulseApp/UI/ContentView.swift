@@ -1,9 +1,11 @@
 import SwiftUI
 import AppKit
 
+@available(macOS 14.0, *)
 struct ContentView: View {
     @ObservedObject var viewModel: DashboardViewModel
     @State private var showDigest = false
+    @Environment(\.openSettings) private var openSettings
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -92,9 +94,7 @@ struct ContentView: View {
                 .keyboardShortcut("r")
 
                 Button {
-                    SettingsWindowPresenter.showSettingsWindow {
-                        openWindow(id: "settings-window")
-                    }
+                    openSettings()
                 } label: {
                     Image(systemName: "gearshape")
                 }

@@ -1,5 +1,6 @@
 import SwiftUI
 
+@available(macOS 14.0, *)
 @main
 struct PRPulseApp: App {
     @StateObject private var dependencies = AppDependencies()
@@ -16,9 +17,9 @@ struct PRPulseApp: App {
         }
         .menuBarExtraStyle(.window)
 
-        Window("Settings", id: "settings-window") {
-            SettingsView(viewModel: dependencies.dashboard)
-                .frame(width: 520, height: 520)
+        Settings {
+            SettingsShellView(viewModel: dependencies.dashboard)
+                .frame(minWidth: 720, minHeight: 520)
         }
 
         Window("Connection Errors", id: "connection-errors-window") {
