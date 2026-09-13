@@ -18,4 +18,14 @@ final class SettingsPaneTests: XCTestCase {
             )
         )
     }
+
+    func testRepositoryAdditionAcceptsValidOwnerAndRepositoryName() {
+        XCTAssertTrue(RepositoryPreferenceValidation.canAdd("owner/repo.name_1", to: []))
+    }
+
+    func testRepositoryAdditionRejectsMalformedRepositoryNames() {
+        for name in ["owner", "/repo", "owner/", "owner/repo is:closed", "owner/repo/extra"] {
+            XCTAssertFalse(RepositoryPreferenceValidation.canAdd(name, to: []), "Expected \(name) to be rejected")
+        }
+    }
 }

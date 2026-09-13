@@ -4,7 +4,7 @@ import SwiftUI
 enum RepositoryPreferenceValidation {
     static func canAdd(_ candidate: String, to repositories: [RepositorySubscription]) -> Bool {
         let normalizedCandidate = normalizedName(candidate)
-        guard !normalizedCandidate.isEmpty else { return false }
+        guard isValidRepositoryName(normalizedCandidate) else { return false }
 
         return !repositories.contains {
             normalizedName($0.nameWithOwner).caseInsensitiveCompare(normalizedCandidate) == .orderedSame
@@ -14,6 +14,21 @@ enum RepositoryPreferenceValidation {
     private static func normalizedName(_ name: String) -> String {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
     }
+
+    private static func isValidRepositoryName(_ name: String) -> Bool {
+        let components = name.split(separator: "/", omittingEmptySubsequences: false)
+        guard components.count == 2 else { return false }
+
+        return containsOnly(String(components[0]), allowedCharacters: ownerCharacters)
+            && containsOnly(String(components[1]), allowedCharacters: repositoryCharacters)
+    }
+
+    private static func containsOnly(_ value: String, allowedCharacters: CharacterSet) -> Bool {
+        !value.isEmpty && value.unicodeScalars.allSatisfy(allowedCharacters.contains)
+    }
+
+    private static let ownerCharacters = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-")
+    private static let repositoryCharacters = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-")
 }
 
 struct RefreshSettingsView: View {

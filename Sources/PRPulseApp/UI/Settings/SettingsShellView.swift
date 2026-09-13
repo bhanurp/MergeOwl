@@ -2,11 +2,11 @@ import SwiftUI
 
 struct SettingsShellView: View {
     @ObservedObject var viewModel: DashboardViewModel
-    @State private var selection: SettingsPane? = SettingsPane.defaultPane
+    @State private var selection = SettingsPane.defaultPane
 
     var body: some View {
         NavigationSplitView {
-            List(selection: $selection) {
+            List(selection: selectionBinding) {
                 ForEach(SettingsPane.allCases) { pane in
                     Label(pane.rawValue, systemImage: pane.symbolName)
                         .tag(pane)
@@ -40,7 +40,18 @@ struct SettingsShellView: View {
     }
 
     private var selectedPane: SettingsPane {
-        selection ?? SettingsPane.defaultPane
+        selection
+    }
+
+    private var selectionBinding: Binding<SettingsPane?> {
+        Binding(
+            get: { selection },
+            set: { newSelection in
+                if let newSelection {
+                    selection = newSelection
+                }
+            }
+        )
     }
 
     private func header(for pane: SettingsPane) -> some View {
