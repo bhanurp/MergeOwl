@@ -16,4 +16,11 @@ final class AccountConnectionStateTests: XCTestCase {
         XCTAssertEqual(state.title, "Couldn’t connect to GitHub")
         XCTAssertEqual(state.detail, "Invalid token (401 Unauthorized).")
     }
+
+    func testUnsavedConnectedStatePromptsToSaveToken() {
+        let state = AccountConnectionState.connected(login: "octocat", isStored: false)
+
+        XCTAssertTrue(state.detail.localizedCaseInsensitiveContains("save"))
+        XCTAssertFalse(state.detail.contains("stored securely in Keychain"))
+    }
 }

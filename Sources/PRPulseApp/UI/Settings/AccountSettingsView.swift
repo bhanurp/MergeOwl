@@ -4,7 +4,7 @@ import SwiftUI
 enum AccountConnectionState {
     case disconnected
     case testing
-    case connected(login: String)
+    case connected(login: String, isStored: Bool = true)
     case failed(String)
 
     var title: String {
@@ -13,7 +13,7 @@ enum AccountConnectionState {
             "Connect your GitHub account"
         case .testing:
             "Checking your GitHub account"
-        case let .connected(login):
+        case let .connected(login, _):
             "Connected as \(login)"
         case .failed:
             "Couldn’t connect to GitHub"
@@ -26,8 +26,10 @@ enum AccountConnectionState {
             "Add a personal access token to get started."
         case .testing:
             "Verifying your token with GitHub."
-        case .connected:
-            "Your token is stored securely in Keychain."
+        case let .connected(_, isStored):
+            isStored
+                ? "Your token is stored securely in Keychain."
+                : "This token is only being tested. Save or update it to store it securely in Keychain."
         case let .failed(message):
             message
         }
@@ -192,6 +194,7 @@ struct AccountSettingsView: View {
 
     @MainActor
     private func testConnection() async {
+        let hasTypedToken = !trimmedTokenInput.isEmpty
         guard let token = tokenCandidate() else {
             connectionState = .failed("Enter a token or connect your account first.")
             return
@@ -208,7 +211,10 @@ struct AccountSettingsView: View {
                 watchedRepositoriesProvider: { [] }
             )
             let graphQLViewer = try await client.fetchViewer()
-            connectionState = .connected(login: graphQLViewer.isEmpty ? restViewer : graphQLViewer)
+            connectionState = .connected(
+                login: graphQLViewer.isEmpty ? restViewer : graphQLViewer,
+                isStored: !hasTypedToken
+            )
         } catch {
             connectionState = .failed(recoveryMessage(for: error))
         }
