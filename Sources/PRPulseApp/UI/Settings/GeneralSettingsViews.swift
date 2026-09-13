@@ -19,8 +19,22 @@ enum RepositoryPreferenceValidation {
         let components = name.split(separator: "/", omittingEmptySubsequences: false)
         guard components.count == 2 else { return false }
 
-        return containsOnly(String(components[0]), allowedCharacters: ownerCharacters)
+        return isValidOwner(String(components[0]))
             && containsOnly(String(components[1]), allowedCharacters: repositoryCharacters)
+    }
+
+    private static func isValidOwner(_ owner: String) -> Bool {
+        guard (1...39).contains(owner.count),
+              let firstCharacter = owner.unicodeScalars.first,
+              let lastCharacter = owner.unicodeScalars.last,
+              alphanumericCharacters.contains(firstCharacter),
+              alphanumericCharacters.contains(lastCharacter),
+              !owner.contains("--")
+        else {
+            return false
+        }
+
+        return owner.unicodeScalars.allSatisfy(ownerCharacters.contains)
     }
 
     private static func containsOnly(_ value: String, allowedCharacters: CharacterSet) -> Bool {
@@ -29,6 +43,7 @@ enum RepositoryPreferenceValidation {
 
     private static let ownerCharacters = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-")
     private static let repositoryCharacters = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-")
+    private static let alphanumericCharacters = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
 }
 
 struct RefreshSettingsView: View {

@@ -19,13 +19,26 @@ final class SettingsPaneTests: XCTestCase {
         )
     }
 
-    func testRepositoryAdditionAcceptsValidOwnerAndRepositoryName() {
-        XCTAssertTrue(RepositoryPreferenceValidation.canAdd("owner/repo.name_1", to: []))
-    }
+    func testRepositoryAdditionValidatesGitHubOwnerNames() {
+        let testCases: [(name: String, isValid: Bool)] = [
+            ("owner/repo.name_1", true),
+            ("-owner/repo", false),
+            ("owner-/repo", false),
+            ("owner--team/repo", false),
+            ("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/repo", false),
+            ("owner", false),
+            ("/repo", false),
+            ("owner/", false),
+            ("owner/repo is:closed", false),
+            ("owner/repo/extra", false)
+        ]
 
-    func testRepositoryAdditionRejectsMalformedRepositoryNames() {
-        for name in ["owner", "/repo", "owner/", "owner/repo is:closed", "owner/repo/extra"] {
-            XCTAssertFalse(RepositoryPreferenceValidation.canAdd(name, to: []), "Expected \(name) to be rejected")
+        for testCase in testCases {
+            XCTAssertEqual(
+                RepositoryPreferenceValidation.canAdd(testCase.name, to: []),
+                testCase.isValid,
+                "Unexpected validation result for \(testCase.name)"
+            )
         }
     }
 }
