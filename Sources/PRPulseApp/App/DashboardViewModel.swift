@@ -4,11 +4,6 @@ import AppKit
 
 @MainActor
 final class DashboardViewModel: ObservableObject {
-    enum ConnectionState {
-        case connected
-        case error
-    }
-
     struct PullRequestListState {
         var rawItems: [PullRequest] = []
         var displayedItems: [PullRequestPresentation] = []
@@ -33,8 +28,7 @@ final class DashboardViewModel: ObservableObject {
     @Published private(set) var viewerLogin: String = ""
     @Published private(set) var digestSnapshot = DigestSnapshot(openedCount: 0, reviewedCount: 0, timeframeDescription: "N/A")
     @Published var errorMessage: String?
-    @Published private(set) var connectionState: ConnectionState = .connected
-    @Published private(set) var connectionStatusText: String = "Connected"
+    @Published private(set) var connectionPresentation: DashboardConnectionPresentation = .checking
     @Published private(set) var connectionErrors: [String] = []
     @Published var settings: AppSettings = .default {
         didSet {
@@ -220,8 +214,6 @@ final class DashboardViewModel: ObservableObject {
 
     func clearConnectionErrors() {
         connectionErrors.removeAll()
-        connectionState = .connected
-        connectionStatusText = "Connected"
     }
 
     func forceDigestRecompute() {
@@ -243,7 +235,7 @@ final class DashboardViewModel: ObservableObject {
 
         do {
             viewerLogin = try await client.fetchViewer()
-            markConnected()
+            markConnected(as: viewerLogin)
         } catch {
             if (error as? CancellationError) != nil {
                 // Default without surfacing an error when cancelled
@@ -306,7 +298,6 @@ final class DashboardViewModel: ObservableObject {
             recomputeDisplayedItems()
             updateBadgeCount()
             lastRefreshAt = Date()
-            markConnected()
             await updateDigest()
         } catch {
             state.isLoading = false
@@ -436,20 +427,16 @@ final class DashboardViewModel: ObservableObject {
             .max()
     }
 
-    private func markConnected() {
-        connectionState = .connected
-        connectionStatusText = "Connected"
+    private func markConnected(as viewerLogin: String) {
+        connectionPresentation = .connected(viewerLogin: viewerLogin)
         connectionErrors.removeAll()
     }
 
-    private func markConnectionError(_ message: String) {
-        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        let entry = "\(Date().formatted(date: .omitted, time: .standard)): \(trimmed)"
+    private func markConnectionError(_: String) {
+        let entry = "\(Date().formatted(date: .omitted, time: .standard)): GitHub connection failed"
         if connectionErrors.last != entry {
             connectionErrors.append(entry)
         }
-        connectionState = .error
-        connectionStatusText = "Connection issue"
+        connectionPresentation = .failed
     }
 }

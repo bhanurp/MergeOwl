@@ -1,5 +1,38 @@
 import Foundation
 
+enum DashboardConnectionPresentation: Equatable {
+    case checking
+    case connected(viewerLogin: String)
+    case failed
+
+    var statusText: String {
+        switch self {
+        case .checking:
+            "Checking GitHub connection"
+        case .connected(let viewerLogin):
+            "Connected as @\(viewerLogin)"
+        case .failed:
+            "Connection issue"
+        }
+    }
+
+    var errorMessage: String? {
+        switch self {
+        case .failed:
+            "GitHub connection failed"
+        case .checking, .connected:
+            nil
+        }
+    }
+
+    var isConnected: Bool {
+        if case .connected = self {
+            return true
+        }
+        return false
+    }
+}
+
 struct PullRequestPresentation: Identifiable, Equatable {
     var pullRequest: PullRequest
     var status: PullRequestStatus
