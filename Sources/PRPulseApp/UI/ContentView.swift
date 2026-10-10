@@ -4,6 +4,7 @@ import AppKit
 @available(macOS 14.0, *)
 struct ContentView: View {
     @ObservedObject var viewModel: DashboardViewModel
+    var hostActions: DashboardHostActions? = nil
     @State private var showDigest = false
     @Environment(\.openSettings) private var openSettings
     @Environment(\.openWindow) private var openWindow
@@ -12,6 +13,14 @@ struct ContentView: View {
         VStack(spacing: 12) {
             header
             filters
+            if !viewModel.accessWarnings.isEmpty {
+                Label("Some PR data is unavailable. Showing accessible PRs.", systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .help(viewModel.accessWarnings.joined(separator: "\n"))
+                Link("Manage GitHub token access", destination: URL(string: "https://github.com/settings/tokens")!)
+                    .font(.caption)
+            }
             listContent
             footer
         }
@@ -94,8 +103,12 @@ struct ContentView: View {
                 .keyboardShortcut("r")
 
                 Button {
-                    SettingsPresenter.showNativeSettings {
-                        openSettings()
+                    if let hostActions {
+                        hostActions.showSettings()
+                    } else {
+                        SettingsPresenter.showNativeSettings {
+                            openSettings()
+                        }
                     }
                 } label: {
                     Image(systemName: "gearshape")
@@ -104,7 +117,11 @@ struct ContentView: View {
                 .keyboardShortcut(",", modifiers: [.command])
 
                 Button {
-                    NSApplication.shared.terminate(nil)
+                    if let hostActions {
+                        hostActions.quit()
+                    } else {
+                        NSApplication.shared.terminate(nil)
+                    }
                 } label: {
                     Image(systemName: "power")
                 }
@@ -212,7 +229,11 @@ struct ContentView: View {
                 }
             } else {
                 Button {
-                    openWindow(id: "connection-errors-window")
+                    if let hostActions {
+                        hostActions.showConnectionErrors()
+                    } else {
+                        openWindow(id: "connection-errors-window")
+                    }
                 } label: {
                     HStack(spacing: 6) {
                         Circle()

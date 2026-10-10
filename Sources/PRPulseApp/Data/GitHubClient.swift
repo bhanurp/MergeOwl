@@ -12,6 +12,19 @@ enum GitHubClientError: LocalizedError {
     case graphQLErrors([String])
     case apiFailure(String)
 
+    var isAccessRestriction: Bool {
+        let messages: [String]
+        switch self {
+        case .graphQLErrors(let values): messages = values
+        case .apiFailure(let value): messages = [value]
+        default: return false
+        }
+        return !messages.isEmpty && messages.allSatisfy { message in
+            let text = message.lowercased()
+            return text.contains("saml") || text.contains("resource not accessible") || text.contains("sso")
+        }
+    }
+
     var errorDescription: String? {
         switch self {
         case .missingToken:
@@ -49,7 +62,7 @@ struct GitHubAPIClient: GitHubClient {
     }
 
     nonisolated(nonsending) func fetchPullRequests(tab: PullRequestTab, cursor: String?) async throws -> PullRequestPage {
-        let page: PullRequestPage
+        var page: PullRequestPage
         switch tab {
         case .mine, .reviewRequested:
             let query = Self.searchQuery(for: tab)
@@ -62,7 +75,8 @@ struct GitHubAPIClient: GitHubClient {
             return page
         }
 
-        let detailByID = try await fetchDetails(ids: page.items.map(\.id))
+        let (detailByID, detailWarnings) = try await fetchDetails(ids: page.items.map(\.id))
+        page.warnings.append(contentsOf: detailWarnings)
         let enriched = page.items.map { item -> PullRequest in
             var copy = item
             if let detail = detailByID[item.id] {
@@ -70,12 +84,12 @@ struct GitHubAPIClient: GitHubClient {
             }
             return copy
         }
-        return PullRequestPage(items: enriched, cursor: page.cursor, hasNextPage: page.hasNextPage)
+        return PullRequestPage(items: enriched, cursor: page.cursor, hasNextPage: page.hasNextPage, warnings: page.warnings)
     }
 
     private func fetchSearchPage(query: String, cursor: String?) async throws -> PullRequestPage {
         let variables = SearchVariables(query: query, after: cursor)
-        let data: SearchData = try await performGraphQL(query: Self.searchPullRequestsQuery, variables: variables)
+        let (data, warnings): (SearchData, [String]) = try await performGraphQLResult(query: Self.searchPullRequestsQuery, variables: variables)
 
         let items = data.search.nodes.compactMap { node -> PullRequest? in
             guard let node,
@@ -109,7 +123,8 @@ struct GitHubAPIClient: GitHubClient {
         return PullRequestPage(
             items: items,
             cursor: data.search.pageInfo.endCursor,
-            hasNextPage: data.search.pageInfo.hasNextPage
+            hasNextPage: data.search.pageInfo.hasNextPage,
+            warnings: warnings
         )
     }
 
@@ -128,10 +143,12 @@ struct GitHubAPIClient: GitHubClient {
         }
 
         var merged: [PullRequest] = []
+        var warnings: [String] = []
         for repo in Set(watchedRepos) {
             let query = "repo:\(repo) is:pr is:open sort:updated-desc"
             let page = try await fetchSearchPage(query: query, cursor: nil)
             merged.append(contentsOf: page.items)
+            warnings.append(contentsOf: page.warnings)
         }
 
         var deduped: [String: PullRequest] = [:]
@@ -147,14 +164,14 @@ struct GitHubAPIClient: GitHubClient {
             .sorted(by: { $0.updatedAt > $1.updatedAt })
             .prefix(20)
 
-        return PullRequestPage(items: Array(top), cursor: nil, hasNextPage: false)
+        return PullRequestPage(items: Array(top), cursor: nil, hasNextPage: false, warnings: warnings)
     }
 
-    private func fetchDetails(ids: [String]) async throws -> [String: PullRequestDetail] {
-        guard !ids.isEmpty else { return [:] }
+    private func fetchDetails(ids: [String]) async throws -> ([String: PullRequestDetail], [String]) {
+        guard !ids.isEmpty else { return ([:], []) }
 
         let variables = DetailVariables(ids: ids)
-        let data: DetailData = try await performGraphQL(query: Self.pullRequestDetailsQuery, variables: variables)
+        let (data, warnings): (DetailData, [String]) = try await performGraphQLResult(query: Self.pullRequestDetailsQuery, variables: variables)
 
         var detailByID: [String: PullRequestDetail] = [:]
         for node in data.nodes {
@@ -243,13 +260,21 @@ struct GitHubAPIClient: GitHubClient {
             )
         }
 
-        return detailByID
+        return (detailByID, warnings)
     }
 
     private func performGraphQL<Variables: Encodable, DataType: Decodable>(
         query: String,
         variables: Variables
     ) async throws -> DataType {
+        let (data, _): (DataType, [String]) = try await performGraphQLResult(query: query, variables: variables)
+        return data
+    }
+
+    private func performGraphQLResult<Variables: Encodable, DataType: Decodable>(
+        query: String,
+        variables: Variables
+    ) async throws -> (DataType, [String]) {
         guard let token = tokenProvider(), !token.isEmpty else {
             throw GitHubClientError.missingToken
         }
@@ -272,14 +297,14 @@ struct GitHubAPIClient: GitHubClient {
         }
 
         let decoded = try Self.decoder.decode(GraphQLResponse<DataType>.self, from: data)
-        if let errors = decoded.errors, !errors.isEmpty {
+        if let errors = decoded.errors, !errors.isEmpty, decoded.data == nil {
             throw GitHubClientError.graphQLErrors(errors.map(\.message))
         }
 
         guard let payload = decoded.data else {
             throw GitHubClientError.invalidResponse
         }
-        return payload
+        return (payload, Array(Set(decoded.errors?.map(\.message) ?? [])).sorted())
     }
 
     private static func searchQuery(for tab: PullRequestTab) -> String {

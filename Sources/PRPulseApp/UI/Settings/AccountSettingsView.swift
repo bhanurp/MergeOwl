@@ -170,6 +170,14 @@ struct AccountSettingsView: View {
             }
 
             Section("Connection status") {
+                if !viewModel.accessWarnings.isEmpty {
+                    Label("Some repositories require additional access. Your account is connected; accessible PRs are available.", systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    ForEach(viewModel.accessWarnings, id: \.self) { warning in
+                        Text(warning).font(.footnote).foregroundStyle(.secondary)
+                    }
+                    Link("Manage token and SSO access", destination: URL(string: "https://github.com/settings/tokens")!)
+                }
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: connectionState.symbolName)
                         .font(.title3)
