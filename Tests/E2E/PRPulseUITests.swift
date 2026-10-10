@@ -62,6 +62,8 @@ final class PRPulseUITests: XCTestCase {
         if sceneWindow.exists {
             sceneWindow.buttons[XCUIIdentifierCloseWindow].click()
         }
+        // Hosted runners have small desktops; zoom the native window to avoid clipped controls.
+        app.windows["PR Pulse Settings"].buttons[XCUIIdentifierZoomWindow].click()
     }
 
     private func pane(_ name: String) {
