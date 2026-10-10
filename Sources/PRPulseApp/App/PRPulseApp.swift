@@ -84,9 +84,10 @@ private struct PRPulseWaveformMark: View {
                     ),
                     style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round)
                 )
-                .padding(4)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 6)
         }
-        .frame(width: 24, height: 18)
+        .frame(width: 24, height: 24)
         .accessibilityHidden(true)
     }
 }

@@ -19,4 +19,19 @@ final class BadgeIconTests: XCTestCase {
             "PRPulse 3 actionable"
         )
     }
+
+    func testMenuBarIconUsesTheAbstractWaveformMark() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = repositoryRoot.appendingPathComponent(
+            "Sources/PRPulseApp/App/PRPulseApp.swift"
+        )
+        let source = try String(contentsOf: sourceURL)
+
+        XCTAssertTrue(source.contains("PRPulseWaveformMark"))
+        XCTAssertTrue(source.contains("LinearGradient"))
+        XCTAssertFalse(source.contains("arrow.triangle.branch"))
+    }
 }
