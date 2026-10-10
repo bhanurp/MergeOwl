@@ -23,6 +23,8 @@ printf '%s\n' "$*" >> "$TEST_SWIFT_LOG"
 if [[ "$*" == "build -c release" ]]; then
   printf 'fresh binary\n' > "$TEST_RELEASE_BIN/PRPulseApp"
   chmod +x "$TEST_RELEASE_BIN/PRPulseApp"
+  mkdir -p "$TEST_RELEASE_BIN/PRPulse_PRPulseApp.bundle"
+  printf 'flower asset\n' > "$TEST_RELEASE_BIN/PRPulse_PRPulseApp.bundle/PRPulseFlower@2x.png"
   exit 0
 fi
 
@@ -55,5 +57,10 @@ fi
 
 if [[ "$(<"$INSTALL_ROOT/Contents/MacOS/PRPulseApp")" != "fresh binary" ]]; then
   echo "expected installed app to contain the freshly built binary" >&2
+  exit 1
+fi
+
+if [[ "$(<"$INSTALL_ROOT/Contents/Resources/PRPulse_PRPulseApp.bundle/PRPulseFlower@2x.png")" != "flower asset" ]]; then
+  echo "expected installed app to include SwiftPM resource bundles" >&2
   exit 1
 fi
