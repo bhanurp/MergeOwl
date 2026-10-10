@@ -23,6 +23,10 @@ final class PRPulseApplicationDelegate: NSObject, NSApplicationDelegate {
         statusItemController.tearDown()
     }
 
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
+    }
+
     private func showSettings() {
         let window = settingsWindow ?? makeWindow(title: "PR Pulse Settings", content: SettingsShellView(viewModel: dependencies.dashboard).frame(minWidth: 720, minHeight: 520))
         settingsWindow = window

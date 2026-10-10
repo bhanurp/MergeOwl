@@ -9,6 +9,13 @@ final class ApplicationLifecycleTests: XCTestCase {
         XCTAssertFalse(appSource.contains("MenuBarExtra"))
     }
 
+    func testDelegateKeepsTheStatusItemAliveAfterTheLastWindowCloses() throws {
+        let delegateSource = try source(named: "Sources/PRPulseApp/App/PRPulseApplicationDelegate.swift")
+
+        XCTAssertTrue(delegateSource.contains("func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool"))
+        XCTAssertTrue(delegateSource.contains("applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {\n        false"))
+    }
+
     @MainActor
     func testDashboardHostActionsInvokeEachProvidedClosure() {
         var settingsCalls = 0
