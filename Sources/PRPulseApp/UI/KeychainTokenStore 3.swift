@@ -9,7 +9,13 @@ import Foundation
 import Security
 
 public struct KeychainTokenStore {
-    private let service = "com.yourcompany.PullRequestDashboard.token"
+    private var service: String {
+        #if E2E_TESTING
+        return ProcessInfo.processInfo.environment["PRPULSE_E2E_KEYCHAIN_SERVICE"]!
+        #else
+        return "com.yourcompany.PullRequestDashboard.token"
+        #endif
+    }
     private let account = "github-token"
     
     private func baseQuery() -> [String: Any] {

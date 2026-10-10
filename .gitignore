@@ -11,6 +11,9 @@ xcuserdata/
 DerivedData/
 *.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
+/Tests/E2E/PRPulseE2E.xcodeproj/
+/Tests/E2E/Generated/
+__pycache__/
 
 # Local runtime/temp/output
 /.cache/

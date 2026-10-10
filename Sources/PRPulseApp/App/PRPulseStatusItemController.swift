@@ -118,6 +118,7 @@ private final class AppKitStatusItemButton: NSObject, StatusItemButtonHosting {
         super.init()
         statusItem.button?.target = self
         statusItem.button?.action = #selector(didClick)
+        statusItem.button?.setAccessibilityIdentifier("prpulse.status-item")
     }
 
     var anchorView: NSView {

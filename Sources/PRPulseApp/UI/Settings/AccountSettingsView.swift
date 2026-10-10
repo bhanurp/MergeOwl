@@ -141,6 +141,7 @@ struct AccountSettingsView: View {
 
             Section("GitHub access") {
                 SecureField("Personal access token", text: $tokenInput)
+                    .accessibilityIdentifier("prpulse.token-input")
                     .textFieldStyle(.roundedBorder)
 
                 Text("Use a fine-grained token with access to the repositories you want to follow.")
@@ -322,7 +323,7 @@ struct AccountSettingsView: View {
             let login: String
         }
 
-        var request = URLRequest(url: URL(string: "https://api.github.com/user")!)
+        var request = URLRequest(url: GitHubAPIClient.apiURL("user"))
         request.httpMethod = "GET"
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")

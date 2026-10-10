@@ -9,6 +9,9 @@ actor NotificationDispatcher {
     }
 
     private func notificationsSupported() -> Bool {
+        #if E2E_TESTING
+        return false
+        #else
         #if DEBUG
         if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
             return false
@@ -24,6 +27,7 @@ actor NotificationDispatcher {
             return false
         }
         return true
+        #endif
     }
 
     func requestAuthorizationIfNeeded() async {

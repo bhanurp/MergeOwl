@@ -28,7 +28,12 @@ final class PRPulseApplicationDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showSettings() {
-        let window = settingsWindow ?? makeWindow(title: "PR Pulse Settings", content: SettingsShellView(viewModel: dependencies.dashboard).frame(minWidth: 720, minHeight: 520))
+        let window = settingsWindow ?? makeWindow(title: "PR Pulse Settings", content: SettingsShellView(viewModel: dependencies.dashboard).frame(minWidth: 760, minHeight: 520))
+        if settingsWindow == nil {
+            window.contentMinSize = NSSize(width: 760, height: 520)
+            window.setContentSize(NSSize(width: 900, height: 600))
+            window.center()
+        }
         settingsWindow = window
         present(window)
     }
@@ -42,7 +47,7 @@ final class PRPulseApplicationDelegate: NSObject, NSApplicationDelegate {
     private func makeWindow<Content: View>(title: String, content: Content) -> NSWindow {
         let window = NSWindow(contentViewController: NSHostingController(rootView: content))
         window.title = title
-        window.styleMask = [.titled, .closable, .miniaturizable]
+        window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         window.isReleasedWhenClosed = false
         window.center()
         return window
