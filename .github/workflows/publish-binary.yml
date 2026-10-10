@@ -15,7 +15,7 @@ jobs:
     env:
       PRODUCT_NAME: PRPulseApp
       APP_BUNDLE_ID: io.bhanurp.prpulse
-      MIN_MACOS_VERSION: "13.0"
+      MIN_MACOS_VERSION: "14.0"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -75,9 +75,7 @@ jobs:
           fi
           chmod +x "$APP_MACOS/$PRODUCT_NAME"
 
-          if [ -d "$BIN_PATH/${PRODUCT_NAME}_${PRODUCT_NAME}.resources" ]; then
-            cp -R "$BIN_PATH/${PRODUCT_NAME}_${PRODUCT_NAME}.resources" "$APP_RESOURCES/"
-          fi
+          find "$BIN_PATH" -maxdepth 1 -type d -name '*.bundle' -exec cp -R {} "$APP_RESOURCES" \;
 
           cat > "${APP_CONTENTS}/Info.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
@@ -139,5 +137,5 @@ jobs:
           files: |
             dist/PRPulseApp.dmg
             dist/PRPulseApp.zip
-            dist/PRPulseApp-${{ github.ref_name }}-macOS-*.dmg
-            dist/PRPulseApp-${{ github.ref_name }}-macOS-*.zip
+            dist/PRPulseApp-*-macOS-*.dmg
+            dist/PRPulseApp-*-macOS-*.zip

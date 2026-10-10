@@ -44,6 +44,12 @@ TEST_RELEASE_BIN="$TEST_DIR/release-bin" \
 PATH="$TEST_DIR/bin:$PATH" \
 bash "$PROJECT_DIR/scripts/install_prpulse.sh" "$INSTALL_ROOT"
 
+MINIMUM_MACOS="$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$INSTALL_ROOT/Contents/Info.plist")"
+if [[ "$MINIMUM_MACOS" != "14.0" ]]; then
+  echo "expected installed app to require macOS 14.0, got $MINIMUM_MACOS" >&2
+  exit 1
+fi
+
 SWIFT_CALL_1="$(sed -n '1p' "$TEST_DIR/swift.log")"
 SWIFT_CALL_2="$(sed -n '2p' "$TEST_DIR/swift.log")"
 SWIFT_CALL_COUNT="$(wc -l < "$TEST_DIR/swift.log" | tr -d ' ')"
