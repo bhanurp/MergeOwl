@@ -22,4 +22,19 @@ final class StatusItemIconPresentationTests: XCTestCase {
     func testFlowerUsesMostOfTheMenuBarIconCanvas() {
         XCTAssertEqual(StatusItemIconRenderer.flowerRect.size, NSSize(width: 21, height: 21))
     }
+
+    func testFlowerIsDrawnAsANativeVectorMark() throws {
+        let source = try source(named: "Sources/PRPulseApp/App/StatusItemIconPresentation.swift")
+
+        XCTAssertTrue(source.contains("private static func drawFlower()"))
+        XCTAssertFalse(source.contains("Bundle.module.url"))
+    }
+
+    private func source(named path: String) throws -> String {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        return try String(contentsOf: repositoryRoot.appendingPathComponent(path))
+    }
 }
