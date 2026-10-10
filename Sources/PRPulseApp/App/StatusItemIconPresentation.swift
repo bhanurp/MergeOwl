@@ -19,7 +19,7 @@ enum StatusItemIconPresentation {
 @MainActor
 enum StatusItemIconRenderer {
     private static let imageSize = NSSize(width: 24, height: 24)
-    private static let flowerRect = NSRect(x: 3, y: 3, width: 18, height: 18)
+    static let flowerRect = NSRect(x: 1.5, y: 1.5, width: 21, height: 21)
     private static let badgeColor = NSColor(red: 0.66, green: 0.16, blue: 0.18, alpha: 1)
 
     static func makeImage(actionableCount: Int) -> NSImage {

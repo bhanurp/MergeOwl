@@ -17,4 +17,9 @@ final class StatusItemIconPresentationTests: XCTestCase {
             "PR Pulse, 0 actionable"
         )
     }
+
+    @MainActor
+    func testFlowerUsesMostOfTheMenuBarIconCanvas() {
+        XCTAssertEqual(StatusItemIconRenderer.flowerRect.size, NSSize(width: 21, height: 21))
+    }
 }
