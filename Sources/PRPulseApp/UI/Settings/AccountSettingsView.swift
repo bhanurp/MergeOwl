@@ -191,7 +191,7 @@ struct AccountSettingsView: View {
             try tokenStore.setToken(trimmedTokenInput)
             hasStoredToken = true
             tokenInput = ""
-            connectionState = .disconnected
+            Task { await testConnection() }
         } catch {
             connectionState = .failed("Unable to save your token. Please try again.")
         }
@@ -227,10 +227,12 @@ struct AccountSettingsView: View {
                 watchedRepositoriesProvider: { [] }
             )
             let graphQLViewer = try await client.fetchViewer()
-            connectionState = .connected(
-                login: graphQLViewer.isEmpty ? restViewer : graphQLViewer,
-                isStored: !hasTypedToken
-            )
+            let login = graphQLViewer.isEmpty ? restViewer : graphQLViewer
+            let isStoredToken = !hasTypedToken
+            connectionState = .connected(login: login, isStored: isStoredToken)
+            if isStoredToken {
+                viewModel.accountConnectionDidSucceed(login: login)
+            }
         } catch {
             connectionState = .failed(recoveryMessage(for: error))
         }

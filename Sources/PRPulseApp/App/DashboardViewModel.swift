@@ -172,6 +172,12 @@ final class DashboardViewModel: ObservableObject {
         refreshAll()
     }
 
+    func accountConnectionDidSucceed(login: String) {
+        viewerLogin = login
+        markConnected(as: login)
+        refreshAll()
+    }
+
     func loadMoreCurrentTab() {
         Task {
             await loadPage(for: selectedTab, reset: false)
