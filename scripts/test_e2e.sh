@@ -3,6 +3,7 @@ set -euo pipefail
 PRPULSE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PRPULSE_ROOT"
 command -v xcodegen >/dev/null || { echo "Install XcodeGen: brew install xcodegen" >&2; exit 1; }
+python3 -m unittest discover -s Tests/E2E -p 'test_*.py'
 mkdir -p .build/e2e
 python3 Tests/E2E/github_fixture_server.py --port 8765 > .build/e2e/fixture-server.log 2>&1 &
 PRPULSE_FIXTURE_PID=$!

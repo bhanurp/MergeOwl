@@ -54,7 +54,7 @@ class Handler(BaseHTTPRequestHandler):
             elif "review-requested" in search:
                 nodes = [pr("PR_3", "Review API change", "contributor"), pr("PR_4", "Already reviewed", "contributor")]
             elif "repo:" in search:
-                nodes = [pr("PR_5", "Watched repository update")]
+                nodes = [pr("PR_5", "Watched repository update")] if "repo:example/repo" in search.split() else []
             elif variables.get("after"):
                 nodes = [pr("PR_6", "Next page PR")]
             else:
