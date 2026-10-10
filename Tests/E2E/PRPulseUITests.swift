@@ -57,10 +57,13 @@ final class PRPulseUITests: XCTestCase {
         app.buttons["prpulse.settings"].click()
         XCTAssertTrue(app.windows["PR Pulse Settings"].waitForExistence(timeout: 5))
         app.activate()
+        let sceneWindow = app.windows["com_apple_SwiftUI_Settings_window"]
+        if sceneWindow.exists {
+            sceneWindow.buttons[XCUIIdentifierCloseWindow].click()
+        }
     }
 
     private func pane(_ name: String) {
-        app.activate()
         app.windows["PR Pulse Settings"].staticTexts[name].firstMatch.click()
     }
 
@@ -68,6 +71,12 @@ final class PRPulseUITests: XCTestCase {
         let window = app.windows["PR Pulse Settings"]
         let control = window.groups.containing(.staticText, identifier: name).switches.firstMatch
         return control.exists ? control : window.checkBoxes[name]
+    }
+
+    private func enter(_ text: String, in field: XCUIElement) {
+        field.click()
+        // Let SwiftUI settle between keystrokes instead of dropping fast synthetic input.
+        for character in text { field.typeText(String(character)) }
     }
 
     func testMenuBarPopoverBadgeSettingsAndQuit() {
@@ -92,8 +101,7 @@ final class PRPulseUITests: XCTestCase {
         selectTab("My PRs")
         XCTAssertTrue(app.staticTexts["Improve documentation"].waitForExistence(timeout: 10))
         let search = app.textFields["Search title or repo"]
-        search.click()
-        search.typeText("token")
+        enter("token", in: search)
         XCTAssertTrue(app.staticTexts["Fix token handling"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Improve documentation"].exists)
         search.typeKey("a", modifierFlags: .command)
@@ -139,10 +147,9 @@ final class PRPulseUITests: XCTestCase {
         settings()
         let token = app.windows["PR Pulse Settings"].descendants(matching: .any)["prpulse.token-input"].firstMatch
         XCTAssertTrue(token.waitForExistence(timeout: 5), app.debugDescription)
-        token.click()
-        token.typeText("e2e-valid")
+        enter("e2e-valid", in: token)
         app.windows["PR Pulse Settings"].buttons["Update token"].click()
-        XCTAssertTrue(app.staticTexts["Connected as octocat"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Connected as octocat"].waitForExistence(timeout: 10), app.debugDescription)
         app.terminate()
         app.launchEnvironment.removeValue(forKey: "PRPULSE_E2E_INITIAL_TOKEN")
         app.launch()
@@ -193,9 +200,8 @@ final class PRPulseUITests: XCTestCase {
         XCTAssertTrue(preference("Needs re-review").waitForExistence(timeout: 5), app.debugDescription)
         preference("Needs re-review").click()
         pane("Repositories")
-        let input = app.windows["PR Pulse Settings"].textFields["owner/repo"]
-        input.click()
-        input.typeText("example/repo")
+        let input = app.windows["PR Pulse Settings"].textFields["prpulse.repository-input"]
+        enter("example/repo", in: input)
         app.windows["PR Pulse Settings"].buttons["Add"].click()
         XCTAssertTrue(preference("example/repo").waitForExistence(timeout: 5), app.debugDescription)
         pane("Advanced")

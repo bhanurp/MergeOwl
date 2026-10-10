@@ -150,6 +150,7 @@ struct RepositoriesSettingsView: View {
             Section("Add repository") {
                 HStack {
                     TextField("owner/repo", text: $newRepository)
+                        .accessibilityIdentifier("prpulse.repository-input")
                         .textFieldStyle(.roundedBorder)
                     Button("Add", action: addRepository)
                         .disabled(!canAddRepository)
