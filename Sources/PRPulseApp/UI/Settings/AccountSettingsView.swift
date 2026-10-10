@@ -2,10 +2,25 @@ import Foundation
 import SwiftUI
 
 enum AccountConnectionState {
+    enum TokenVerificationSource {
+        case enteredToken
+        case savedToken
+    }
+
     case disconnected
     case testing
-    case connected(login: String, isStored: Bool = true)
+    case connected(login: String)
+    case verifiedButNotSaved(login: String)
     case failed(String)
+
+    static func verified(login: String, source: TokenVerificationSource) -> Self {
+        switch source {
+        case .enteredToken:
+            .verifiedButNotSaved(login: login)
+        case .savedToken:
+            .connected(login: login)
+        }
+    }
 
     var title: String {
         switch self {
@@ -13,8 +28,10 @@ enum AccountConnectionState {
             "No GitHub account connected"
         case .testing:
             "Checking your GitHub account"
-        case let .connected(login, _):
+        case let .connected(login):
             "Connected as \(login)"
+        case .verifiedButNotSaved:
+            "Token verified — save to connect"
         case .failed:
             "Couldn’t connect to GitHub"
         }
@@ -26,10 +43,10 @@ enum AccountConnectionState {
             "Add a personal access token to get started."
         case .testing:
             "Verifying your token with GitHub."
-        case let .connected(_, isStored):
-            isStored
-                ? "Your token is stored securely in Keychain."
-                : "This token is only being tested. Save or update it to store it securely in Keychain."
+        case .connected:
+            "Your token is stored securely in Keychain."
+        case .verifiedButNotSaved:
+            "This token has not been saved. Use Connect GitHub to save it securely in Keychain."
         case let .failed(message):
             message
         }
@@ -43,6 +60,8 @@ enum AccountConnectionState {
             "arrow.triangle.2.circlepath.circle"
         case .connected:
             "checkmark.circle.fill"
+        case .verifiedButNotSaved:
+            "checkmark.circle"
         case .failed:
             "exclamationmark.triangle.fill"
         }
@@ -56,6 +75,8 @@ enum AccountConnectionState {
             .accentColor
         case .connected:
             .green
+        case .verifiedButNotSaved:
+            .accentColor
         case .failed:
             .red
         }
@@ -115,7 +136,7 @@ struct AccountSettingsView: View {
                     .disabled(trimmedTokenInput.isEmpty || !connectionState.allowsTokenMutation)
 
                     Button(isTestingConnection ? "Testing connection…" : "Test connection") {
-                        Task { await testConnection() }
+                        Task { await testConnection(using: tokenVerificationSource) }
                     }
                     .disabled(isTestingConnection)
 
@@ -191,7 +212,7 @@ struct AccountSettingsView: View {
             try tokenStore.setToken(trimmedTokenInput)
             hasStoredToken = true
             tokenInput = ""
-            Task { await testConnection() }
+            Task { await testConnection(using: .savedToken) }
         } catch {
             connectionState = .failed("Unable to save your token. Please try again.")
         }
@@ -208,10 +229,13 @@ struct AccountSettingsView: View {
         }
     }
 
+    private var tokenVerificationSource: AccountConnectionState.TokenVerificationSource {
+        trimmedTokenInput.isEmpty ? .savedToken : .enteredToken
+    }
+
     @MainActor
-    private func testConnection() async {
-        let hasTypedToken = !trimmedTokenInput.isEmpty
-        guard let token = tokenCandidate() else {
+    private func testConnection(using source: AccountConnectionState.TokenVerificationSource) async {
+        guard let token = tokenCandidate(for: source) else {
             connectionState = .failed("Enter a token or connect your account first.")
             return
         }
@@ -228,9 +252,8 @@ struct AccountSettingsView: View {
             )
             let graphQLViewer = try await client.fetchViewer()
             let login = graphQLViewer.isEmpty ? restViewer : graphQLViewer
-            let isStoredToken = !hasTypedToken
-            connectionState = .connected(login: login, isStored: isStoredToken)
-            if isStoredToken {
+            connectionState = .verified(login: login, source: source)
+            if source == .savedToken {
                 viewModel.accountConnectionDidSucceed(login: login)
             }
         } catch {
@@ -238,11 +261,13 @@ struct AccountSettingsView: View {
         }
     }
 
-    private func tokenCandidate() -> String? {
-        if !trimmedTokenInput.isEmpty {
+    private func tokenCandidate(for source: AccountConnectionState.TokenVerificationSource) -> String? {
+        switch source {
+        case .enteredToken:
             return trimmedTokenInput
+        case .savedToken:
+            return tokenStore.getToken()
         }
-        return tokenStore.getToken()
     }
 
     private func recoveryMessage(for error: Error) -> String {

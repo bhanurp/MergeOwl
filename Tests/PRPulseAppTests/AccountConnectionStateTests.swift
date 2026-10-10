@@ -17,11 +17,27 @@ final class AccountConnectionStateTests: XCTestCase {
         XCTAssertEqual(state.detail, "Invalid token (401 Unauthorized).")
     }
 
-    func testUnsavedConnectedStatePromptsToSaveToken() {
-        let state = AccountConnectionState.connected(login: "octocat", isStored: false)
+    func testVerifiedButUnsavedStateDoesNotClaimTheAccountIsConnected() {
+        let state = AccountConnectionState.verifiedButNotSaved(login: "octocat")
 
+        XCTAssertEqual(state.title, "Token verified — save to connect")
+        XCTAssertFalse(state.title.localizedCaseInsensitiveContains("connected as"))
         XCTAssertTrue(state.detail.localizedCaseInsensitiveContains("save"))
         XCTAssertFalse(state.detail.contains("stored securely in Keychain"))
+    }
+
+    func testSavedTokenVerificationCreatesConnectedState() {
+        let state = AccountConnectionState.verified(login: "octocat", source: .savedToken)
+
+        XCTAssertEqual(state.title, "Connected as octocat")
+        XCTAssertEqual(state.detail, "Your token is stored securely in Keychain.")
+    }
+
+    func testEnteredTokenVerificationDoesNotCreateConnectedState() {
+        let state = AccountConnectionState.verified(login: "octocat", source: .enteredToken)
+
+        XCTAssertEqual(state.title, "Token verified — save to connect")
+        XCTAssertTrue(state.detail.localizedCaseInsensitiveContains("not been saved"))
     }
 
     func testTestingStateDisablesTokenMutations() {
