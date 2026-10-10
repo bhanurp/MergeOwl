@@ -58,7 +58,7 @@ final class PRPulseStatusItemController {
         }
         self.button = button
         popover.configure(
-            content: NSHostingController(rootView: ContentView(viewModel: dashboard))
+            content: NSHostingController(rootView: ContentView(viewModel: dashboard, hostActions: actions))
         )
         update(actionableCount: dashboard.badgeCount)
 
@@ -67,8 +67,6 @@ final class PRPulseStatusItemController {
             .sink { [weak self] count in
                 self?.update(actionableCount: count)
             }
-
-        _ = actions
     }
 
     func update(actionableCount: Int) {

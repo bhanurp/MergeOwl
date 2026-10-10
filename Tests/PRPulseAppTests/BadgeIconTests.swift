@@ -3,20 +3,20 @@ import XCTest
 
 final class BadgeIconTests: XCTestCase {
     func testBadgeTextCapsActionableCountAtNinetyNine() {
-        XCTAssertEqual(BadgeIconPresentation.badgeText(for: -1), "0")
-        XCTAssertEqual(BadgeIconPresentation.badgeText(for: 0), "0")
-        XCTAssertEqual(BadgeIconPresentation.badgeText(for: 99), "99")
-        XCTAssertEqual(BadgeIconPresentation.badgeText(for: 124), "99")
+        XCTAssertNil(StatusItemIconPresentation.badgeText(for: -1))
+        XCTAssertNil(StatusItemIconPresentation.badgeText(for: 0))
+        XCTAssertEqual(StatusItemIconPresentation.badgeText(for: 99), "99")
+        XCTAssertEqual(StatusItemIconPresentation.badgeText(for: 124), "99")
     }
 
     func testAccessibilityLabelDescribesActionableCount() {
         XCTAssertEqual(
-            BadgeIconPresentation.accessibilityLabel(for: -1),
-            "PRPulse 0 actionable"
+            StatusItemIconPresentation.accessibilityLabel(for: -1),
+            "PR Pulse, 0 actionable"
         )
         XCTAssertEqual(
-            BadgeIconPresentation.accessibilityLabel(for: 3),
-            "PRPulse 3 actionable"
+            StatusItemIconPresentation.accessibilityLabel(for: 3),
+            "PR Pulse, 3 actionable"
         )
     }
 

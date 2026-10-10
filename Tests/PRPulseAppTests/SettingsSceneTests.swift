@@ -24,8 +24,15 @@ final class SettingsSceneTests: XCTestCase {
         let appSource = try source(named: "Sources/PRPulseApp/App/PRPulseApp.swift")
 
         XCTAssertTrue(appSource.contains("Settings {"))
-        XCTAssertTrue(appSource.contains("SettingsShellView(viewModel: dependencies.dashboard)"))
+        XCTAssertTrue(appSource.contains("SettingsShellView(viewModel: applicationDelegate.dependencies.dashboard)"))
         XCTAssertFalse(appSource.contains("Window(\"Settings\", id:"))
+    }
+
+    func testApplicationUsesTheNativeStatusItemDelegate() throws {
+        let appSource = try source(named: "Sources/PRPulseApp/App/PRPulseApp.swift")
+
+        XCTAssertTrue(appSource.contains("@NSApplicationDelegateAdaptor(PRPulseApplicationDelegate.self)"))
+        XCTAssertFalse(appSource.contains("MenuBarExtra"))
     }
 
     func testSettingsGearUsesOpenSettings() throws {
