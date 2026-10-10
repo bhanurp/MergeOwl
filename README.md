@@ -27,11 +27,21 @@ After attempting to open the app, go to **System Settings → Privacy & Security
 
 The graphical installation above is recommended. This script needs `curl` and `python3`; it downloads the latest stable release, replaces the existing app copy, and opens it. Quit PR Pulse first if running. It installs to `/Applications`, or `~/Applications` if `/Applications` is not writable.
 
-Review the [installer script](scripts/install_latest_release.sh) before executing it:
+Download the installer into a new temporary directory:
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/bhanurp/prpulse/master/scripts/install_latest_release.sh)" -- bhanurp/prpulse
+prpulse_install_dir="$(mktemp -d)"
+curl -fsSL -o "$prpulse_install_dir/install_latest_release.sh" https://raw.githubusercontent.com/bhanurp/prpulse/v0.1.4/scripts/install_latest_release.sh
+less "$prpulse_install_dir/install_latest_release.sh"
 ```
+
+Read the downloaded script (`q` exits `less`). If you trust it, run that same local file in the same terminal; do not download another copy between review and execution:
+
+```bash
+bash "$prpulse_install_dir/install_latest_release.sh" bhanurp/prpulse
+```
+
+The script is pinned to v0.1.4; it still downloads the latest stable app release.
 
 ## Connect GitHub
 
@@ -55,7 +65,7 @@ For a classic token, use [GitHub’s classic token settings](https://github.com/
 2. Select **Account** in the sidebar.
 3. Paste the token into **Personal access token**.
 4. Click **Connect GitHub** (or **Update token** if already configured).
-5. Wait for **Connected as <your username>**. Return to the popover and click the **refresh** button.
+5. Wait for **Connected as `<your username>`**. Return to the popover and click the **refresh** button.
 6. Choose **My PRs** or **Review Requested**. An empty list can be correct if you have no matching open PRs.
 
 **Test connection** checks a token but does not save a newly entered token. If the status says **Token verified — save to connect**, click **Connect GitHub** or **Update token** to persist it.
