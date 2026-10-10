@@ -44,6 +44,13 @@ final class SettingsSceneTests: XCTestCase {
         XCTAssertTrue(contentSource.contains("openWindow(id: \"connection-errors-window\")"))
     }
 
+    func testNativeSettingsWindowSupportsContentMinimumWidthAndResizing() throws {
+        let delegate = try source(named: "Sources/PRPulseApp/App/PRPulseApplicationDelegate.swift")
+        XCTAssertTrue(delegate.contains(".resizable"))
+        XCTAssertTrue(delegate.contains("frame(minWidth: 760, minHeight: 520)"))
+        XCTAssertTrue(delegate.contains("window.contentMinSize = NSSize(width: 760, height: 520)"))
+    }
+
     private func source(named path: String) throws -> String {
         let repositoryRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

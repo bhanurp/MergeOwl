@@ -59,8 +59,9 @@ final class PRPulseUITests: XCTestCase {
         XCTAssertTrue(app.windows["PR Pulse Settings"].waitForExistence(timeout: 5))
         app.activate()
         let sceneWindow = app.windows["com_apple_SwiftUI_Settings_window"]
-        if sceneWindow.exists {
-            sceneWindow.buttons[XCUIIdentifierCloseWindow].click()
+        let sceneClose = sceneWindow.buttons[XCUIIdentifierCloseWindow]
+        if sceneWindow.exists && sceneClose.isHittable {
+            sceneClose.click()
         }
         // Hosted runners have small desktops; zoom the native window to avoid clipped controls.
         app.windows["PR Pulse Settings"].buttons[XCUIIdentifierZoomWindow].click()
