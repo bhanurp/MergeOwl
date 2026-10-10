@@ -10,6 +10,7 @@ final class DashboardViewModel: ObservableObject {
         var cursor: String?
         var hasNextPage: Bool = false
         var isLoading: Bool = false
+        var warnings: [String] = []
     }
 
     enum QuickAction {
@@ -30,6 +31,9 @@ final class DashboardViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published private(set) var connectionPresentation: DashboardConnectionPresentation = .checking
     @Published private(set) var connectionErrors: [String] = []
+    var accessWarnings: [String] {
+        Array(Set(listStates.values.flatMap(\.warnings))).sorted()
+    }
     @Published var settings: AppSettings = .default {
         didSet {
             Task {
@@ -299,8 +303,12 @@ final class DashboardViewModel: ObservableObject {
 
             state.cursor = page.cursor
             state.hasNextPage = page.hasNextPage
+            state.warnings = reset ? page.warnings : Array(Set(state.warnings + page.warnings)).sorted()
             state.isLoading = false
             listStates[tab] = state
+            if !viewerLogin.isEmpty, viewerLogin != "me" {
+                markConnected(as: viewerLogin)
+            }
             recomputeDisplayedItems()
             updateBadgeCount()
             lastRefreshAt = Date()
@@ -310,6 +318,11 @@ final class DashboardViewModel: ObservableObject {
             listStates[tab] = state
             // Ignore benign cancellations (e.g., overlapping refreshes)
             if (error as? CancellationError) != nil {
+                return
+            }
+            if let githubError = error as? GitHubClientError, githubError.isAccessRestriction {
+                state.warnings = [githubError.localizedDescription]
+                listStates[tab] = state
                 return
             }
             markConnectionError(error.localizedDescription)

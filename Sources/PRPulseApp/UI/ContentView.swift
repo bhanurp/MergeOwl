@@ -13,6 +13,14 @@ struct ContentView: View {
         VStack(spacing: 12) {
             header
             filters
+            if !viewModel.accessWarnings.isEmpty {
+                Label("Some PR data is unavailable. Showing accessible PRs.", systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .help(viewModel.accessWarnings.joined(separator: "\n"))
+                Link("Manage GitHub token access", destination: URL(string: "https://github.com/settings/tokens")!)
+                    .font(.caption)
+            }
             listContent
             footer
         }

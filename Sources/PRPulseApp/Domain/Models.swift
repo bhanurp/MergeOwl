@@ -142,6 +142,7 @@ struct PullRequestPage: Codable {
     var items: [PullRequest]
     var cursor: String?
     var hasNextPage: Bool
+    var warnings: [String] = []
 }
 
 enum PullRequestTab: String, CaseIterable, Identifiable, Codable {
