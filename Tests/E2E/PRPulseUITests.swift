@@ -64,6 +64,12 @@ final class PRPulseUITests: XCTestCase {
         app.windows["PR Pulse Settings"].staticTexts[name].firstMatch.click()
     }
 
+    private func preference(_ name: String) -> XCUIElement {
+        let window = app.windows["PR Pulse Settings"]
+        let control = window.groups.containing(.staticText, identifier: name).switches.firstMatch
+        return control.exists ? control : window.checkBoxes[name]
+    }
+
     func testMenuBarPopoverBadgeSettingsAndQuit() {
         launch()
         XCTAssertTrue(app.staticTexts["Connected as @octocat"].waitForExistence(timeout: 10))
@@ -88,7 +94,7 @@ final class PRPulseUITests: XCTestCase {
         let search = app.textFields["Search title or repo"]
         search.click()
         search.typeText("token")
-        XCTAssertTrue(app.staticTexts["Fix token handling"].exists)
+        XCTAssertTrue(app.staticTexts["Fix token handling"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Improve documentation"].exists)
         search.typeKey("a", modifierFlags: .command)
         search.typeKey(.delete, modifierFlags: [])
@@ -115,7 +121,7 @@ final class PRPulseUITests: XCTestCase {
     func testSnoozeAndOverridePersistence() {
         launch()
         XCTAssertTrue(app.staticTexts["Review API change"].waitForExistence(timeout: 10))
-        app.popUpButtons["Snooze"].firstMatch.click()
+        app.descendants(matching: .any)["Snooze"].firstMatch.click()
         app.menuItems["1 hour"].click()
         app.buttons["Hide snoozed"].click()
         XCTAssertFalse(app.staticTexts["Review API change"].exists)
@@ -131,7 +137,8 @@ final class PRPulseUITests: XCTestCase {
     func testTokenUpdateAndKeychainPersistence() {
         launch(token: "invalid")
         settings()
-        let token = app.windows["PR Pulse Settings"].secureTextFields["Personal access token"]
+        let token = app.windows["PR Pulse Settings"].descendants(matching: .any)["prpulse.token-input"].firstMatch
+        XCTAssertTrue(token.waitForExistence(timeout: 5), app.debugDescription)
         token.click()
         token.typeText("e2e-valid")
         app.windows["PR Pulse Settings"].buttons["Update token"].click()
@@ -142,7 +149,7 @@ final class PRPulseUITests: XCTestCase {
         openDashboard()
         XCTAssertTrue(app.staticTexts["Connected as @octocat"].waitForExistence(timeout: 10))
         settings()
-        XCTAssertEqual(app.windows["PR Pulse Settings"].secureTextFields["Personal access token"].value as? String, "")
+        XCTAssertEqual(app.windows["PR Pulse Settings"].descendants(matching: .any)["prpulse.token-input"].firstMatch.value as? String, "")
         app.windows["PR Pulse Settings"].buttons["Test connection"].firstMatch.click()
         XCTAssertTrue(app.staticTexts["Connected as octocat"].waitForExistence(timeout: 10))
     }
@@ -179,16 +186,18 @@ final class PRPulseUITests: XCTestCase {
         launch()
         settings()
         pane("Refresh")
-        app.windows["PR Pulse Settings"].checkBoxes["Refresh on launch"].click()
+        let refresh = preference("Refresh on launch")
+        XCTAssertTrue(refresh.waitForExistence(timeout: 5), app.debugDescription)
+        refresh.click()
         pane("Notifications")
-        XCTAssertTrue(app.checkBoxes["Needs re-review"].exists)
-        app.windows["PR Pulse Settings"].checkBoxes["Needs re-review"].click()
+        XCTAssertTrue(preference("Needs re-review").waitForExistence(timeout: 5), app.debugDescription)
+        preference("Needs re-review").click()
         pane("Repositories")
         let input = app.windows["PR Pulse Settings"].textFields["owner/repo"]
         input.click()
         input.typeText("example/repo")
         app.windows["PR Pulse Settings"].buttons["Add"].click()
-        XCTAssertTrue(app.checkBoxes["example/repo"].exists)
+        XCTAssertTrue(preference("example/repo").waitForExistence(timeout: 5), app.debugDescription)
         pane("Advanced")
         XCTAssertTrue(app.buttons["Refresh Now"].exists)
         app.terminate()
@@ -197,10 +206,10 @@ final class PRPulseUITests: XCTestCase {
         openDashboard()
         settings()
         pane("Repositories")
-        XCTAssertTrue(app.checkBoxes["example/repo"].exists)
+        XCTAssertTrue(preference("example/repo").waitForExistence(timeout: 5), app.debugDescription)
         pane("Refresh")
-        XCTAssertEqual(app.windows["PR Pulse Settings"].checkBoxes["Refresh on launch"].value as? Int, 0)
+        XCTAssertEqual(String(describing: preference("Refresh on launch").value!), "0")
         pane("Notifications")
-        XCTAssertEqual(app.windows["PR Pulse Settings"].checkBoxes["Needs re-review"].value as? Int, 0)
+        XCTAssertEqual(String(describing: preference("Needs re-review").value!), "0")
     }
 }

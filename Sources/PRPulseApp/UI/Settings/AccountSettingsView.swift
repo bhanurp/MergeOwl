@@ -141,6 +141,7 @@ struct AccountSettingsView: View {
 
             Section("GitHub access") {
                 SecureField("Personal access token", text: $tokenInput)
+                    .accessibilityIdentifier("prpulse.token-input")
                     .textFieldStyle(.roundedBorder)
 
                 Text("Use a fine-grained token with access to the repositories you want to follow.")
