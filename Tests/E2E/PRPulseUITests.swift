@@ -1,5 +1,6 @@
 import XCTest
 import Security
+import AppKit
 
 @MainActor
 final class PRPulseUITests: XCTestCase {
@@ -74,9 +75,23 @@ final class PRPulseUITests: XCTestCase {
     }
 
     private func enter(_ text: String, in field: XCUIElement) {
+        let pasteboard = NSPasteboard.general
+        let original = (pasteboard.pasteboardItems ?? []).map { item in
+            let copy = NSPasteboardItem()
+            for type in item.types {
+                if let data = item.data(forType: type) { copy.setData(data, forType: type) }
+            }
+            return copy
+        }
+        defer {
+            pasteboard.clearContents()
+            pasteboard.writeObjects(original)
+        }
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
         field.click()
-        // Let SwiftUI settle between keystrokes instead of dropping fast synthetic input.
-        for character in text { field.typeText(String(character)) }
+        field.typeKey("a", modifierFlags: .command)
+        field.typeKey("v", modifierFlags: .command)
     }
 
     func testMenuBarPopoverBadgeSettingsAndQuit() {
