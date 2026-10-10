@@ -346,7 +346,16 @@ struct GitHubAPIClient: GitHubClient {
         }
     }
 
-    private static let graphQLEndpoint = URL(string: "https://api.github.com/graphql")!
+    static func apiURL(_ path: String) -> URL {
+        #if E2E_TESTING
+        let base = ProcessInfo.processInfo.environment["PRPULSE_E2E_API_URL"]!
+        return URL(string: base)!.appendingPathComponent(path)
+        #else
+        return URL(string: "https://api.github.com")!.appendingPathComponent(path)
+        #endif
+    }
+
+    private static var graphQLEndpoint: URL { apiURL("graphql") }
 
     private static let encoder: JSONEncoder = {
         let encoder = JSONEncoder()

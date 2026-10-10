@@ -100,6 +100,7 @@ struct ContentView: View {
                     Image(systemName: "arrow.clockwise")
                 }
                 .help("Refresh now")
+                .accessibilityIdentifier("prpulse.refresh")
                 .keyboardShortcut("r")
 
                 Button {
@@ -114,6 +115,7 @@ struct ContentView: View {
                     Image(systemName: "gearshape")
                 }
                 .help("Settings")
+                .accessibilityIdentifier("prpulse.settings")
                 .keyboardShortcut(",", modifiers: [.command])
 
                 Button {
@@ -126,6 +128,7 @@ struct ContentView: View {
                     Image(systemName: "power")
                 }
                 .help("Quit PR Pulse")
+                .accessibilityIdentifier("prpulse.quit")
                 .keyboardShortcut("q", modifiers: [.command])
             }
 

@@ -1,0 +1,42 @@
+name: macOS End-to-End Tests
+
+on:
+  pull_request:
+  push:
+    branches: [master, 'feature/**', 'bugfix/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: macOS UI journeys
+    runs-on: macos-15
+    timeout-minutes: 25
+    env:
+      PRPULSE_E2E_RESULT_BUNDLE: .build/e2e/results.xcresult
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
+        with:
+          xcode-version: latest-stable
+      - name: Install UI project generator
+        run: brew install xcodegen
+      - name: Run native app end-to-end journeys
+        run: bash scripts/test_e2e.sh
+      - name: Upload results and screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: macos-e2e-results
+          path: |
+            .build/e2e/*.xcresult
+            .build/e2e/fixture-server.log
+          if-no-files-found: warn
+          retention-days: 14

@@ -5,7 +5,16 @@ final class AppDependencies: ObservableObject {
     let dashboard: DashboardViewModel
 
     init() {
+        #if E2E_TESTING
+        let environment = ProcessInfo.processInfo.environment
+        if let token = environment["PRPULSE_E2E_INITIAL_TOKEN"] {
+            try? KeychainTokenStore().setToken(token)
+        }
+        let directory = URL(fileURLWithPath: environment["PRPULSE_E2E_DATA_DIRECTORY"]!, isDirectory: true)
+        let store = PullRequestStore(directory: directory)
+        #else
         let store = PullRequestStore()
+        #endif
         let notifier = NotificationDispatcher(store: store)
         let scheduler = RefreshScheduler()
         let digestComputer = DigestComputer()
@@ -30,7 +39,11 @@ final class AppDependencies: ObservableObject {
     }
 
     private static var shouldUseMockClient: Bool {
+        #if E2E_TESTING
+        return false
+        #else
         let env = ProcessInfo.processInfo.environment
         return env["XCTestConfigurationFilePath"] != nil || env["PRPULSE_USE_MOCK_CLIENT"] == "1"
+        #endif
     }
 }
