@@ -57,6 +57,54 @@ final class AccountConnectionStateTests: XCTestCase {
         XCTAssertEqual(state.detail, "Add a personal access token to get started.")
     }
 
+    func testStoredTokenRestoresConnectedDashboardPresentation() {
+        let state = AccountConnectionState.restored(
+            from: .connected(viewerLogin: "octocat"),
+            hasStoredToken: true
+        )
+
+        XCTAssertEqual(state.title, "Connected as octocat")
+        XCTAssertEqual(state.detail, "Your token is stored securely in Keychain.")
+    }
+
+    func testStoredTokenRestoresCheckingDashboardPresentation() {
+        let state = AccountConnectionState.restored(from: .checking, hasStoredToken: true)
+
+        XCTAssertEqual(state.title, "Checking your GitHub account")
+    }
+
+    func testStoredTokenRestoresClearSavedTokenFailure() {
+        let state = AccountConnectionState.restored(from: .failed, hasStoredToken: true)
+
+        XCTAssertEqual(state.title, "Couldn’t connect to GitHub")
+        XCTAssertTrue(state.detail.localizedCaseInsensitiveContains("saved token"))
+    }
+
+    func testNoStoredTokenRestoresDisconnectedEvenWhenDashboardHasAConnection() {
+        let state = AccountConnectionState.restored(
+            from: .connected(viewerLogin: "octocat"),
+            hasStoredToken: false
+        )
+
+        XCTAssertEqual(state.title, "No GitHub account connected")
+        XCTAssertEqual(state.detail, "Add a personal access token to get started.")
+    }
+
+    func testRestoredAccountStatusNeverExposesTokenText() {
+        let token = "ghp_not_a_real_token"
+        let states = [
+            AccountConnectionState.restored(from: .checking, hasStoredToken: true),
+            AccountConnectionState.restored(from: .connected(viewerLogin: "octocat"), hasStoredToken: true),
+            AccountConnectionState.restored(from: .failed, hasStoredToken: true),
+            AccountConnectionState.restored(from: .connected(viewerLogin: "octocat"), hasStoredToken: false)
+        ]
+
+        for state in states {
+            XCTAssertFalse(state.title.contains(token))
+            XCTAssertFalse(state.detail.contains(token))
+        }
+    }
+
     func testDisconnectedAccountViewIncludesOfficialTokenSetupLink() throws {
         let repositoryRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

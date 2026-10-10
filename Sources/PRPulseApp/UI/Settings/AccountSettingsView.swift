@@ -22,6 +22,24 @@ enum AccountConnectionState {
         }
     }
 
+    static func restored(
+        from presentation: DashboardConnectionPresentation,
+        hasStoredToken: Bool
+    ) -> Self {
+        guard hasStoredToken else { return .disconnected }
+
+        return switch presentation {
+        case .checking:
+            .testing
+        case let .connected(viewerLogin):
+            .connected(login: viewerLogin)
+        case .failed:
+            .failed(
+                "Your saved token could not connect to GitHub. Check your network and token permissions, then try again."
+            )
+        }
+    }
+
     var title: String {
         switch self {
         case .disconnected:
@@ -181,6 +199,10 @@ struct AccountSettingsView: View {
         .onAppear {
             hasStoredToken = tokenStore.getToken() != nil
             tokenInput = ""
+            synchronizeConnectionState()
+        }
+        .onChange(of: viewModel.connectionPresentation) { _, _ in
+            synchronizeConnectionState()
         }
         .onChange(of: tokenInput) { _ in
             if case .failed = connectionState {
@@ -203,6 +225,16 @@ struct AccountSettingsView: View {
 
     private var trimmedTokenInput: String {
         tokenInput.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func synchronizeConnectionState() {
+        guard !isTestingConnection else { return }
+        if case .verifiedButNotSaved = connectionState { return }
+
+        connectionState = .restored(
+            from: viewModel.connectionPresentation,
+            hasStoredToken: hasStoredToken
+        )
     }
 
     private func saveToken() {
