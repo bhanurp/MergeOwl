@@ -232,5 +232,10 @@ final class PRPulseUITests: XCTestCase {
         XCTAssertEqual(String(describing: preference("Refresh on launch").value!), "0")
         pane("Notifications")
         XCTAssertEqual(String(describing: preference("Needs re-review").value!), "0")
+        app.windows["PR Pulse Settings"].buttons[XCUIIdentifierCloseWindow].click()
+        openDashboard()
+        selectTab("Watched")
+        app.buttons["prpulse.refresh"].click()
+        XCTAssertTrue(app.staticTexts["Watched repository update"].waitForExistence(timeout: 10))
     }
 }
