@@ -29,7 +29,9 @@ jobs:
         run: swift test
 
       - name: Run installer tests
-        run: bash Tests/InstallerTests/test_install_latest_release.sh
+        run: |
+          bash Tests/InstallerTests/test_install_latest_release.sh
+          bash Tests/InstallerTests/test_install_prpulse.sh
 
       - name: Build app bundle
         shell: bash

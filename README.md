@@ -25,7 +25,7 @@ It also supports triage actions, snoozing, notifications, and digest snapshots.
 
 ## Requirements
 
-- macOS 13+
+- macOS 14+
 - GitHub token with read access to pull requests
 - For building from source: Xcode with Swift 6.2 (or later), or a compatible standalone Swift toolchain.
 

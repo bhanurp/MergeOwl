@@ -33,7 +33,9 @@ INFO_PLIST_TEMPLATE='<?xml version="1.0" encoding="UTF-8"?>
 </plist>'
 
 echo "› Building ${APP_NAME} (${BUILD_CONFIG})"
-BIN_DIR="$(cd "$ROOT_DIR" && swift build -c "${BUILD_CONFIG}" --show-bin-path)"
+cd "$ROOT_DIR"
+swift build -c "${BUILD_CONFIG}"
+BIN_DIR="$(swift build -c "${BUILD_CONFIG}" --show-bin-path)"
 APP_BINARY="${BIN_DIR}/${APP_NAME}"
 
 if [[ ! -x "$APP_BINARY" ]]; then

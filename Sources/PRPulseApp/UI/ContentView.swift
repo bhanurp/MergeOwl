@@ -1,9 +1,11 @@
 import SwiftUI
 import AppKit
 
+@available(macOS 14.0, *)
 struct ContentView: View {
     @ObservedObject var viewModel: DashboardViewModel
     @State private var showDigest = false
+    @Environment(\.openSettings) private var openSettings
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -92,8 +94,8 @@ struct ContentView: View {
                 .keyboardShortcut("r")
 
                 Button {
-                    SettingsWindowPresenter.showSettingsWindow {
-                        openWindow(id: "settings-window")
+                    SettingsPresenter.showNativeSettings {
+                        openSettings()
                     }
                 } label: {
                     Image(systemName: "gearshape")
@@ -191,12 +193,20 @@ struct ContentView: View {
 
     private var connectionIndicator: some View {
         Group {
-            if viewModel.connectionState == .connected {
+            if viewModel.connectionPresentation.isConnected {
                 HStack(spacing: 6) {
                     Circle()
                         .fill(Color.green)
                         .frame(width: 8, height: 8)
-                    Text("Connected")
+                    Text(viewModel.connectionPresentation.statusText)
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                }
+            } else if viewModel.connectionPresentation == .checking {
+                HStack(spacing: 6) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(viewModel.connectionPresentation.statusText)
                         .font(.footnote)
                         .foregroundColor(.secondary)
                 }
@@ -208,7 +218,7 @@ struct ContentView: View {
                         Circle()
                             .fill(Color.red)
                             .frame(width: 8, height: 8)
-                        Text("Connection issue")
+                        Text(viewModel.connectionPresentation.statusText)
                             .font(.footnote)
                             .foregroundColor(.red)
                     }
