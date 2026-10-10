@@ -30,6 +30,8 @@ struct PRPulseApp: App {
 }
 
 struct BadgeIconPresentation {
+    static let badgeBackgroundColor = Color(red: 0.66, green: 0.16, blue: 0.18)
+
     static func normalizedCount(for actionableCount: Int) -> Int {
         max(0, actionableCount)
     }
@@ -56,7 +58,7 @@ private struct BadgeIcon: View {
                     .font(.caption2.weight(.bold))
                     .padding(.horizontal, 4)
                     .padding(.vertical, 1)
-                    .background(Capsule().fill(Color(red: 0.96, green: 0.36, blue: 0.35)))
+                    .background(Capsule().fill(BadgeIconPresentation.badgeBackgroundColor))
                     .foregroundColor(.white)
                     .offset(x: 8, y: -8)
             }
