@@ -9,12 +9,12 @@ while remaining clear in the macOS menu bar.
 ## Visual concept
 
 The mark is a dark, softly rounded square containing a vivid pink-to-violet
-heartbeat line. The line makes one small fork at its centre, connecting the
-idea of a pulse to a pull-request branch without depending on a generic SF
-Symbol.
+waveform. The waveform is entirely abstract: a short sequence of rounded peaks
+and valleys that feels like live signal activity, rather than an illustration of
+a Git branch or a pull request.
 
-At normal scale, the icon is abstract enough to feel like a product brand. On
-closer inspection, the fork makes its pull-request meaning apparent.
+The product name supplies the PR meaning; the mark supplies energy, rhythm, and
+an immediately recognisable product identity at menu-bar scale.
 
 ## States
 
@@ -29,9 +29,9 @@ closer inspection, the fork makes its pull-request meaning apparent.
 
 Implement the mark as a SwiftUI vector view inside `BadgeIcon`, rather than a
 raster asset. A vector mark stays sharp at menu-bar scale and supports system
-appearance changes. Use a rounded rectangle background, a stroked path for the
-pulse/fork, and a restrained two-colour linear gradient. Preserve the existing
-badge count cap of 99.
+appearance changes. Use a rounded rectangle background, a stroked abstract
+waveform path, and a restrained two-colour linear gradient. Preserve the
+existing badge count cap of 99.
 
 The icon must have a deliberate, fixed intrinsic size and use no text in the
 unbadged state. It must remain readable in both light and dark menu-bar
