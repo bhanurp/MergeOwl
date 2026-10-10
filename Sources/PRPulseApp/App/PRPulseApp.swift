@@ -30,12 +30,16 @@ struct PRPulseApp: App {
 }
 
 struct BadgeIconPresentation {
+    static func normalizedCount(for actionableCount: Int) -> Int {
+        max(0, actionableCount)
+    }
+
     static func badgeText(for actionableCount: Int) -> String {
-        String(min(99, actionableCount))
+        String(min(99, normalizedCount(for: actionableCount)))
     }
 
     static func accessibilityLabel(for actionableCount: Int) -> String {
-        "PRPulse \(actionableCount) actionable"
+        "PRPulse \(normalizedCount(for: actionableCount)) actionable"
     }
 }
 
@@ -43,10 +47,12 @@ private struct BadgeIcon: View {
     var badgeCount: Int
 
     var body: some View {
+        let actionableCount = BadgeIconPresentation.normalizedCount(for: badgeCount)
+
         ZStack(alignment: .topTrailing) {
             PRPulseWaveformMark()
-            if badgeCount > 0 {
-                Text(BadgeIconPresentation.badgeText(for: badgeCount))
+            if actionableCount > 0 {
+                Text(BadgeIconPresentation.badgeText(for: actionableCount))
                     .font(.caption2.weight(.bold))
                     .padding(.horizontal, 4)
                     .padding(.vertical, 1)
@@ -57,7 +63,7 @@ private struct BadgeIcon: View {
         }
         .padding(.vertical, 2)
         .padding(.horizontal, 4)
-        .accessibilityLabel(BadgeIconPresentation.accessibilityLabel(for: badgeCount))
+        .accessibilityLabel(BadgeIconPresentation.accessibilityLabel(for: actionableCount))
     }
 }
 
