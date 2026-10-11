@@ -6,7 +6,7 @@ Users can save multiple GitHub.com accounts and select exactly one account for t
 
 ## Account identity and credentials
 
-An account profile has an immutable GitHub user ID, current login, and local profile ID. Persist only non-secret profile metadata and the active profile ID. Each profile's token is stored as a separate item in the existing Keychain service. Tokens must never appear in settings files, diagnostics, or logs.
+An account profile has an immutable GitHub user ID, current login, and local profile ID. Persist only non-secret profile metadata and the active profile ID. Each profile's token is stored as a separate item in the existing Keychain service. Preserve the legacy `github-token` account attribute only for migration; new credentials use `github-profile:<local-profile-ID>` as their account attribute. Never reuse the legacy account attribute for profile writes. Tokens must never appear in settings files, diagnostics, or logs.
 
 Validate REST identity and GraphQL viewer access before adding an account. Identity disagreement or invalid credentials prevents addition. Re-adding the same GitHub user updates that profile's token instead of making a duplicate. Updating a token to a different GitHub identity must be rejected with an instruction to add a separate account. Token validation alone does not save it.
 
@@ -38,7 +38,7 @@ Removal uses a transactional/tombstone sequence so interrupted cleanup can resum
 
 ## Verification and release acceptance
 
-Unit tests use injected credential stores, temporary directories, and controllable async clients—never real user tokens. Cover duplicate identities, identity-changing token replacement, migration success/retry/failure, global preferences, per-account repositories/overrides/snoozes/activity/ledgers, account removal, and active-account persistence.
+Unit tests use injected credential stores, temporary directories, and controllable async clients—never real user tokens. Cover duplicate identities, identity-changing token replacement, migration success/retry/failure, global preferences, per-account repositories/overrides/snoozes/activity/ledgers, account removal, and active-account persistence. A credential-isolation test must save distinct tokens for two profile IDs, retrieve both independently, replace/remove one, and assert the other and the legacy migration item are unchanged.
 
 Race tests switch A → B → A while requests complete out of order, including failures and pagination. Assert no retired result changes PRs, badge, connection state, digest, ledger, or notifications. Test a quick action/settings write suspended across a switch.
 
