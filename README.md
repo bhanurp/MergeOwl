@@ -1,10 +1,30 @@
 # PR Pulse
 
+<img src="Sources/PRPulseApp/Resources/PRPulseFlower@2x.png" width="72" alt="PR Pulse flower icon">
+
+[![Latest release](https://img.shields.io/github/v/release/bhanurp/prpulse)](https://github.com/bhanurp/prpulse/releases/latest)
+[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-111827?logo=apple&logoColor=white)](#install)
+[![MIT license](https://img.shields.io/github/license/bhanurp/prpulse)](LICENSE)
+[![Swift tests](https://github.com/bhanurp/prpulse/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/bhanurp/prpulse/actions/workflows/test.yml)
+[![macOS E2E](https://github.com/bhanurp/prpulse/actions/workflows/e2e.yml/badge.svg?branch=master)](https://github.com/bhanurp/prpulse/actions/workflows/e2e.yml)
+
 Keep your GitHub pull requests one click away, in your Mac’s menu bar.
 
 PR Pulse brings together PRs you authored, reviews requested from you, and repositories you watch. Find what needs attention, open a PR on GitHub, or snooze it until later—without keeping another dashboard open.
 
 [Download latest release](https://github.com/bhanurp/prpulse/releases/latest) · [Report a problem](https://github.com/bhanurp/prpulse/issues) · [Release notes](CHANGELOG.md) · [Contribute](CONTRIBUTING.md)
+
+## A quick look
+
+<img src="docs/screenshots/dashboard-current.png" width="472" alt="PR Pulse popover showing review requests, PR actions, and connected account status">
+
+Your reviews, your PRs, and your next action—one compact popover.
+
+### Switch views and focus on actionable PRs
+
+![PR Pulse demo cycling through Review Requested, My PRs, and the Actionable filter](docs/screenshots/prpulse-demo.gif)
+
+Real app captures with synthetic GitHub fixture data. The GIF cycles through captured states, rather than recording browser navigation. No personal tokens or private repositories are shown.
 
 **Requirements:** macOS 14 or newer, an Apple Silicon or Intel Mac, and a GitHub.com account with a personal access token. No Xcode is needed for the download.
 
