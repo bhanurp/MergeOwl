@@ -2,6 +2,21 @@
 
 All notable changes to PR Pulse are documented in this file.
 
+## [0.1.5] - 2026-10-13
+
+### Documentation
+
+- Reworked installation, GitHub connection, Keychain persistence, and partial-access troubleshooting instructions to match the app.
+- Added badges, current demo-data screenshots, and a short animated walkthrough.
+- Consolidated the user guide and published multi-account and secure auto-update design documents.
+- Removed recommendations to execute the unverified release installer.
+
+### Scope
+
+- Documentation release only; app behavior is unchanged from v0.1.4.
+- Multi-account login and automatic updates are planned, not implemented.
+- Existing signing/notarization and duplicate Settings window limitations remain.
+
 ## [0.1.4] - 2026-10-10
 
 ### Improved

@@ -43,25 +43,7 @@ Because the release is not notarized, macOS may warn that it cannot verify the d
 
 After attempting to open the app, go to **System Settings → Privacy & Security → Open Anyway**, then confirm **Open**. See [Apple’s instructions and security explanation](https://support.apple.com/en-us/102445). Do not disable Gatekeeper globally or override a malware warning.
 
-### Optional terminal installer
-
-The graphical installation above is recommended. This script needs `curl` and `python3`; it downloads the latest stable release, replaces the existing app copy, and opens it. Quit PR Pulse first if running. It installs to `/Applications`, or `~/Applications` if `/Applications` is not writable.
-
-Download the installer into a new temporary directory:
-
-```bash
-prpulse_install_dir="$(mktemp -d)"
-curl -fsSL -o "$prpulse_install_dir/install_latest_release.sh" https://raw.githubusercontent.com/bhanurp/prpulse/v0.1.4/scripts/install_latest_release.sh
-less "$prpulse_install_dir/install_latest_release.sh"
-```
-
-Read the downloaded script (`q` exits `less`). If you trust it, run that same local file in the same terminal; do not download another copy between review and execution:
-
-```bash
-bash "$prpulse_install_dir/install_latest_release.sh" bhanurp/prpulse
-```
-
-The script is pinned to v0.1.4; it still downloads the latest stable app release.
+Use the manual DMG installation above. Automated release installation is not recommended until publisher-authenticated artifact verification is implemented. Current releases are not notarized; downloading from this repository does not substitute for that verification.
 
 ## Connect GitHub
 
@@ -140,7 +122,7 @@ To uninstall, quit the app and move **PRPulseApp.app** to Trash. To remove its s
 
 Available today: three PR lists, actionable badge, search and filters, local triage, snooze, watched repositories, refresh preferences, notification preferences, digest, and Keychain-backed token storage.
 
-**Planned, not shipped:** named saved views and user-defined PR grouping. Signing/notarization and first-run polish remain release-readiness priorities. See the [product roadmap](docs/superpowers/specs/2026-09-12-prpulse-public-product-roadmap-design.md), [open issues](https://github.com/bhanurp/prpulse/issues), and [changelog](CHANGELOG.md). Roadmap items are intentions, not promises of availability.
+**Planned, not shipped:** named saved views, user-defined PR grouping, [multiple GitHub accounts](docs/superpowers/specs/2026-10-11-multiple-github-accounts-design.md), and [secure automatic updates](docs/superpowers/specs/2026-10-11-secure-auto-updates-design.md). The latter two have design documents, not working implementations. Signing/notarization and first-run polish remain release-readiness priorities. See the [product roadmap](docs/superpowers/specs/2026-09-12-prpulse-public-product-roadmap-design.md), [open issues](https://github.com/bhanurp/prpulse/issues), and [changelog](CHANGELOG.md). Roadmap items are intentions, not promises of availability.
 
 ## Build and test from source
 
