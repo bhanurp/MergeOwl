@@ -6,6 +6,22 @@ import unittest
 SCRIPT = pathlib.Path(__file__).resolve().parents[2] / "scripts/package_sparkle.sh"
 
 class SparklePackagingTests(unittest.TestCase):
+    def test_repackaging_removes_files_from_previous_framework(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = pathlib.Path(root)
+            framework = root / "Sparkle.framework"
+            framework.mkdir()
+            (framework / "Sparkle").write_text("new")
+            (framework / "Sparkle").chmod(0o755)
+            app = root / "Test.app"
+            old = app / "Contents/Frameworks/Sparkle.framework"
+            old.mkdir(parents=True)
+            (old / "ObsoleteHelper").write_text("stale")
+            result = subprocess.run(["bash", str(SCRIPT), str(app), str(framework)], capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr.decode())
+            self.assertFalse((old / "ObsoleteHelper").exists())
+            self.assertEqual((old / "Sparkle").read_text(), "new")
+
     def test_copies_framework_preserving_symlinks_and_permissions(self):
         with tempfile.TemporaryDirectory() as root:
             root = pathlib.Path(root)

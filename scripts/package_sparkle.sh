@@ -15,4 +15,25 @@ if [[ "$PRPULSE_APP" != *.app ]]; then
   exit 1
 fi
 mkdir -p "$PRPULSE_APP/Contents/Frameworks"
-/usr/bin/ditto "$PRPULSE_FRAMEWORK" "$PRPULSE_APP/Contents/Frameworks/Sparkle.framework"
+PRPULSE_STAGE="$(mktemp -d "$PRPULSE_APP/Contents/Frameworks/.sparkle-stage.XXXXXX")"
+PRPULSE_REPLACED=false
+cleanup() {
+  if [[ "$PRPULSE_REPLACED" == false && ( -e "$PRPULSE_STAGE/previous.framework" || -L "$PRPULSE_STAGE/previous.framework" ) ]]; then
+    echo "error: previous framework retained at $PRPULSE_STAGE/previous.framework" >&2
+  else
+    rm -rf -- "$PRPULSE_STAGE"
+  fi
+}
+trap cleanup EXIT
+/usr/bin/ditto "$PRPULSE_FRAMEWORK" "$PRPULSE_STAGE/Sparkle.framework"
+PRPULSE_DESTINATION="$PRPULSE_APP/Contents/Frameworks/Sparkle.framework"
+if [[ -e "$PRPULSE_DESTINATION" || -L "$PRPULSE_DESTINATION" ]]; then
+  mv "$PRPULSE_DESTINATION" "$PRPULSE_STAGE/previous.framework"
+fi
+if ! mv "$PRPULSE_STAGE/Sparkle.framework" "$PRPULSE_DESTINATION"; then
+  if [[ -e "$PRPULSE_STAGE/previous.framework" || -L "$PRPULSE_STAGE/previous.framework" ]]; then
+    mv "$PRPULSE_STAGE/previous.framework" "$PRPULSE_DESTINATION"
+  fi
+  exit 1
+fi
+PRPULSE_REPLACED=true

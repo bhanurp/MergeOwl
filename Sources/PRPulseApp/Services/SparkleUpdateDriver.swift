@@ -43,7 +43,9 @@ final class SparkleUpdateDriver: NSObject, UpdateDriver, SPUUpdaterDelegate {
     var canCheckForUpdates: Bool { controller?.updater.canCheckForUpdates ?? false }
     var automaticUpdatesEnabled: Bool {
         guard let updater = controller?.updater else { return false }
-        return updater.automaticallyChecksForUpdates && updater.automaticallyDownloadsUpdates
+        // Scheduled checks are the canonical opt-in. A mixed Sparkle preference
+        // must not make the UI claim checks are disabled while they still run.
+        return updater.automaticallyChecksForUpdates
     }
     var lastCheckAt: Date? { controller?.updater.lastUpdateCheckDate }
 
@@ -55,6 +57,9 @@ final class SparkleUpdateDriver: NSObject, UpdateDriver, SPUUpdaterDelegate {
                 Task { @MainActor in self?.publishCurrentState() }
             },
             updater.observe(\.automaticallyDownloadsUpdates, options: [.new]) { [weak self] _, _ in
+                Task { @MainActor in self?.publishCurrentState() }
+            },
+            updater.observe(\.automaticallyChecksForUpdates, options: [.new]) { [weak self] _, _ in
                 Task { @MainActor in self?.publishCurrentState() }
             }
         ]
