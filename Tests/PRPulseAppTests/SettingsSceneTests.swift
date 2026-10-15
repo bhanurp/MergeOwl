@@ -24,7 +24,7 @@ final class SettingsSceneTests: XCTestCase {
         let appSource = try source(named: "Sources/PRPulseApp/App/PRPulseApp.swift")
 
         XCTAssertTrue(appSource.contains("Settings {"))
-        XCTAssertTrue(appSource.contains("SettingsShellView(viewModel: applicationDelegate.dependencies.dashboard)"))
+        XCTAssertTrue(appSource.contains("SettingsShellView(viewModel: applicationDelegate.dependencies.dashboard, updateService: applicationDelegate.dependencies.updates)"))
         XCTAssertFalse(appSource.contains("Window(\"Settings\", id:"))
     }
 

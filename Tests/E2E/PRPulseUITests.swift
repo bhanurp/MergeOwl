@@ -97,6 +97,17 @@ final class PRPulseUITests: XCTestCase {
         field.typeKey("v", modifierFlags: .command)
     }
 
+    func testUpdatesPaneCannotInstallWithoutTrustConfiguration() {
+        launch()
+        settings()
+        pane("Updates")
+        let window = app.windows["PR Pulse Settings"]
+        XCTAssertTrue(window.staticTexts["Updates are disabled in this development or test build."].exists)
+        XCTAssertFalse(window.buttons["prpulse.check-updates"].isEnabled)
+        XCTAssertFalse(window.buttons["prpulse.install-update"].exists)
+        XCTAssertTrue(window.links["View releases on GitHub"].exists)
+    }
+
     func testMenuBarPopoverBadgeSettingsAndQuit() {
         launch()
         XCTAssertTrue(app.staticTexts["Connected as @octocat"].waitForExistence(timeout: 10))

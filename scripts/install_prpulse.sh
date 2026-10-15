@@ -53,5 +53,6 @@ echo "$INFO_PLIST_TEMPLATE" > "${APP_CONTENTS}/Info.plist"
 cp "${APP_BINARY}" "${APP_MACOS}/${APP_NAME}"
 chmod +x "${APP_MACOS}/${APP_NAME}"
 find "${BIN_DIR}" -maxdepth 1 -type d -name '*.bundle' -exec cp -R {} "${APP_RESOURCES}" \;
+bash "$ROOT_DIR/scripts/package_sparkle.sh" "$INSTALL_ROOT" "$BIN_DIR/Sparkle.framework"
 
 echo "› Installed ${APP_NAME}. Launch it via Finder or:\n  open \"${INSTALL_ROOT}\""

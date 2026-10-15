@@ -3,8 +3,15 @@ import Foundation
 @MainActor
 final class AppDependencies: ObservableObject {
     let dashboard: DashboardViewModel
+    let updates: AppUpdateService
 
     init() {
+        #if E2E_TESTING
+        updates = AppUpdateService(driver: DisabledUpdateDriver())
+        #else
+        updates = AppUpdateService(driver: SparkleUpdateDriver())
+        #endif
+        updates.start()
         #if E2E_TESTING
         let environment = ProcessInfo.processInfo.environment
         if let token = environment["PRPULSE_E2E_INITIAL_TOKEN"] {

@@ -24,6 +24,9 @@ if [[ "$*" == "build -c release" ]]; then
   printf 'fresh binary\n' > "$TEST_RELEASE_BIN/PRPulseApp"
   chmod +x "$TEST_RELEASE_BIN/PRPulseApp"
   mkdir -p "$TEST_RELEASE_BIN/PRPulse_PRPulseApp.bundle"
+  mkdir -p "$TEST_RELEASE_BIN/Sparkle.framework"
+  printf 'test framework\n' > "$TEST_RELEASE_BIN/Sparkle.framework/Sparkle"
+  chmod +x "$TEST_RELEASE_BIN/Sparkle.framework/Sparkle"
   printf 'flower asset\n' > "$TEST_RELEASE_BIN/PRPulse_PRPulseApp.bundle/PRPulseFlower@2x.png"
   exit 0
 fi
