@@ -24,7 +24,7 @@ Publish artifacts successfully before publishing a feed item that points to them
 
 ## Controls and states
 
-Add an Updates Settings pane with current version, Check for Updates, Automatically download updates (enabled by default in production), last-check time, and progress/status. Explain that turning this off disables scheduled checks/downloads but manual checks remain available. If a verified update is already staged, disabling automatic updates must not silently install it at quit; retain an explicit manual install option instead.
+Add an Updates Settings pane with current version, Check for Updates, Automatically download updates (enabled by default in production), last-check time, and progress/status. Explain that turning this off disables future scheduled checks/downloads but manual checks remain available. User-approved amendment (2026-10-15): a verified update already staged by Sparkle still installs on quit; the preference description must state this explicitly.
 
 States: disabled/unconfigured, idle, checking, downloading, ready for next restart, up to date, and failed. Surface invalid signatures, read-only/translocated app location, network errors, and installation permission problems with actionable text. A background failure must leave the running app usable and must not present repeated modal alerts. Manual checks may use Sparkle's standard UI. When ready, offer an explicit Install and Relaunch action but never invoke it without the user's choice.
 

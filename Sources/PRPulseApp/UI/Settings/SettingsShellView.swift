@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsShellView: View {
     @ObservedObject var viewModel: DashboardViewModel
+    @ObservedObject var updateService: AppUpdateService
     @State private var selection = SettingsPane.defaultPane
 
     var body: some View {
@@ -28,6 +29,8 @@ struct SettingsShellView: View {
                         NotificationSettingsView(viewModel: viewModel)
                     case .repositories:
                         RepositoriesSettingsView(viewModel: viewModel)
+                    case .updates:
+                        UpdatesSettingsView(service: updateService)
                     case .advanced:
                         AdvancedSettingsView(viewModel: viewModel)
                     }
@@ -77,6 +80,8 @@ struct SettingsShellView: View {
             "Control alerts and digest delivery."
         case .repositories:
             "Select the repositories PRPulse watches."
+        case .updates:
+            "Keep PR Pulse up to date, on your terms."
         case .advanced:
             "Inspect status and access diagnostic tools."
         }

@@ -28,7 +28,7 @@ final class PRPulseApplicationDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showSettings() {
-        let window = settingsWindow ?? makeWindow(title: "PR Pulse Settings", content: SettingsShellView(viewModel: dependencies.dashboard).frame(minWidth: 760, minHeight: 520))
+        let window = settingsWindow ?? makeWindow(title: "PR Pulse Settings", content: SettingsShellView(viewModel: dependencies.dashboard, updateService: dependencies.updates).frame(minWidth: 760, minHeight: 520))
         if settingsWindow == nil {
             window.contentMinSize = NSSize(width: 760, height: 520)
             window.setContentSize(NSSize(width: 900, height: 600))

@@ -7,7 +7,7 @@ struct PRPulseApp: App {
 
     var body: some Scene {
         Settings {
-            SettingsShellView(viewModel: applicationDelegate.dependencies.dashboard)
+            SettingsShellView(viewModel: applicationDelegate.dependencies.dashboard, updateService: applicationDelegate.dependencies.updates)
                 .frame(minWidth: 720, minHeight: 520)
         }
 
