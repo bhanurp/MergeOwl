@@ -30,7 +30,7 @@ targets:
   PRPulseUITests:
     type: bundle.ui-testing
     platform: macOS
-    sources: [PRPulseUITests.swift]
+    sources: [PRPulseUITests.swift, ../PRPulseAppTests/HostedNoticeSelectors.swift]
     dependencies:
       - target: PRPulseE2EApp
     settings:

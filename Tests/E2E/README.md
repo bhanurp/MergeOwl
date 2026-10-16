@@ -17,6 +17,8 @@ Account-workspace journeys add two distinct GitHub identities, explicit account 
 
 Hosted GitHub Actions runners can display a Python local-network permission dialog even though the fixture server binds only to `127.0.0.1`. The runner-only interruption handler denies that exact Python/find-devices/local-networks notice so it cannot cover app controls. It does not grant LAN access, handle unrelated permission dialogs, or run during normal local test invocations. The script forwards the hosted-runner flag explicitly through the test scheme; it does not change production app behavior or OS settings with shell commands.
 
+The matcher is shared with unit tests in `Tests/PRPulseAppTests/HostedNoticeSelectors.swift`. It queries native static-text `value` and button `title`, not `label`: the CI diagnostics show empty accessibility descriptions. Regression fixtures reject other apps, unrelated Python permissions and the Allow button.
+
 The light-appearance journey uses a test-only per-process AppKit appearance override. It does not change macOS appearance preferences. Review the captured screenshot as well as the test result; a test name alone does not establish visual coverage.
 
 Tests build the actual app sources with a test-only compilation flag. An isolated local HTTP server supplies deterministic GitHub REST/GraphQL responses, including 401 and partial SAML-access errors. Each test uses a unique Keychain service and data directory; teardown removes all credentials in that test service, including profile-specific entries. No production token or GitHub secrets are needed. Production builds do not include the fixture routing or test-storage overrides.

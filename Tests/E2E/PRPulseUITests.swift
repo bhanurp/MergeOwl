@@ -14,11 +14,8 @@ final class PRPulseUITests: XCTestCase {
         XCTAssertTrue(hostedCI == "true" || hostedCI == "false", "Test scheme must resolve the hosted-runner flag explicitly.")
         if hostedCI == "true" {
             addUIInterruptionMonitor(withDescription: "Hosted Python local-network notice") { dialog in
-                let notice = dialog.staticTexts.matching(NSPredicate(
-                    format: "label CONTAINS %@ AND label CONTAINS %@ AND label CONTAINS %@",
-                    "Python", "find devices", "local networks"
-                )).firstMatch
-                let deny = dialog.buttons.matching(NSPredicate(format: "label IN %@", ["Don't Allow", "Don’t Allow"])).firstMatch
+                let notice = dialog.staticTexts.matching(HostedNoticeSelectors.pythonNotice).firstMatch
+                let deny = dialog.buttons.matching(HostedNoticeSelectors.deny).firstMatch
                 guard notice.exists, deny.exists else { return false }
                 // Fixtures use loopback only; never grant Python LAN access.
                 deny.click()
