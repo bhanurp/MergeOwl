@@ -36,6 +36,7 @@ Do not run window-opening unit tests concurrently with native journeys: they can
 - Apple Silicon and Intel release builds both passed locally. Installer regressions use temporary fixture installations, not the user's production app.
 - CodeRabbit follow-up: native regressions reproduced and then verified retained-pane Add account routing and removal of the ignored settings-file editor. The hosted initial E2E run failed on an OS Notification Center dialog; that CI failure remains a publication blocker until a latest-head run passes.
 - The expanded 17-journey suite passed locally on 2026-10-16 (`/tmp/prpulse-cr-full-native.log`, 287.0 seconds); 70 unit tests and both release architectures also passed after the Settings fixes.
+- Hosted failure evidence identified a Python local-network permission notice over the app. The test harness now denies only that exact notice when explicitly running on GitHub Actions. A local invalid-token smoke test verifies the default-off scheme wiring; hosted verification of the handler is still required.
 - Early native runs exposed missing Edit-menu actions, header clipping and test accessibility-query issues. Those runs are failures, not release evidence.
 
 ## Limits

@@ -10,6 +10,21 @@ final class PRPulseUITests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
+        let hostedCI = ProcessInfo.processInfo.environment["PRPULSE_E2E_HOSTED_CI"]
+        XCTAssertTrue(hostedCI == "true" || hostedCI == "false", "Test scheme must resolve the hosted-runner flag explicitly.")
+        if hostedCI == "true" {
+            addUIInterruptionMonitor(withDescription: "Hosted Python local-network notice") { dialog in
+                let notice = dialog.staticTexts.matching(NSPredicate(
+                    format: "label CONTAINS %@ AND label CONTAINS %@ AND label CONTAINS %@",
+                    "Python", "find devices", "local networks"
+                )).firstMatch
+                let deny = dialog.buttons.matching(NSPredicate(format: "label IN %@", ["Don't Allow", "Don’t Allow"])).firstMatch
+                guard notice.exists, deny.exists else { return false }
+                // Fixtures use loopback only; never grant Python LAN access.
+                deny.click()
+                return true
+            }
+        }
         directory = FileManager.default.temporaryDirectory.appendingPathComponent("prpulse-e2e-\(UUID().uuidString)")
         keychainService = "dev.prpulse.e2e.\(UUID().uuidString)"
         app = XCUIApplication(bundleIdentifier: "dev.prpulse.e2e")
