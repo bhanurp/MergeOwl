@@ -65,6 +65,9 @@ final class DashboardViewModel: ObservableObject {
     private var hasBootstrapped = false
     private var retired = false
     private var tasks: [UUID: Task<Void, Never>] = [:]
+    private var resetWaiters: [PullRequestTab: [CheckedContinuation<Void, Never>]] = [:]
+    private var activeLoads: [PullRequestTab: UUID] = [:]
+    private var latestOverrides: [String: PullRequestOverride] = [:]
 
     private func launch(_ operation: @escaping @MainActor () async throws -> Void) {
         guard !retired else { return }
@@ -80,6 +83,10 @@ final class DashboardViewModel: ObservableObject {
         retired = true
         isReady = false
         store.lifetime.invalidate()
+        let waiters = resetWaiters.values.flatMap { $0 }
+        resetWaiters.removeAll()
+        activeLoads.removeAll()
+        waiters.forEach { $0.resume() }
         tasks.values.forEach { $0.cancel() }
         tasks.removeAll()
         await scheduler.stop()
@@ -442,6 +449,8 @@ final class DashboardViewModel: ObservableObject {
             }
         }
 
+        recomputeDisplayedItems()
+        updateBadgeCount()
         if settings.refreshOnLaunch {
             await refreshActiveTab()
         }
@@ -460,9 +469,18 @@ final class DashboardViewModel: ObservableObject {
     private func loadPage(for tab: PullRequestTab, reset: Bool) async {
         guard !retired else { return }
         var state = listStates[tab] ?? PullRequestListState()
-        if state.isLoading { return }
+        if state.isLoading {
+            guard reset else { return }
+            await withCheckedContinuation { resetWaiters[tab, default: []].append($0) }
+            guard !retired else { return }
+            await loadPage(for: tab, reset: true)
+            return
+        }
         state.isLoading = true
         listStates[tab] = state
+        let requestID = UUID()
+        activeLoads[tab] = requestID
+        defer { finishLoad(for: tab, requestID: requestID) }
 
         let cursor = reset ? nil : state.cursor
         do {
@@ -479,6 +497,13 @@ final class DashboardViewModel: ObservableObject {
             await recordActivityEvents(from: enriched, tab: tab)
             guard !retired else { return }
 
+            // A quick action may have changed loaded rows while the page was in flight.
+            state = listStates[tab] ?? state
+            enriched = enriched.map { item in
+                var item = item
+                if let override = latestOverrides[item.id] { item.override = override }
+                return item
+            }
             let combined = reset ? enriched : state.rawItems + enriched
             var order: [String] = []
             var unique: [String: PullRequest] = [:]
@@ -494,6 +519,7 @@ final class DashboardViewModel: ObservableObject {
             state.warnings = reset ? page.warnings : Array(Set(state.warnings + page.warnings)).sorted()
             state.isLoading = false
             listStates[tab] = state
+            finishLoad(for: tab, requestID: requestID)
             if !viewerLogin.isEmpty, viewerLogin != "me" {
                 markConnected(as: viewerLogin)
             }
@@ -503,6 +529,7 @@ final class DashboardViewModel: ObservableObject {
             await updateDigest()
         } catch {
             guard !retired else { return }
+            state = listStates[tab] ?? state
             state.isLoading = false
             listStates[tab] = state
             // Ignore benign cancellations (e.g., overlapping refreshes)
@@ -516,6 +543,13 @@ final class DashboardViewModel: ObservableObject {
             }
             markConnectionError(error.localizedDescription)
         }
+    }
+
+    private func finishLoad(for tab: PullRequestTab, requestID: UUID) {
+        guard activeLoads[tab] == requestID else { return }
+        activeLoads.removeValue(forKey: tab)
+        let waiters = resetWaiters.removeValue(forKey: tab) ?? []
+        waiters.forEach { $0.resume() }
     }
 
     private func recomputeDisplayedItems() {
@@ -555,6 +589,7 @@ final class DashboardViewModel: ObservableObject {
     }
 
     private func updateOverride(_ override: PullRequestOverride, for prID: String) {
+        latestOverrides[prID] = override
         for tab in PullRequestTab.allCases {
             guard var state = listStates[tab] else { continue }
             guard let index = state.rawItems.firstIndex(where: { $0.id == prID }) else { continue }

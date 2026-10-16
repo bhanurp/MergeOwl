@@ -1,5 +1,11 @@
 # PR Pulse Public Product Roadmap Design
 
+## Delivery status — 2026-10-16
+
+The v0.2.0 feature branch implements multiple GitHub accounts (one active at a time), profile-isolated data, rule-based saved views, loaded-data counts, keyboard shortcuts and one retained native Settings window. See the [changelog](../../../CHANGELOG.md) and [release QA](../../manual-product-qa.md) for scope and verification. These changes are not available in v0.1.5; publication still requires PR review and passing CI.
+
+Automatic updates, Developer ID signing and notarization remain deferred. Manual collections, cloud sync and team sharing are not implemented. The adoption targets below remain goals, not measured outcomes or a guarantee of stars. The experience and milestone sections describe product intent; the implementation now uses an AppKit status item and SwiftUI-hosted popover rather than `MenuBarExtra`.
+
 ## Product intent
 
 PR Pulse is a GitHub-only, macOS-only open-source menu-bar app that helps developers see and act on pull requests without living in GitHub notifications. The initial adoption goal is 100 GitHub stars and 25 recurring users.

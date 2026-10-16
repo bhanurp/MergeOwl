@@ -66,7 +66,7 @@ actor NotificationDispatcher {
         content.categoryIdentifier = "pr_actions"
 
         let request = UNNotificationRequest(
-            identifier: UUID().uuidString,
+            identifier: "\(namespace)-\(UUID().uuidString)",
             content: content,
             trigger: nil
         )
@@ -107,7 +107,10 @@ actor NotificationDispatcher {
 
         do {
             try await center.add(request)
-            if !store.lifetime.isActive { center.removePendingNotificationRequests(withIdentifiers: [request.identifier]) }
+            if !store.lifetime.isActive {
+                center.removePendingNotificationRequests(withIdentifiers: [request.identifier])
+                center.removeDeliveredNotifications(withIdentifiers: [request.identifier])
+            }
         } catch {
             NSLog("Failed to schedule snooze reminder: \(error.localizedDescription)")
         }

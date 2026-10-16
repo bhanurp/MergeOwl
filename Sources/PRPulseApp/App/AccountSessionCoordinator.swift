@@ -14,13 +14,15 @@ final class AccountSessionCoordinator: ObservableObject {
     private let globalPreferences: GlobalPreferencesStore
     private let validate: (String) async throws -> VerifiedGitHubIdentity
     private let makeClient: ((UUID?, String?) -> any GitHubClient)?
+    private let removeNotifications: (UUID) async -> Void
     private var snapshot = AccountRegistrySnapshot()
     private var started = false
     private var storageReady = false
 
     init(directory: URL, credentials: any AccountCredentialStore = KeychainAccountCredentials(),
          validate: @escaping (String) async throws -> VerifiedGitHubIdentity = GitHubAccountValidator.validate,
-         makeClient: ((UUID?, String?) -> any GitHubClient)? = nil) {
+         makeClient: ((UUID?, String?) -> any GitHubClient)? = nil,
+         removeNotifications: @escaping (UUID) async -> Void = { await ProfileNotificationCleanup.remove(profileID: $0) }) {
         self.directory = directory
         self.credentials = credentials
         self.registry = AccountRegistry(directory: directory)
@@ -28,6 +30,7 @@ final class AccountSessionCoordinator: ObservableObject {
         self.globalPreferences = global
         self.validate = validate
         self.makeClient = makeClient
+        self.removeNotifications = removeNotifications
         self.dashboard = Self.makeDashboard(directory: directory, id: nil, cachedToken: nil, client: makeClient?(nil, nil), globalPreferences: global, allowLegacy: false)
     }
 
@@ -140,6 +143,7 @@ final class AccountSessionCoordinator: ObservableObject {
         // Credential failure leaves the profile visible and the tombstone retryable.
         try credentials.remove(profileID: id)
         if activeProfileID == id { await dashboard.retire() }
+        await removeNotifications(id)
         let target = directory.appendingPathComponent("profiles/\(id.uuidString)")
         if FileManager.default.fileExists(atPath: target.path) { try FileManager.default.removeItem(at: target) }
         var next = snapshot

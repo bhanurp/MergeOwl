@@ -2,7 +2,7 @@
 
 All notable changes to PR Pulse are documented in this file.
 
-## [Unreleased] — account workspaces
+## [0.2.0] - 2026-10-16
 
 ### Added
 
@@ -19,6 +19,9 @@ All notable changes to PR Pulse are documented in this file.
 - Preserve in-memory triage state when an atomic write fails.
 - Restore standard text-editing menu actions in the AppKit application bootstrap.
 - Reuse an account-bound credential snapshot during a session instead of repeatedly reading Keychain for API requests.
+- Honor explicit refresh during pagination and preserve triage edits made while a page is loading.
+- Recompute loaded lists when delayed GitHub identity lookup completes.
+- Remove a deleted account's pending and delivered profile-scoped notifications without clearing other accounts' reminders.
 
 ### Still deferred
 

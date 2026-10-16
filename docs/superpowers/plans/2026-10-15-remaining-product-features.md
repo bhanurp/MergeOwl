@@ -12,6 +12,12 @@
 
 **Account spec:** ../specs/2026-10-11-multiple-github-accounts-design.md
 
+## Execution status — 2026-10-16
+
+Tasks 1–5 are implemented. Task 6 local verification is complete: 70 unit tests, 15 native journeys, both installer regression scripts, fixture tests, local documentation paths, and both release architectures passed. The original step checklists below are the execution recipe; [release QA](../../manual-product-qa.md) records the actual test coverage and its limits. Independent review findings were fixed with regressions. PR publication, latest-head CodeRabbit/CI, merge and v0.2.0 release remain pending.
+
+Implementation was checkpointed as one integrated feature commit rather than phase commits. Legacy data and credentials remain recoverable backups, with a completed migration marker preventing reuse after all profiles are removed. These are documented deviations; automatic updates and production installation remain excluded.
+
 ## Global Constraints
 
 - GitHub.com and macOS 14+ only; one active account at a time.
