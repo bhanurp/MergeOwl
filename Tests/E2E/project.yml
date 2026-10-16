@@ -21,7 +21,7 @@ targets:
     info:
       path: Generated/AppInfo.plist
       properties:
-        CFBundleDisplayName: PR Pulse E2E
+        CFBundleDisplayName: PR Pulse
         LSUIElement: true
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true

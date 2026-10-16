@@ -1,19 +1,16 @@
-import SwiftUI
+import AppKit
 
 @available(macOS 14.0, *)
 @main
-struct PRPulseApp: App {
-    @NSApplicationDelegateAdaptor(PRPulseApplicationDelegate.self) private var applicationDelegate
-
-    var body: some Scene {
-        Settings {
-            SettingsShellView(viewModel: applicationDelegate.dependencies.dashboard)
-                .frame(minWidth: 720, minHeight: 520)
-        }
-
-        Window("Connection Errors", id: "connection-errors-window") {
-            ConnectionErrorWindowView(viewModel: applicationDelegate.dependencies.dashboard)
-                .frame(width: 520, height: 340)
+struct PRPulseApp {
+    @MainActor
+    static func main() {
+        let app = NSApplication.shared
+        let delegate = PRPulseApplicationDelegate()
+        app.setActivationPolicy(.accessory)
+        app.delegate = delegate
+        withExtendedLifetime(delegate) {
+            app.run()
         }
     }
 }

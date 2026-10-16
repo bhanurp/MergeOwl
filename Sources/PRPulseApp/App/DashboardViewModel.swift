@@ -23,8 +23,14 @@ final class DashboardViewModel: ObservableObject {
 
     @Published var selectedTab: PullRequestTab = .reviewRequested
     @Published var filterState = FilterState()
+    @Published private(set) var savedViews: [SavedPRView] = []
+    @Published private(set) var selectedSavedViewID: UUID?
+    private let savedViewStore: SavedPRViewStore
+    private let restoreSavedSelection: Bool
+    private var savingViews = false
     @Published private(set) var listStates: [PullRequestTab: PullRequestListState]
     @Published private(set) var isRefreshing: Bool = false
+    @Published private(set) var isReady = false
     @Published private(set) var badgeCount: Int = 0
     @Published private(set) var viewerLogin: String = ""
     @Published private(set) var digestSnapshot = DigestSnapshot(openedCount: 0, reviewedCount: 0, timeframeDescription: "N/A")
@@ -36,9 +42,12 @@ final class DashboardViewModel: ObservableObject {
     }
     @Published var settings: AppSettings = .default {
         didSet {
-            Task {
-                try await store.save(settings: settings)
-                await scheduler.start(interval: settings.refreshInterval) {
+            let snapshot = settings
+            launch { [self] in
+                guard !self.retired else { return }
+                try await self.store.save(settings: snapshot)
+                guard !self.retired else { return }
+                await self.scheduler.start(interval: snapshot.refreshInterval) {
                     await self.refreshActiveTab()
                 }
             }
@@ -54,28 +63,69 @@ final class DashboardViewModel: ObservableObject {
     private let scheduler: RefreshScheduler
     private let digestComputer: DigestComputer
     private var hasBootstrapped = false
+    private var retired = false
+    private var tasks: [UUID: Task<Void, Never>] = [:]
+
+    private func launch(_ operation: @escaping @MainActor () async throws -> Void) {
+        guard !retired else { return }
+        let id = UUID()
+        tasks[id] = Task { [weak self] in
+            defer { self?.tasks.removeValue(forKey: id) }
+            do { try await operation() }
+            catch { if self?.retired == false { self?.errorMessage = "Could not save changes. Please try again." } }
+        }
+    }
+
+    func retire() async {
+        retired = true
+        isReady = false
+        store.lifetime.invalidate()
+        tasks.values.forEach { $0.cancel() }
+        tasks.removeAll()
+        await scheduler.stop()
+        await notifier.retire()
+        await store.retire()
+        await savedViewStore.retire()
+        listStates = Dictionary(uniqueKeysWithValues: PullRequestTab.allCases.map { ($0, PullRequestListState()) })
+        viewerLogin = ""
+        badgeCount = 0
+        connectionErrors = []
+        connectionPresentation = .checking
+        filterState = FilterState()
+        savedViews = []
+        selectedSavedViewID = nil
+        errorMessage = nil
+        digestSnapshot = DigestSnapshot(openedCount: 0, reviewedCount: 0, timeframeDescription: "N/A")
+        lastRefreshAt = nil
+    }
 
     init(
         client: GitHubClient,
         store: PullRequestStore,
         notifier: NotificationDispatcher,
         scheduler: RefreshScheduler,
-        digestComputer: DigestComputer
+        digestComputer: DigestComputer,
+        restoreSavedSelection: Bool = true
     ) {
         self.client = client
         self.store = store
         self.notifier = notifier
         self.scheduler = scheduler
         self.digestComputer = digestComputer
+        self.savedViewStore = SavedPRViewStore(directory: store.directory, lifetime: store.lifetime)
+        self.restoreSavedSelection = restoreSavedSelection
         self.listStates = Dictionary(uniqueKeysWithValues: PullRequestTab.allCases.map { ($0, PullRequestListState()) })
 
-        Task {
+        launch { [self] in
+            guard !self.retired else { return }
             await bootstrap()
         }
     }
 
     func refreshActiveTab() async {
-        await loadPage(for: selectedTab, reset: true)
+        guard !retired else { return }
+        if selectedSavedViewID != nil { await refreshAllLoaded() }
+        else { await loadPage(for: selectedTab, reset: true) }
     }
 
     func requestNotificationAuthorization() async {
@@ -84,8 +134,7 @@ final class DashboardViewModel: ObservableObject {
 
     func openSettingsJSON() async {
         // Determine the same directory used by PullRequestStore
-        let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("PRPulseApp", isDirectory: true)
+        let directory = store.directory
         let settingsURL = directory.appendingPathComponent("settings.json")
 
         // Ensure directory exists
@@ -151,25 +200,138 @@ final class DashboardViewModel: ObservableObject {
     }
 
     func selectedTabDidChange() {
+        selectSavedView(id: nil)
         refreshIfNeeded(for: selectedTab)
+    }
+
+    func selectDefaultTab(_ tab: PullRequestTab) {
+        selectedTab = tab
+        selectedTabDidChange()
+    }
+
+    func moveViewSelection(forward: Bool) {
+        let views = savedViews.filter(\.enabled)
+        let current = selectedSavedViewID.flatMap { id in views.firstIndex { $0.id == id } }
+        if let current {
+            let next = current + (forward ? 1 : -1)
+            if views.indices.contains(next) { selectSavedView(id: views[next].id) }
+            else if next < 0 { selectDefaultTab(.watched) }
+        } else if let index = PullRequestTab.allCases.firstIndex(of: selectedTab) {
+            let next = index + (forward ? 1 : -1)
+            if PullRequestTab.allCases.indices.contains(next) { selectDefaultTab(PullRequestTab.allCases[next]) }
+            else if forward, let first = views.first { selectSavedView(id: first.id) }
+        }
     }
 
     func filtersDidChange() {
         recomputeDisplayedItems()
+        updateBadgeCount()
+    }
+
+    func presentationDidAppear() {
+        recomputeDisplayedItems()
+        updateBadgeCount()
     }
 
     func refreshAll() {
-        Task {
-            guard !isRefreshing else { return }
-            isRefreshing = true
-            defer { isRefreshing = false }
-
-            for tab in PullRequestTab.allCases {
-                await loadPage(for: tab, reset: true)
-            }
-            await updateDigest()
-            lastRefreshAt = Date()
+        launch { [self] in
+            await refreshAllLoaded()
         }
+    }
+
+    func refreshAllLoaded() async {
+        guard !retired, !isRefreshing else { return }
+        isRefreshing = true
+        defer { isRefreshing = false }
+        for tab in PullRequestTab.allCases {
+            guard !retired else { return }
+            await loadPage(for: tab, reset: true)
+        }
+        guard !retired else { return }
+        await updateDigest()
+        lastRefreshAt = Date()
+    }
+
+    private var loadedItems: [PullRequestPresentation] {
+        let calculator = PullRequestStatusCalculator(currentUserLogin: viewerLogin)
+        var unique: [String: PullRequest] = [:]
+        for tab in PullRequestTab.allCases {
+            for pr in listStates[tab]?.rawItems ?? [] {
+                if let old = unique[pr.id], old.updatedAt > pr.updatedAt { continue }
+                unique[pr.id] = pr
+            }
+        }
+        return unique.values.sorted { $0.updatedAt > $1.updatedAt || ($0.updatedAt == $1.updatedAt && $0.id < $1.id) }
+            .map { PullRequestPresentation(pullRequest: $0, status: calculator.status(for: $0)) }
+    }
+
+    var currentItems: [PullRequestPresentation] {
+        guard let view = savedViews.first(where: { $0.id == selectedSavedViewID && $0.enabled }) else {
+            return listStates[selectedTab]?.displayedItems ?? []
+        }
+        return loadedItems.filter {
+            SavedPRViewMatcher.matches($0, view: view, viewerLogin: viewerLogin) && passesFilters($0)
+        }
+    }
+
+    var hasMoreCurrentItems: Bool {
+        if selectedSavedViewID != nil { return listStates.values.contains { $0.hasNextPage } }
+        return listStates[selectedTab]?.hasNextPage ?? false
+    }
+
+    func actionableCount(for view: SavedPRView) -> Int {
+        loadedItems.filter { $0.status.isActionable && SavedPRViewMatcher.matches($0, view: view, viewerLogin: viewerLogin) }.count
+    }
+
+    func actionableCount(for tab: PullRequestTab) -> Int {
+        let calculator = PullRequestStatusCalculator(currentUserLogin: viewerLogin)
+        return Set((listStates[tab]?.rawItems ?? []).filter { calculator.status(for: $0).isActionable }.map(\.id)).count
+    }
+
+    func selectSavedView(id: UUID?) {
+        let selected = id.flatMap { candidate in savedViews.contains { $0.id == candidate && $0.enabled } ? candidate : nil }
+        selectedSavedViewID = selected
+        launch { [self] in try await savedViewStore.select(selected) }
+        if selected != nil { refreshAll() }
+    }
+
+    func saveView(_ view: SavedPRView) async throws {
+        var next = savedViews
+        if let index = next.firstIndex(where: { $0.id == view.id }) { next[index] = view }
+        else { next.append(view) }
+        try await replaceViews(next)
+    }
+
+    func deleteView(id: UUID) async throws { try await replaceViews(savedViews.filter { $0.id != id }) }
+
+    func moveView(id: UUID, offset: Int) async throws {
+        guard let index = savedViews.firstIndex(where: { $0.id == id }), savedViews.indices.contains(index + offset) else { return }
+        var next = savedViews
+        next.swapAt(index, index + offset)
+        try await replaceViews(next)
+    }
+
+    private func replaceViews(_ values: [SavedPRView]) async throws {
+        guard !retired, !savingViews else { throw CancellationError() }
+        savingViews = true
+        defer { savingViews = false }
+        let next = try SavedPRView.validated(values)
+        try await savedViewStore.save(next)
+        guard !retired else { throw CancellationError() }
+        savedViews = next
+        if let id = selectedSavedViewID, !next.contains(where: { $0.id == id && $0.enabled }) {
+            selectedTab = .reviewRequested
+            selectSavedView(id: nil)
+        }
+    }
+
+    private func passesFilters(_ pr: PullRequestPresentation) -> Bool {
+        let item = pr.pullRequest
+        return (filterState.searchText.isEmpty || item.title.localizedCaseInsensitiveContains(filterState.searchText) || item.repository.nameWithOwner.localizedCaseInsensitiveContains(filterState.searchText))
+            && (!filterState.hideNotApplicable || item.override.state != .notApplicable)
+            && (!filterState.hideSnoozed || !item.override.isSnoozed)
+            && (!filterState.actionableOnly || pr.status.isActionable)
+            && (!filterState.hideReviewed || pr.status.badge != .reviewed)
     }
 
     func refreshNow() {
@@ -183,13 +345,16 @@ final class DashboardViewModel: ObservableObject {
     }
 
     func loadMoreCurrentTab() {
-        Task {
-            await loadPage(for: selectedTab, reset: false)
+        launch { [self] in
+            if selectedSavedViewID != nil {
+                for tab in PullRequestTab.allCases where listStates[tab]?.hasNextPage == true { await loadPage(for: tab, reset: false) }
+            } else { await loadPage(for: selectedTab, reset: false) }
         }
     }
 
     func perform(action: QuickAction, on pr: PullRequestPresentation) {
-        Task {
+        launch { [self] in
+            guard !self.retired else { return }
             var override = pr.pullRequest.override
             switch action {
             case .markTodo:
@@ -213,7 +378,9 @@ final class DashboardViewModel: ObservableObject {
                 await notifier.scheduleSnoozeReminder(for: pr.pullRequest, until: date)
             }
 
+            guard !self.retired else { return }
             try await store.saveOverride(override, for: pr.pullRequest.id)
+            guard !self.retired else { return }
             updateOverride(override, for: pr.pullRequest.id)
         }
     }
@@ -227,11 +394,11 @@ final class DashboardViewModel: ObservableObject {
     }
 
     func forceDigestRecompute() {
-        Task { await updateDigest() }
+        launch { [self] in await updateDigest() }
     }
 
     func testNotification() {
-        Task { @MainActor in
+        launch { [self] in
             await notifier.requestAuthorizationIfNeeded()
             await notifier.sendTestNotification()
         }
@@ -244,9 +411,28 @@ final class DashboardViewModel: ObservableObject {
         hasBootstrapped = true
 
         do {
-            viewerLogin = try await client.fetchViewer()
+            let views = try await savedViewStore.load()
+            let selected = await savedViewStore.selectedID()
+            guard !retired else { return }
+            savedViews = views
+            selectedSavedViewID = restoreSavedSelection ? selected.flatMap { candidate in views.contains { $0.id == candidate && $0.enabled } ? candidate : nil } : nil
+        } catch { errorMessage = "Saved views could not be loaded. The original file has been preserved." }
+
+        let storedSettings = await store.loadSettings()
+        guard !retired else { return }
+        let warning = await store.storageWarning()
+        guard !retired else { return }
+        if let warning { errorMessage = warning }
+        settings = storedSettings
+        isReady = true
+
+        do {
+            let login = try await client.fetchViewer()
+            guard !retired else { return }
+            viewerLogin = login
             markConnected(as: viewerLogin)
         } catch {
+            guard !retired else { return }
             if (error as? CancellationError) != nil {
                 // Default without surfacing an error when cancelled
                 viewerLogin = "me"
@@ -256,28 +442,23 @@ final class DashboardViewModel: ObservableObject {
             }
         }
 
-        let storedSettings = await store.loadSettings()
-        settings = storedSettings
-
         if settings.refreshOnLaunch {
             await refreshActiveTab()
         }
 
-        await scheduler.start(interval: settings.refreshInterval) {
-            await self.refreshActiveTab()
-        }
     }
 
     private func refreshIfNeeded(for tab: PullRequestTab) {
         let state = listStates[tab] ?? PullRequestListState()
         if state.rawItems.isEmpty {
-            Task {
+            launch { [self] in
                 await loadPage(for: tab, reset: true)
             }
         }
     }
 
     private func loadPage(for tab: PullRequestTab, reset: Bool) async {
+        guard !retired else { return }
         var state = listStates[tab] ?? PullRequestListState()
         if state.isLoading { return }
         state.isLoading = true
@@ -286,20 +467,27 @@ final class DashboardViewModel: ObservableObject {
         let cursor = reset ? nil : state.cursor
         do {
             let page = try await client.fetchPullRequests(tab: tab, cursor: cursor)
+            guard !retired else { return }
             var enriched: [PullRequest] = []
             for var item in page.items {
                 let override = await store.override(for: item.id)
+                guard !retired else { return }
                 item.override = override
                 enriched.append(item)
             }
 
             await recordActivityEvents(from: enriched, tab: tab)
+            guard !retired else { return }
 
-            if reset {
-                state.rawItems = enriched
-            } else {
-                state.rawItems.append(contentsOf: enriched)
+            let combined = reset ? enriched : state.rawItems + enriched
+            var order: [String] = []
+            var unique: [String: PullRequest] = [:]
+            for item in combined {
+                if unique[item.id] == nil { order.append(item.id) }
+                if let previous = unique[item.id], previous.updatedAt > item.updatedAt { continue }
+                unique[item.id] = item
             }
+            state.rawItems = order.compactMap { unique[$0] }
 
             state.cursor = page.cursor
             state.hasNextPage = page.hasNextPage
@@ -314,6 +502,7 @@ final class DashboardViewModel: ObservableObject {
             lastRefreshAt = Date()
             await updateDigest()
         } catch {
+            guard !retired else { return }
             state.isLoading = false
             listStates[tab] = state
             // Ignore benign cancellations (e.g., overlapping refreshes)
@@ -377,10 +566,7 @@ final class DashboardViewModel: ObservableObject {
     }
 
     private func updateBadgeCount() {
-        let actionable = PullRequestTab.allCases.flatMap { tab -> [PullRequestPresentation] in
-            (listStates[tab]?.displayedItems ?? [])
-        }.filter { $0.status.isActionable }
-        badgeCount = actionable.count
+        badgeCount = loadedItems.filter { $0.status.isActionable }.count
     }
 
     private func updateDigest() async {
@@ -394,6 +580,7 @@ final class DashboardViewModel: ObservableObject {
         let days = cadence == .weekly ? 7 : 14
         let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: now) ?? now
         let events = await store.recentActivity(since: cutoff)
+        guard !retired else { return }
         digestSnapshot = digestComputer.makeSnapshot(from: events, cadence: cadence)
     }
 
@@ -402,9 +589,11 @@ final class DashboardViewModel: ObservableObject {
         let viewer = viewerLogin.lowercased()
 
         for pr in pullRequests {
+            guard !retired else { return }
             if tab == .mine {
                 let key = "activity-opened-\(pr.id)"
                 if await store.ledgerTimestamp(for: key) == nil {
+                    guard !retired else { return }
                     do {
                         try await store.appendActivity(ActivityEvent(type: .openedMyPR, date: now))
                         try await store.updateLedger(date: now, for: key)
@@ -420,6 +609,7 @@ final class DashboardViewModel: ObservableObject {
             let stamp = Int(latestMyReviewAt.timeIntervalSince1970)
             let key = "activity-reviewed-observed-\(pr.id)-\(stamp)"
             if await store.ledgerTimestamp(for: key) == nil {
+                guard !retired else { return }
                 do {
                     try await store.appendActivity(ActivityEvent(type: .reviewedPR, date: now))
                     try await store.updateLedger(date: now, for: key)

@@ -3,12 +3,18 @@ import UserNotifications
 
 actor NotificationDispatcher {
     private let store: PullRequestStore
+    private var retired = false
+    private let namespace: String
 
-    init(store: PullRequestStore) {
+    init(store: PullRequestStore, namespace: String = "legacy") {
         self.store = store
+        self.namespace = namespace
     }
 
+    func retire() { retired = true }
+
     private func notificationsSupported() -> Bool {
+        guard !retired, store.lifetime.isActive else { return false }
         #if E2E_TESTING
         return false
         #else
@@ -67,6 +73,11 @@ actor NotificationDispatcher {
 
         do {
             try await center.add(request)
+            guard store.lifetime.isActive else {
+                center.removePendingNotificationRequests(withIdentifiers: [request.identifier])
+                center.removeDeliveredNotifications(withIdentifiers: [request.identifier])
+                return
+            }
             try await store.updateLedger(date: now, for: key)
         } catch {
             NSLog("Failed to send notification: \(error.localizedDescription)")
@@ -89,13 +100,14 @@ actor NotificationDispatcher {
         )
         let trigger = UNCalendarNotificationTrigger(dateMatching: triggerDate, repeats: false)
         let request = UNNotificationRequest(
-            identifier: "\(pullRequest.id)-snooze",
+            identifier: "\(namespace)-\(pullRequest.id)-snooze",
             content: content,
             trigger: trigger
         )
 
         do {
             try await center.add(request)
+            if !store.lifetime.isActive { center.removePendingNotificationRequests(withIdentifiers: [request.identifier]) }
         } catch {
             NSLog("Failed to schedule snooze reminder: \(error.localizedDescription)")
         }

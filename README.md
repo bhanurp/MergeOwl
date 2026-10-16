@@ -26,6 +26,8 @@ Your reviews, your PRs, and your next action—one compact popover.
 
 Real app captures with synthetic GitHub fixture data. The GIF cycles through captured states, rather than recording browser navigation. No personal tokens or private repositories are shown.
 
+These captures show the v0.1.5 layout. Account selection and saved-view controls described below are part of the v0.2.0 source changes.
+
 **Requirements:** macOS 14 or newer, an Apple Silicon or Intel Mac, and a GitHub.com account with a personal access token. No Xcode is needed for the download.
 
 **Early release:** the app is ad-hoc signed, not Apple-notarized. Read the first-launch instructions below before installing. GitHub.com and macOS are the supported targets; GitLab, Windows, Linux, and custom GitHub Enterprise Server hosts are not supported.
@@ -74,6 +76,22 @@ For a classic token, use [GitHub’s classic token settings](https://github.com/
 
 Tokens are stored in macOS Keychain, not plaintext settings. The input intentionally becomes blank after saving and when Settings reopens; this does not mean the saved token was lost. Check the connection status or use **Test connection** without entering a token.
 
+An active account session reuses its token in memory rather than reading Keychain for every API request. Switching accounts or relaunching retrieves that account’s saved credential again. macOS may still request access after an app identity/signature change; this early release does not eliminate signing-related prompts.
+
+### Multiple accounts (v0.2.0 and newer)
+
+The account and saved-view workflows below require v0.2.0 or a source build containing these features. v0.1.5 and earlier support one saved token.
+
+1. Open **Settings → Account → Add account**, enter the other account’s token, and click **Connect GitHub**.
+2. Use the account menu above the PR tabs to select the account to display. Only one account is loaded at a time; adding another does not switch away from an existing active account.
+3. To replace a token, click **Manage** beside that account, enter the replacement, and choose **Update token**. A token belonging to another GitHub identity must be added as a separate account.
+
+Accounts have separate watched repositories, TODO/N/A marks, snoozes, activity and saved views. Refresh and notification preferences are shared. Selection persists after relaunch. Re-adding the same GitHub user updates its credential instead of creating a duplicate profile.
+
+Existing single-account data is copied only after GitHub verifies the legacy token. Original files and the legacy credential remain as a recovery backup. If migration fails, use **Retry account setup** after checking network and Keychain access; do not delete your data as a workaround.
+
+**Remove account** requires confirmation and removes that profile’s credential and local data, not the GitHub account or repositories. The first remaining account becomes active when the active account is removed. The legacy migration backup is retained; revoke obsolete tokens on GitHub when no longer needed.
+
 ## Use PR Pulse
 
 ### Find the PRs that matter
@@ -85,6 +103,16 @@ Tokens are stored in macOS Keychain, not plaintext settings. The input intention
 Search by title or repository. Use **Actionable**, **Hide reviewed**, **Hide snoozed**, and the not-applicable filter to narrow the list. If PRs seem missing, clear search and turn off filters first.
 
 The menu-bar badge counts actionable PRs. Click the icon to see the list; the PR list is not displayed directly in the menu bar.
+
+### Create saved PR views (v0.2.0 and newer)
+
+Open **Settings → Saved Views → Create saved view**. Give it a unique name (1–40 characters), optionally enter exact `owner/repo` names separated by commas, choose a PR-state rule, and optionally match text in the title or repository. All supplied rules must match. **Cancel** leaves the existing definition unchanged.
+
+Enabled saved views appear beneath the default tabs. Use **All saved views** to reach names outside the scrollable strip. In Settings you can edit, reorder, disable or delete views; the three default tabs remain available. Views belong only to the selected account.
+
+Saved views combine the PRs already loaded from My PRs, Review Requested and Watched. Counts cover **loaded data**, not every PR on GitHub. **Refresh** fetches the first page of each source; **Load more** fetches another page from sources that have more results. PRs shared by several lists or views count once in the global badge. Snoozed and N/A PRs do not count as actionable, and search filters do not change the badge.
+
+With the popover active, use **Command-1/2/3** for the default tabs, **Command-F** for search and **Command-R** to refresh. These are app-scoped shortcuts, not global hotkeys.
 
 ### Triage without changing GitHub
 
@@ -107,7 +135,7 @@ Open a PR on GitHub, mark it **TODO** or **N/A**, or use **Snooze** to defer it.
 | No pull requests | Clear search/filters, refresh, and check the selected tab. **Watched** requires configured repositories. Compare with open PRs visible to your account on GitHub. |
 | Token field is blank after relaunch | This is intentional. Check the connection status or use **Test connection** without entering a token. |
 | Repeated Keychain prompts | Use one installed app copy; development and release builds can have different identities/signatures. Do not delete your Keychain as a workaround. Report persistent prompts. |
-| Two Settings windows | A known activation issue is tracked in [#9](https://github.com/bhanurp/prpulse/issues/9). Close the extra window and use the one opened by the popover’s gear button. |
+| Two Settings windows on v0.1.5 or earlier | The activation issue is tracked in [#9](https://github.com/bhanurp/prpulse/issues/9). Close the extra window and use the popover’s gear button. The v0.2.0 source uses one retained native preferences window. |
 | Notifications do not arrive | Check macOS notification permission and **Settings → Notifications**. Live OS delivery is not covered by automated fixture tests. |
 
 Still stuck? [Open an issue](https://github.com/bhanurp/prpulse/issues) with your macOS version, app release version, reproduction steps, and error text. Redact tokens, private repository names, and sensitive information from screenshots or exported logs. Never paste a token into an issue.
@@ -116,13 +144,13 @@ Still stuck? [Open an issue](https://github.com/bhanurp/prpulse/issues) with you
 
 To update, quit PR Pulse using the popover’s power button, download the latest DMG, replace the app in Applications, and launch it again. App replacement does not intentionally remove your Keychain token or local preferences.
 
-To uninstall, quit the app and move **PRPulseApp.app** to Trash. To remove its stored credential first, use **Settings → Account → Remove token**. Revoke the token on GitHub if no longer needed. Removing the app alone does not remove Keychain credentials or local preferences.
+To uninstall, remove each saved account in **Settings → Account** first, then quit and move **PRPulseApp.app** to Trash. On v0.1.5 and earlier, use **Remove token** instead. Revoke tokens on GitHub if no longer needed, including any retained legacy migration token. Removing the app alone does not remove Keychain credentials, migration backups or local preferences.
 
 ## Current scope and roadmap
 
-Available today: three PR lists, actionable badge, search and filters, local triage, snooze, watched repositories, refresh preferences, notification preferences, digest, and Keychain-backed token storage.
+The source includes three PR lists, actionable badge, search and filters, local triage, snooze, watched repositories, refresh/notification preferences, digest, Keychain-backed account profiles and account-specific rule-based saved views. See the version notes above when using an older downloaded build.
 
-**Planned, not shipped:** named saved views, user-defined PR grouping, [multiple GitHub accounts](docs/superpowers/specs/2026-10-11-multiple-github-accounts-design.md), and [secure automatic updates](docs/superpowers/specs/2026-10-11-secure-auto-updates-design.md). The latter two have design documents, not working implementations. Signing/notarization and first-run polish remain release-readiness priorities. See the [product roadmap](docs/superpowers/specs/2026-09-12-prpulse-public-product-roadmap-design.md), [open issues](https://github.com/bhanurp/prpulse/issues), and [changelog](CHANGELOG.md). Roadmap items are intentions, not promises of availability.
+**Deferred:** [secure automatic updates](docs/superpowers/specs/2026-10-11-secure-auto-updates-design.md), Developer ID signing and notarization. Updates still require manual DMG replacement. Manual per-PR collections, team sharing and cloud sync are not implemented. See the [product roadmap](docs/superpowers/specs/2026-09-12-prpulse-public-product-roadmap-design.md), [open issues](https://github.com/bhanurp/prpulse/issues), and [changelog](CHANGELOG.md). Roadmap items are intentions, not promises of availability.
 
 ## Build and test from source
 

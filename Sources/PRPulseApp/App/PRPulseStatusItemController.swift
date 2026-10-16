@@ -50,15 +50,12 @@ final class PRPulseStatusItemController {
         self.popover = popover
     }
 
-    func install(with dashboard: DashboardViewModel, actions: DashboardHostActions) {
-        guard button == nil else { return }
-
-        let button = statusBar.makeButton { [weak self] in
-            self?.togglePopover()
+    func install(with dashboard: DashboardViewModel, actions: DashboardHostActions, accounts: AccountSessionCoordinator? = nil) {
+        if button == nil {
+            button = statusBar.makeButton { [weak self] in self?.togglePopover() }
         }
-        self.button = button
         popover.configure(
-            content: NSHostingController(rootView: ContentView(viewModel: dashboard, hostActions: actions))
+            content: NSHostingController(rootView: ContentView(viewModel: dashboard, hostActions: actions, accounts: accounts))
         )
         update(actionableCount: dashboard.badgeCount)
 
@@ -155,7 +152,9 @@ private final class AppKitPopoverHost: PopoverHosting {
     }
 
     func show(relativeTo anchorView: NSView) {
+        NSApplication.shared.activate(ignoringOtherApps: true)
         popover.show(relativeTo: anchorView.bounds, of: anchorView, preferredEdge: .minY)
+        popover.contentViewController?.view.window?.makeKey()
     }
 
     func close() {

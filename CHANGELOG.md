@@ -2,6 +2,28 @@
 
 All notable changes to PR Pulse are documented in this file.
 
+## [Unreleased] — account workspaces
+
+### Added
+
+- Multiple GitHub.com account profiles with separate Keychain tokens and one active dashboard.
+- Account-specific repositories, local triage, activity and saved PR views; shared refresh/notification preferences.
+- Rule-based saved views with repository, state and text matching, editing, ordering and enable/disable controls.
+- Loaded-data actionable counts, deduplicated global badge and app-scoped keyboard shortcuts.
+- Safe, retryable legacy-data migration and isolated-account regression tests.
+
+### Fixed
+
+- Replaced competing Settings scenes with one retained native preferences window.
+- Reject retired account responses and stop cancelled refresh timers before they run another action.
+- Preserve in-memory triage state when an atomic write fails.
+- Restore standard text-editing menu actions in the AppKit application bootstrap.
+- Reuse an account-bound credential snapshot during a session instead of repeatedly reading Keychain for API requests.
+
+### Still deferred
+
+- Automatic updates, Developer ID signing and Apple notarization. Updates remain manual.
+
 ## [0.1.5] - 2026-10-13
 
 ### Documentation
