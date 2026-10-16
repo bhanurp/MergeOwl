@@ -4,15 +4,21 @@ import AppKit
 @available(macOS 14.0, *)
 struct ContentView: View {
     @ObservedObject var viewModel: DashboardViewModel
-    var hostActions: DashboardHostActions? = nil
+    var hostActions: DashboardHostActions = .noop
+    var accounts: AccountSessionCoordinator? = nil
     @State private var showDigest = false
-    @Environment(\.openSettings) private var openSettings
-    @Environment(\.openWindow) private var openWindow
+    @FocusState private var searchFocused: Bool
 
     var body: some View {
         VStack(spacing: 12) {
+            if let accounts { AccountSelectorView(accounts: accounts, showSettings: hostActions.showSettings) }
             header
+            if viewModel.savedViews.contains(where: \.enabled) { PRViewTabStrip(viewModel: viewModel) }
             filters
+            if let message = viewModel.errorMessage {
+                Label(message, systemImage: "exclamationmark.triangle")
+                    .font(.caption).foregroundStyle(.orange).textSelection(.enabled)
+            }
             if !viewModel.accessWarnings.isEmpty {
                 Label("Some PR data is unavailable. Showing accessible PRs.", systemImage: "exclamationmark.triangle.fill")
                     .font(.caption)
@@ -46,9 +52,13 @@ struct ContentView: View {
                 }
         }
         .onAppear {
-            if viewModel.settings.refreshOnLaunch {
+            viewModel.presentationDidAppear()
+            if viewModel.isReady && viewModel.settings.refreshOnLaunch {
                 viewModel.refreshAll()
             }
+        }
+        .onChange(of: viewModel.isReady) {
+            if viewModel.isReady && viewModel.settings.refreshOnLaunch { viewModel.refreshAll() }
         }
         .onChange(of: viewModel.selectedTab) { _ in
             Task { @MainActor in
@@ -85,15 +95,13 @@ struct ContentView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Picker("", selection: $viewModel.selectedTab) {
-                    ForEach(PullRequestTab.allCases) { tab in
-                        Text(tab.rawValue).tag(tab)
-                    }
+                DefaultPRTabs(viewModel: viewModel)
+                .onMoveCommand { direction in
+                    if direction == .left || direction == .right { viewModel.moveViewSelection(forward: direction == .right) }
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .accessibilityLabel("Tab")
-
+            }
+            HStack(spacing: 8) {
+                searchField
                 Button {
                     viewModel.refreshAll()
                 } label: {
@@ -104,13 +112,7 @@ struct ContentView: View {
                 .keyboardShortcut("r")
 
                 Button {
-                    if let hostActions {
-                        hostActions.showSettings()
-                    } else {
-                        SettingsPresenter.showNativeSettings {
-                            openSettings()
-                        }
-                    }
+                    hostActions.showSettings()
                 } label: {
                     Image(systemName: "gearshape")
                 }
@@ -119,11 +121,7 @@ struct ContentView: View {
                 .keyboardShortcut(",", modifiers: [.command])
 
                 Button {
-                    if let hostActions {
-                        hostActions.quit()
-                    } else {
-                        NSApplication.shared.terminate(nil)
-                    }
+                    hostActions.quit()
                 } label: {
                     Image(systemName: "power")
                 }
@@ -132,12 +130,25 @@ struct ContentView: View {
                 .keyboardShortcut("q", modifiers: [.command])
             }
 
+        }
+    }
+
+    private var searchField: some View {
             TextField("Search title or repo", text: Binding(
                 get: { viewModel.filterState.searchText },
                 set: { viewModel.filterState.searchText = $0 }
             ))
             .textFieldStyle(.roundedBorder)
-        }
+            .focused($searchFocused)
+            .background {
+                HStack {
+                    Button("") { searchFocused = true }.keyboardShortcut("f")
+                    ForEach(Array(PullRequestTab.allCases.enumerated()), id: \.element) { index, tab in
+                        Button("") { viewModel.selectDefaultTab(tab) }
+                            .keyboardShortcut(KeyEquivalent(Character(String(index + 1))))
+                    }
+                }.hidden()
+            }
     }
 
     private var filters: some View {
@@ -169,7 +180,7 @@ struct ContentView: View {
     private var listContent: some View {
         ScrollView {
             LazyVStack(spacing: 10) {
-                ForEach(viewModel.listStates[viewModel.selectedTab]?.displayedItems ?? []) { presentation in
+                ForEach(viewModel.currentItems) { presentation in
                     PullRequestRowView(
                         presentation: presentation,
                         actionHandler: { action in
@@ -179,17 +190,23 @@ struct ContentView: View {
                     )
                 }
 
-                if viewModel.listStates[viewModel.selectedTab]?.hasNextPage == true {
+                if viewModel.hasMoreCurrentItems {
                     Button("Load more") {
                         viewModel.loadMoreCurrentTab()
                     }
                     .buttonStyle(.borderedProminent)
                     .frame(maxWidth: .infinity)
-                } else if (viewModel.listStates[viewModel.selectedTab]?.displayedItems.isEmpty ?? true) {
-                    EmptyStateView()
-                        .padding(.top, 40)
+                } else if viewModel.currentItems.isEmpty {
+                    if let accounts, accounts.profiles.isEmpty, !accounts.isWorking, accounts.errorMessage == nil {
+                        ContentUnavailableView {
+                            Label("Connect GitHub", systemImage: "person.crop.circle")
+                        } description: { Text("Add an account in Settings to start tracking your pull requests.") }
+                        actions: { Button("Open account settings", action: hostActions.showSettings) }
+                    } else { EmptyStateView().padding(.top, 40) }
                 }
             }
+            if viewModel.isRefreshing { ProgressView("Refreshing PRs…").controlSize(.small) }
+            if viewModel.selectedSavedViewID != nil { Text("Showing loaded PRs • counts may grow as more pages load").font(.caption).foregroundStyle(.secondary) }
         }
     }
 
@@ -213,7 +230,9 @@ struct ContentView: View {
 
     private var connectionIndicator: some View {
         Group {
-            if viewModel.connectionPresentation.isConnected {
+            if let accounts, accounts.profiles.isEmpty, !accounts.isWorking, accounts.errorMessage == nil {
+                Button("Connect GitHub", action: hostActions.showSettings)
+            } else if viewModel.connectionPresentation.isConnected {
                 HStack(spacing: 6) {
                     Circle()
                         .fill(Color.green)
@@ -232,11 +251,7 @@ struct ContentView: View {
                 }
             } else {
                 Button {
-                    if let hostActions {
-                        hostActions.showConnectionErrors()
-                    } else {
-                        openWindow(id: "connection-errors-window")
-                    }
+                    hostActions.showConnectionErrors()
                 } label: {
                     HStack(spacing: 6) {
                         Circle()

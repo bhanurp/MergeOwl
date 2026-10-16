@@ -2,40 +2,28 @@ import Foundation
 
 @MainActor
 final class AppDependencies: ObservableObject {
-    let dashboard: DashboardViewModel
+    let accounts: AccountSessionCoordinator
+    var dashboard: DashboardViewModel { accounts.dashboard }
 
-    init() {
+    init(useMockClient: Bool = false) {
+        let useMockClient = useMockClient || Self.shouldUseMockClient
         #if E2E_TESTING
         let environment = ProcessInfo.processInfo.environment
         if let token = environment["PRPULSE_E2E_INITIAL_TOKEN"] {
             try? KeychainTokenStore().setToken(token)
         }
         let directory = URL(fileURLWithPath: environment["PRPULSE_E2E_DATA_DIRECTORY"]!, isDirectory: true)
-        let store = PullRequestStore(directory: directory)
         #else
-        let store = PullRequestStore()
+        let directory = useMockClient
+            ? FileManager.default.temporaryDirectory.appendingPathComponent("prpulse-unit-\(UUID().uuidString)")
+            : FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!.appendingPathComponent("PRPulseApp")
         #endif
-        let notifier = NotificationDispatcher(store: store)
-        let scheduler = RefreshScheduler()
-        let digestComputer = DigestComputer()
-        let client: GitHubClient
-        if Self.shouldUseMockClient {
-            client = MockGitHubClient()
+        if useMockClient {
+            accounts = AccountSessionCoordinator(directory: directory, makeClient: { _, _ in MockGitHubClient() })
         } else {
-            client = GitHubAPIClient(
-                watchedRepositoriesProvider: {
-                    await store.loadSettings().watchedRepositories
-                }
-            )
+            accounts = AccountSessionCoordinator(directory: directory)
+            Task { await accounts.start() }
         }
-
-        self.dashboard = DashboardViewModel(
-            client: client,
-            store: store,
-            notifier: notifier,
-            scheduler: scheduler,
-            digestComputer: digestComputer
-        )
     }
 
     private static var shouldUseMockClient: Bool {

@@ -3,6 +3,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     case refresh = "Refresh"
     case notifications = "Notifications"
     case repositories = "Repositories"
+    case savedViews = "Saved Views"
     case advanced = "Advanced"
 
     static let defaultPane: Self = .account
@@ -19,6 +20,8 @@ enum SettingsPane: String, CaseIterable, Identifiable {
             "bell"
         case .repositories:
             "folder"
+        case .savedViews:
+            "line.3.horizontal.decrease.circle"
         case .advanced:
             "slider.horizontal.3"
         }

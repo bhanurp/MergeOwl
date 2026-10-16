@@ -8,7 +8,7 @@ final class PRPulseStatusItemControllerTests: XCTestCase {
         let statusBar = FakeStatusBarHost()
         let popover = FakePopoverHost()
         let controller = PRPulseStatusItemController(statusBar: statusBar, popover: popover)
-        let dashboard = AppDependencies().dashboard
+        let dashboard = AppDependencies(useMockClient: true).dashboard
 
         controller.install(with: dashboard, actions: .noop)
         controller.install(with: dashboard, actions: .noop)
@@ -21,7 +21,7 @@ final class PRPulseStatusItemControllerTests: XCTestCase {
         let popover = FakePopoverHost()
         let controller = PRPulseStatusItemController(statusBar: statusBar, popover: popover)
 
-        controller.install(with: AppDependencies().dashboard, actions: .noop)
+        controller.install(with: AppDependencies(useMockClient: true).dashboard, actions: .noop)
         controller.togglePopover()
         controller.togglePopover()
 

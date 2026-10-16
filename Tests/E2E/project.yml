@@ -7,6 +7,7 @@ settings:
     SWIFT_VERSION: "6.0"
     CODE_SIGN_IDENTITY: "-"
     CODE_SIGNING_ALLOWED: YES
+    PRPULSE_E2E_HOSTED_CI: "false"
 targets:
   PRPulseE2EApp:
     type: application
@@ -21,7 +22,7 @@ targets:
     info:
       path: Generated/AppInfo.plist
       properties:
-        CFBundleDisplayName: PR Pulse E2E
+        CFBundleDisplayName: PR Pulse
         LSUIElement: true
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
@@ -29,7 +30,7 @@ targets:
   PRPulseUITests:
     type: bundle.ui-testing
     platform: macOS
-    sources: [PRPulseUITests.swift]
+    sources: [PRPulseUITests.swift, ../PRPulseAppTests/HostedNoticeSelectors.swift]
     dependencies:
       - target: PRPulseE2EApp
     settings:
@@ -44,6 +45,8 @@ schemes:
         PRPulseE2EApp: all
         PRPulseUITests: [test]
     test:
+      environmentVariables:
+        PRPULSE_E2E_HOSTED_CI: $(PRPULSE_E2E_HOSTED_CI)
       targets:
         - name: PRPulseUITests
           parallelizable: false

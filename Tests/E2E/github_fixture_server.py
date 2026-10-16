@@ -25,7 +25,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def authorized(self):
         token = self.headers.get("Authorization", "").removeprefix("Bearer ")
-        if token not in {"e2e-valid", "e2e-partial", "e2e-empty"}:
+        if token not in {"e2e-valid", "e2e-partial", "e2e-empty", "e2e-hubot"}:
             self.respond(dict(message="Bad credentials"), 401)
             return None
         return token
@@ -34,8 +34,9 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/health":
             self.respond(dict(ready=True))
         elif self.path == "/user":
-            if self.authorized():
-                self.respond(dict(login="octocat"))
+            token = self.authorized()
+            if token:
+                self.respond(dict(id=2, login="hubot") if token == "e2e-hubot" else dict(id=1, login="octocat"))
         else:
             self.respond(dict(message="Not found"), 404)
 
@@ -46,10 +47,12 @@ class Handler(BaseHTTPRequestHandler):
         request = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         query, variables = request["query"], request.get("variables", {})
         if "query Viewer" in query:
-            self.respond(dict(data=dict(viewer=dict(login="octocat"))))
+            self.respond(dict(data=dict(viewer=dict(login="hubot" if token == "e2e-hubot" else "octocat"))))
         elif "query SearchPRs" in query:
             search = variables["query"]
-            if token == "e2e-empty":
+            if token == "e2e-hubot":
+                nodes = [pr("PR_20", "Hubot private work", "hubot")]
+            elif token == "e2e-empty":
                 nodes = []
             elif "review-requested" in search:
                 nodes = [pr("PR_3", "Review API change", "contributor"), pr("PR_4", "Already reviewed", "contributor")]
