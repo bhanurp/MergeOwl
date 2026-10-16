@@ -22,6 +22,8 @@ All notable changes to PR Pulse are documented in this file.
 - Honor explicit refresh during pagination and preserve triage edits made while a page is loading.
 - Recompute loaded lists when delayed GitHub identity lookup completes.
 - Remove a deleted account's pending and delivered profile-scoped notifications without clearing other accounts' reminders.
+- Route the popover's Add account action to Account even when Settings retains another selected pane.
+- Remove the Advanced action that opened an ignored profile settings file.
 
 ### Still deferred
 

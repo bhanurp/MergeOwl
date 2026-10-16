@@ -139,34 +139,6 @@ final class DashboardViewModel: ObservableObject {
         await notifier.requestAuthorizationIfNeeded()
     }
 
-    func openSettingsJSON() async {
-        // Determine the same directory used by PullRequestStore
-        let directory = store.directory
-        let settingsURL = directory.appendingPathComponent("settings.json")
-
-        // Ensure directory exists
-        let fm = FileManager.default
-        if !fm.fileExists(atPath: directory.path) {
-            try? fm.createDirectory(at: directory, withIntermediateDirectories: true)
-        }
-
-        // Ensure file exists with current settings if missing
-        if !fm.fileExists(atPath: settingsURL.path) {
-            do {
-                let encoder = JSONEncoder()
-                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-                let data = try encoder.encode(settings)
-                try data.write(to: settingsURL, options: .atomic)
-            } catch {
-                self.errorMessage = "Failed to create settings.json: \(error.localizedDescription)"
-            }
-        }
-
-        // Open in the default editor
-        NSWorkspace.shared.activateFileViewerSelecting([settingsURL])
-        _ = NSWorkspace.shared.open(settingsURL)
-    }
-
     func exportDiagnostics() async {
         // Create a simple diagnostic report
         var lines: [String] = []

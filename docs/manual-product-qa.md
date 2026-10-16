@@ -13,7 +13,7 @@ Do not run window-opening unit tests concurrently with native journeys: they can
 - [x] Full Swift unit suite passes after review fixes (70 tests).
 - [x] Both installer regression scripts pass using their temporary fixtures.
 - [x] Python GitHub fixture tests pass.
-- [x] Full native suite passes after review fixes: 15 journeys, zero failures.
+- [x] Full native suite passes after CodeRabbit fixes: 17 journeys, zero failures.
 - [x] Icon, badge, search, pagination, quick actions, snooze and partial access work with fixtures.
 - [x] Settings opens exactly once via gear, reopen and Command-comma; closing it keeps the icon alive.
 - [x] Add two accounts, switch and relaunch; isolated PRs/preferences verified natively, saved-view storage isolation covered by unit tests.
@@ -34,6 +34,8 @@ Do not run window-opening unit tests concurrently with native journeys: they can
 - Independent review identified refresh/pagination, concurrent triage and account-removal notification cleanup bugs plus delayed-identity presentation. Deterministic regressions now pass for these sequences.
 - Light and dark Settings captures were visually inspected with a long saved-view name; the light fixture explicitly uses Aqua appearance. Full-desktop captures are local QA evidence, not public documentation assets.
 - Apple Silicon and Intel release builds both passed locally. Installer regressions use temporary fixture installations, not the user's production app.
+- CodeRabbit follow-up: native regressions reproduced and then verified retained-pane Add account routing and removal of the ignored settings-file editor. The hosted initial E2E run failed on an OS Notification Center dialog; that CI failure remains a publication blocker until a latest-head run passes.
+- The expanded 17-journey suite passed locally on 2026-10-16 (`/tmp/prpulse-cr-full-native.log`, 287.0 seconds); 70 unit tests and both release architectures also passed after the Settings fixes.
 - Early native runs exposed missing Edit-menu actions, header clipping and test accessibility-query issues. Those runs are failures, not release evidence.
 
 ## Limits

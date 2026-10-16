@@ -238,6 +238,29 @@ final class PRPulseUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Hubot private work"].exists)
     }
 
+    func testAddAccountRequestLeavesRetainedSettingsPane() {
+        launch()
+        settings()
+        pane("Refresh")
+        let window = app.windows["PR Pulse Settings"]
+        window.buttons[XCUIIdentifierCloseWindow].click()
+        openDashboard()
+        app.descendants(matching: .any)["prpulse.account-selector"].firstMatch.click()
+        app.menuItems["Add account…"].click()
+        XCTAssertTrue(window.buttons["Connect GitHub"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(window.descendants(matching: .any)["prpulse.token-input"].firstMatch.exists)
+        XCTAssertEqual(app.windows.matching(identifier: "PR Pulse Settings").count, 1)
+    }
+
+    func testAdvancedDoesNotOfferIgnoredSettingsFile() {
+        launch()
+        settings()
+        pane("Advanced")
+        let window = app.windows["PR Pulse Settings"]
+        XCTAssertTrue(window.buttons["Export logs"].waitForExistence(timeout: 5))
+        XCTAssertFalse(window.buttons["Open settings.json"].exists)
+    }
+
     func testRemoveLastAccountDoesNotResurrectLegacyCredential() {
         launch()
         XCTAssertTrue(app.staticTexts["Review API change"].waitForExistence(timeout: 10))

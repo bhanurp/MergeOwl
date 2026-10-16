@@ -213,9 +213,6 @@ struct AdvancedSettingsView: View {
             }
 
             Section("Support") {
-                Button("Open settings.json") {
-                    Task { await viewModel.openSettingsJSON() }
-                }
                 Button("Copy viewer login") {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(viewModel.viewerLogin, forType: .string)

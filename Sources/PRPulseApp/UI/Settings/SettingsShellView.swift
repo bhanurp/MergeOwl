@@ -2,7 +2,7 @@ import SwiftUI
 
 struct SettingsShellView: View {
     @ObservedObject var viewModel: DashboardViewModel
-    var accounts: AccountSessionCoordinator? = nil
+    @ObservedObject var accounts: AccountSessionCoordinator
     @State private var selection = SettingsPane.defaultPane
 
     var body: some View {
@@ -22,18 +22,17 @@ struct SettingsShellView: View {
                 Group {
                     switch selectedPane {
                     case .account:
-                        if let accounts { ProfilesAccountSettingsView(accounts: accounts, dashboard: viewModel) }
-                        else { AccountSettingsView(viewModel: viewModel) }
+                        ProfilesAccountSettingsView(accounts: accounts, dashboard: viewModel)
                     case .refresh:
                         RefreshSettingsView(viewModel: viewModel)
                     case .notifications:
                         NotificationSettingsView(viewModel: viewModel)
                     case .repositories:
-                        if accounts != nil && accounts?.activeProfileID == nil {
+                        if accounts.activeProfileID == nil {
                             ContentUnavailableView("Connect an account first", systemImage: "person.crop.circle", description: Text("Watched repositories belong to a GitHub account. Connect one in Account settings."))
                         } else { RepositoriesSettingsView(viewModel: viewModel) }
                     case .savedViews:
-                        if accounts != nil && accounts?.activeProfileID == nil {
+                        if accounts.activeProfileID == nil {
                             ContentUnavailableView("Connect an account first", systemImage: "person.crop.circle", description: Text("Saved views belong to a GitHub account. Connect one in Account settings."))
                         } else { SavedViewsSettingsView(viewModel: viewModel) }
                     case .advanced:
@@ -50,8 +49,8 @@ struct SettingsShellView: View {
         }
         .navigationSplitViewStyle(.balanced)
         .frame(minWidth: 760, minHeight: 520)
-        .onChange(of: accounts?.addingAccountRequested) {
-            if accounts?.addingAccountRequested == true { selection = .account }
+        .onChange(of: accounts.addingAccountRequested) {
+            if accounts.addingAccountRequested { selection = .account }
         }
     }
 
