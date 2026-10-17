@@ -2,7 +2,13 @@ name: macOS End-to-End Tests
 
 on:
   pull_request:
+    paths-ignore:
+      - 'README.md'
+      - 'docs/screenshots/**'
   push:
+    paths-ignore:
+      - 'README.md'
+      - 'docs/screenshots/**'
     branches: [master, 'feature/**', 'bugfix/**']
   workflow_dispatch:
 
