@@ -10,23 +10,36 @@
 
 Keep your GitHub pull requests one click away, in your Mac’s menu bar.
 
-PR Pulse brings together PRs you authored, reviews requested from you, and repositories you watch. Find what needs attention, open a PR on GitHub, or snooze it until later—without keeping another dashboard open.
+PR Pulse brings together PRs you authored, reviews requested from you, and repositories you watch. Switch between GitHub accounts, organize loaded PRs into saved views, and open or snooze what needs attention—without keeping another dashboard open.
 
 [Download latest release](https://github.com/bhanurp/prpulse/releases/latest) · [Report a problem](https://github.com/bhanurp/prpulse/issues) · [Release notes](CHANGELOG.md) · [Contribute](CONTRIBUTING.md)
 
 ## A quick look
 
-<img src="docs/screenshots/dashboard-current.png" width="472" alt="PR Pulse popover showing review requests, PR actions, and connected account status">
+### Accounts and saved views in action
 
-Your reviews, your PRs, and your next action—one compact popover.
+![PR Pulse v0.2.0 walkthrough showing two saved accounts, a review-focused view rule, and the saved-view list](docs/screenshots/accounts-saved-views-demo.gif)
 
-### Switch views and focus on actionable PRs
+Real v0.2.0 Settings captures with synthetic GitHub data, cycling through captured states rather than a continuous recording. Only one account is active at a time; each account keeps its own saved views. No personal tokens or private repositories are shown.
+
+### Group PRs your way
+
+<img src="docs/screenshots/settings-saved-views-current.png" width="900" alt="Current Saved Views settings with API work and Needs my review rules, enable switches, edit, delete and ordering controls">
+
+Keep **My PRs**, **Review Requested**, and **Watched**, then add account-specific views using repository, PR-state and text rules. Enabled views appear in the click-open popover; their counts cover loaded PRs only.
+
+The new Settings images show the v0.2.0 UI with synthetic fixture data. They are window-content captures, not mockups. [v0.2.0 is available](https://github.com/bhanurp/prpulse/releases/tag/v0.2.0) for Apple Silicon and Intel Macs; older installations need a manual update to use accounts and saved views.
+
+<details>
+<summary>Earlier release: v0.1.5 popover and walkthrough</summary>
+
+<img src="docs/screenshots/dashboard-current.png" width="472" alt="Earlier v0.1.5 popover showing review requests and local PR actions">
 
 ![PR Pulse demo cycling through Review Requested, My PRs, and the Actionable filter](docs/screenshots/prpulse-demo.gif)
 
-Real app captures with synthetic GitHub fixture data. The GIF cycles through captured states, rather than recording browser navigation. No personal tokens or private repositories are shown.
+These older captures use synthetic GitHub fixture data. The GIF cycles through captured states rather than recording a continuous interaction. They do not show the new account selector or saved-view strip.
 
-These captures show the v0.1.5 layout. Account selection and saved-view controls described below are part of the v0.2.0 source changes.
+</details>
 
 **Requirements:** macOS 14 or newer, an Apple Silicon or Intel Mac, and a GitHub.com account with a personal access token. No Xcode is needed for the download.
 
@@ -87,6 +100,10 @@ The account and saved-view workflows below require v0.2.0 or a source build cont
 3. To replace a token, click **Manage** beside that account, enter the replacement, and choose **Update token**. A token belonging to another GitHub identity must be added as a separate account.
 
 Accounts have separate watched repositories, TODO/N/A marks, snoozes, activity and saved views. Refresh and notification preferences are shared. Selection persists after relaunch. Re-adding the same GitHub user updates its credential instead of creating a duplicate profile.
+
+<img src="docs/screenshots/settings-accounts-current.png" width="900" alt="Current Account settings with synthetic octocat and hubot profiles, hubot active, Manage and Add account controls, and a blank saved-token field">
+
+**Manage** edits an account's token; the popover's account menu selects which account to display. A blank token field is intentional—the saved token stays in Keychain.
 
 Existing single-account data is copied only after GitHub verifies the legacy token. Original files and the legacy credential remain as a recovery backup. If migration fails, use **Retry account setup** after checking network and Keychain access; do not delete your data as a workaround.
 
