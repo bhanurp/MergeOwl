@@ -16,7 +16,34 @@ PR Pulse brings together PRs you authored, reviews requested from you, and repos
 
 ## A quick look
 
-### Accounts and saved views in action
+<img src="docs/screenshots/popover-current.png" width="420" alt="Actual PR Pulse popover with octocat selected, loaded PR counts, API work saved view, review-request cards and connected account status">
+
+Click the flower icon to open this popover. Select an account, choose a PR list or saved view, and act on a PR without opening Settings.
+
+### Switch accounts
+
+Open the account selector at the top, then choose a saved account. Its PRs and connection status replace the previous account's data; only one account is active at a time.
+
+![Actual popover sequence: octocat PRs, the account menu, then hubot PRs](docs/screenshots/switch-accounts.gif)
+
+### Select a saved view
+
+Click **API work** beneath the default tabs to show matching loaded PRs. In this example its title/repository text rule matches **Review API change**, while **Already reviewed** is excluded. Create your own rules under **Settings → Saved Views**.
+
+![Actual popover switching from Review Requested to the API work saved view](docs/screenshots/select-saved-view.gif)
+
+[View the saved-view screenshot](docs/screenshots/popover-saved-view.png).
+
+### Snooze and filter
+
+Open a PR's **Snooze** menu, choose **1 hour**, then turn on **Hide snoozed**. The snoozed PR disappears from the visible list and actionable count; this does not change the PR on GitHub.
+
+![Actual popover showing a matching PR, its Snooze menu, and the filtered list after snoozing](docs/screenshots/snooze-and-filter.gif)
+
+These GIFs use real native popover captures with synthetic GitHub data. They cycle through captured states (three seconds per state), not continuous recordings or browser navigation. The account and snooze guides each last nine seconds; the saved-view guide lasts six seconds. Captures are cropped to popover content to exclude desktop edges. No personal tokens or private repositories are shown.
+
+<details>
+<summary>Settings: manage accounts and create saved views</summary>
 
 ![PR Pulse v0.2.0 walkthrough showing two saved accounts, a review-focused view rule, and the saved-view list](docs/screenshots/accounts-saved-views-demo.gif)
 
@@ -29,6 +56,8 @@ Real v0.2.0 Settings captures with synthetic GitHub data, cycling through captur
 Keep **My PRs**, **Review Requested**, and **Watched**, then add account-specific views using repository, PR-state and text rules. Enabled views appear in the click-open popover; their counts cover loaded PRs only.
 
 The new Settings images show the v0.2.0 UI with synthetic fixture data. They are window-content captures, not mockups. [v0.2.0 is available](https://github.com/bhanurp/prpulse/releases/tag/v0.2.0) for Apple Silicon and Intel Macs; older installations need a manual update to use accounts and saved views.
+
+</details>
 
 <details>
 <summary>Earlier release: v0.1.5 popover and walkthrough</summary>
