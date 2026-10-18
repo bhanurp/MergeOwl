@@ -2,6 +2,19 @@
 
 All notable changes to PR Pulse are documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Tabbed (B, default) and Compact (A) popover layouts with a shared, persisted app-wide preference.
+- More → Layout switching and native Appearance settings with layout previews.
+- Backward-compatible layout defaults for existing preferences; layout changes preserve account, view, search, filters and triage state.
+
+### Changed
+
+- Compact PR rows with clickable titles and secondary triage actions, grouped filters, and a quieter Activity/sync footer.
+- Settings and Quit move to More; both layouts share the same data, actions and keyboard shortcuts.
+
 ## [0.2.0] - 2026-10-16
 
 ### Added

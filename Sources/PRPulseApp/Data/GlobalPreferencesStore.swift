@@ -18,16 +18,23 @@ actor GlobalPreferencesStore {
         settings.watchedRepositories = []
         return settings
     }
-    func save(_ settings: AppSettings, lifetime: AccountSessionLifetime? = nil) throws {
+    func save(_ settings: AppSettings, lifetime: AccountSessionLifetime? = nil, preservingPopoverLayout: Bool = false) throws {
         guard lifetime?.isActive != false else { throw CancellationError() }
         // Do not overwrite corrupt existing preferences with silently recovered defaults.
-        _ = try load()
+        let current = try load()
         var sanitized = settings
+        if preservingPopoverLayout { sanitized.popoverLayout = current.popoverLayout }
         sanitized.token = ""
         sanitized.watchedRepositories = []
         guard lifetime?.isActive != false else { throw CancellationError() }
         try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
         try JSONEncoder().encode(Preferences(sanitized)).write(to: file, options: .atomic)
+    }
+
+    func savePopoverLayout(_ layout: PopoverLayout, lifetime: AccountSessionLifetime) throws {
+        var current = try load()
+        current.popoverLayout = layout
+        try save(current, lifetime: lifetime)
     }
 
     private struct Preferences: Codable {
@@ -38,6 +45,7 @@ actor GlobalPreferencesStore {
         var quietHours: QuietHours?
         var snoozeDefaultHour: Int
         var digestCadence: DigestCadence
+        var popoverLayout: PopoverLayout?
 
         init(_ settings: AppSettings) {
             refreshInterval = settings.refreshInterval
@@ -47,13 +55,14 @@ actor GlobalPreferencesStore {
             quietHours = settings.quietHours
             snoozeDefaultHour = settings.snoozeDefaultHour
             digestCadence = settings.digestCadence
+            popoverLayout = settings.popoverLayout
         }
 
         var settings: AppSettings {
             AppSettings(token: "", refreshInterval: refreshInterval, refreshOnLaunch: refreshOnLaunch,
                         notifyNeedsReview: notifyNeedsReview, notifyNewReviewRequests: notifyNewReviewRequests,
                         quietHours: quietHours, snoozeDefaultHour: snoozeDefaultHour,
-                        digestCadence: digestCadence, watchedRepositories: [])
+                        digestCadence: digestCadence, watchedRepositories: [], popoverLayout: popoverLayout ?? .tabbed)
         }
     }
 }

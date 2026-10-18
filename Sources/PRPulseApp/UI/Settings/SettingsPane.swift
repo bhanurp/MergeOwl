@@ -1,5 +1,6 @@
 enum SettingsPane: String, CaseIterable, Identifiable {
     case account = "Account"
+    case appearance = "Appearance"
     case refresh = "Refresh"
     case notifications = "Notifications"
     case repositories = "Repositories"
@@ -14,6 +15,8 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         switch self {
         case .account:
             "person.crop.circle"
+        case .appearance:
+            "rectangle.3.group"
         case .refresh:
             "arrow.clockwise"
         case .notifications:

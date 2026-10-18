@@ -97,7 +97,8 @@ actor PullRequestStore {
         guard !retired, lifetime.isActive else { throw CancellationError() }
         try checkWritable(globalPreferences == nil ? settingsURL : repositoriesURL)
         if let globalPreferences {
-            try await globalPreferences.save(newSettings, lifetime: lifetime)
+            // Layout has its own atomic writer; older settings snapshots cannot undo it.
+            try await globalPreferences.save(newSettings, lifetime: lifetime, preservingPopoverLayout: true)
             guard !retired, lifetime.isActive else { throw CancellationError() }
             try encoder.encode(newSettings.watchedRepositories).write(to: repositoriesURL, options: .atomic)
             settings = newSettings
@@ -107,6 +108,19 @@ actor PullRequestStore {
         sanitized.token = ""
         try encoder.encode(sanitized).write(to: settingsURL, options: .atomic)
         settings = sanitized
+    }
+
+    func savePopoverLayout(_ layout: PopoverLayout) async throws {
+        guard !retired, lifetime.isActive else { throw CancellationError() }
+        if let globalPreferences {
+            try await globalPreferences.savePopoverLayout(layout, lifetime: lifetime)
+            guard !retired, lifetime.isActive else { throw CancellationError() }
+            settings.popoverLayout = layout
+        } else {
+            var next = settings
+            next.popoverLayout = layout
+            try await save(settings: next)
+        }
     }
 
     func appendActivity(_ event: ActivityEvent) async throws {

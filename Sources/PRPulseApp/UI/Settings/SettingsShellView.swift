@@ -23,6 +23,8 @@ struct SettingsShellView: View {
                     switch selectedPane {
                     case .account:
                         ProfilesAccountSettingsView(accounts: accounts, dashboard: viewModel)
+                    case .appearance:
+                        AppearanceSettingsView(viewModel: viewModel)
                     case .refresh:
                         RefreshSettingsView(viewModel: viewModel)
                     case .notifications:
@@ -86,6 +88,8 @@ struct SettingsShellView: View {
         switch pane {
         case .account:
             "Connect and manage your GitHub account."
+        case .appearance:
+            "Choose how your menu-bar popover is arranged."
         case .refresh:
             "Choose when PRPulse checks for updates."
         case .notifications:

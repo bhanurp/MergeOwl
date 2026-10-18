@@ -40,8 +40,10 @@ final class DashboardViewModel: ObservableObject {
     var accessWarnings: [String] {
         Array(Set(listStates.values.flatMap(\.warnings))).sorted()
     }
+    private var publishingSavedLayout = false
     @Published var settings: AppSettings = .default {
         didSet {
+            guard !publishingSavedLayout else { return }
             let snapshot = settings
             launch { [self] in
                 guard !self.retired else { return }
@@ -54,6 +56,22 @@ final class DashboardViewModel: ObservableObject {
         }
     }
     @Published private(set) var lastRefreshAt: Date?
+    @Published private(set) var isChangingLayout = false
+
+    func changePopoverLayout(to layout: PopoverLayout) async {
+        guard isReady, !retired, !isChangingLayout, settings.popoverLayout != layout else { return }
+        isChangingLayout = true
+        defer { isChangingLayout = false }
+        do {
+            try await store.savePopoverLayout(layout)
+            guard !retired else { return }
+            publishingSavedLayout = true
+            settings.popoverLayout = layout
+            publishingSavedLayout = false
+        } catch {
+            if !retired { errorMessage = "Could not save the layout. Please try again." }
+        }
+    }
 
     var currentRefreshIntervalMinutes: Int { Int(settings.refreshInterval / 60) }
 

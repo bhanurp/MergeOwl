@@ -152,6 +152,10 @@ private final class AppKitPopoverHost: PopoverHosting {
     }
 
     func show(relativeTo anchorView: NSView) {
+        #if E2E_TESTING
+        // NSPopover can inherit the menu bar appearance instead of the app override.
+        popover.appearance = NSApplication.shared.appearance
+        #endif
         NSApplication.shared.activate(ignoringOtherApps: true)
         popover.show(relativeTo: anchorView.bounds, of: anchorView, preferredEdge: .minY)
         popover.contentViewController?.view.window?.makeKey()

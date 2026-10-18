@@ -2,6 +2,24 @@
 
 This is a release gate, not a claim that every check below has passed.
 
+## Unreleased layout verification
+
+- Tabbed (B) is the default for fresh installs and preferences without a layout key.
+- Compact (A) and Tabbed share account selection, saved-view selection, search, filters, triage and keyboard shortcuts.
+- More → Layout and Settings → Appearance must both save the same app-wide preference, including after account switching and app restart.
+- A failed preference write must retain the previous layout and report an error.
+- Verify More → Settings after switching accounts, not only on first launch.
+- Native tests use synthetic accounts and isolated credentials; never replace the installed app to run this checklist.
+
+### Local evidence (2026-10-18)
+
+- The expanded native suite passed all 19 journeys. After review fixes, the layout/relaunch, Appearance/account-switch and reviewed-PR/readiness journeys passed again (3 journeys, zero failures).
+- The full Swift unit suite passed with 79 tests and zero failures after the final review fixes.
+- Persistence regressions cover old preferences, unknown layouts, account/restart persistence, failed writes, corrupt repository isolation and stale settings snapshots.
+- Actual popover captures were inspected in dark and forced Aqua appearance. The test-only override explicitly sets the popover appearance; it does not change production appearance behavior.
+- Apple Silicon and Intel release builds and both temporary-fixture installer regressions passed. The installed production app was not replaced.
+- A native rerun with an overlapping fixture-server port failed; it is not passing evidence. The subsequent isolated rerun is the relevant result.
+
 ## Isolation
 
 Use `bash scripts/test_e2e.sh` on a logged-in macOS desktop. It builds `dev.prpulse.e2e` with synthetic GitHub responses, a fresh data directory and Keychain service for each journey. Do not install over the user's production app, use real credentials, or change production Keychain entries.
@@ -10,12 +28,12 @@ Do not run window-opening unit tests concurrently with native journeys: they can
 
 ## Required checks
 
-- [x] Full Swift unit suite passes after review and CI-selector fixes (72 tests).
+- [x] Full Swift unit suite passes after layout review fixes (79 tests).
 - [x] Both installer regression scripts pass using their temporary fixtures.
 - [x] Python GitHub fixture tests pass.
-- [x] Full native suite passes after CodeRabbit fixes: 17 journeys, zero failures.
+- [x] Full native suite passes: 19 journeys, zero failures; the three affected journeys pass again after layout review fixes.
 - [x] Icon, badge, search, pagination, quick actions, snooze and partial access work with fixtures.
-- [x] Settings opens exactly once via gear, reopen and Command-comma; closing it keeps the icon alive.
+- [x] Settings opens exactly once via More → Settings, reopen and Command-comma; closing it keeps the icon alive.
 - [x] Add two accounts, switch and relaunch; isolated PRs/preferences verified natively, saved-view storage isolation covered by unit tests.
 - [x] Replace a token, test without saving and confirm removal natively; identity-mismatch rejection covered by unit tests.
 - [x] Saved-view creation, cancel, update, reorder, disable/delete and selection fallback work.
