@@ -28,12 +28,12 @@ Do not run window-opening unit tests concurrently with native journeys: they can
 
 ## Required checks
 
-- [x] Full Swift unit suite passes after review and CI-selector fixes (72 tests).
+- [x] Full Swift unit suite passes after layout review fixes (79 tests).
 - [x] Both installer regression scripts pass using their temporary fixtures.
 - [x] Python GitHub fixture tests pass.
-- [x] Full native suite passes after CodeRabbit fixes: 17 journeys, zero failures.
+- [x] Full native suite passes: 19 journeys, zero failures; the three affected journeys pass again after layout review fixes.
 - [x] Icon, badge, search, pagination, quick actions, snooze and partial access work with fixtures.
-- [x] Settings opens exactly once via gear, reopen and Command-comma; closing it keeps the icon alive.
+- [x] Settings opens exactly once via More → Settings, reopen and Command-comma; closing it keeps the icon alive.
 - [x] Add two accounts, switch and relaunch; isolated PRs/preferences verified natively, saved-view storage isolation covered by unit tests.
 - [x] Replace a token, test without saving and confirm removal natively; identity-mismatch rejection covered by unit tests.
 - [x] Saved-view creation, cancel, update, reorder, disable/delete and selection fallback work.
