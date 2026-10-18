@@ -8,7 +8,7 @@ struct DefaultPRTabs: View {
                 let selected = viewModel.selectedSavedViewID == nil && viewModel.selectedTab == tab
                 Button { viewModel.selectDefaultTab(tab) } label: {
                     HStack(spacing: 5) {
-                        Text(tab.rawValue).lineLimit(1).minimumScaleFactor(0.8)
+                        Text(tab == .reviewRequested ? "Reviews" : tab.rawValue).lineLimit(1).minimumScaleFactor(0.8)
                         Text("\(viewModel.actionableCount(for: tab))").font(.caption).monospacedDigit()
                     }
                     .padding(.horizontal, 8).padding(.vertical, 6).frame(maxWidth: .infinity)
@@ -16,6 +16,7 @@ struct DefaultPRTabs: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(tab.rawValue)
+                .accessibilityValue("\(viewModel.actionableCount(for: tab)) actionable loaded PRs")
                 .accessibilityAddTraits(selected ? [.isSelected] : [])
             }
         }

@@ -140,6 +140,16 @@ Existing single-account data is copied only after GitHub verifies the legacy tok
 
 ## Use PR Pulse
 
+### Layout options (unreleased source builds)
+
+The source supports two popover layouts. **Tabbed (B)** is the default: PR tabs and saved-view shortcuts remain visible. **Compact (A)** puts default lists and saved views in one view picker, leaving more room for PRs.
+
+Use **More (…) → Layout → Tabbed / Compact**, or open **More → Settings → Appearance** for layout previews. The choice is saved automatically across restarts and applies to every account. Changing layout keeps the active account, selected view, search, filters and local triage unchanged. Search, tab and refresh keyboard shortcuts work in both layouts.
+
+In these source builds, **More** also contains Settings and Quit; **Filters** contains Hide reviewed, Hide snoozed and Hide N/A. Click a PR title to open GitHub, use **Snooze** directly, or use its **More PR actions** menu for **Mark to do**, **Mark not relevant** and **Clear override**. **Activity** opens the digest. The footer counts visible loaded PRs; the menu-bar badge still covers all loaded lists.
+
+These layout changes are not in v0.2.0. The screenshots and downloaded-release instructions on this page still describe v0.2.0.
+
 ### Find the PRs that matter
 
 - **My PRs:** open PRs authored by you.

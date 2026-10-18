@@ -230,6 +230,20 @@ struct QuietHours: Codable, Equatable {
     var endHour: Int
 }
 
+enum PopoverLayout: String, CaseIterable, Codable, Identifiable {
+    case tabbed
+    case compact
+
+    var id: Self { self }
+    var title: String { self == .tabbed ? "Tabbed" : "Compact" }
+    var summary: String {
+        self == .tabbed ? "Default tabs and saved-view shortcuts stay visible." : "One view picker leaves more room for pull requests."
+    }
+    init(from decoder: Decoder) throws {
+        self = Self(rawValue: try decoder.singleValueContainer().decode(String.self)) ?? .tabbed
+    }
+}
+
 struct AppSettings: Codable, Equatable {
     var token: String // Deprecated: not persisted; token is stored in Keychain
     var refreshInterval: TimeInterval
@@ -240,6 +254,7 @@ struct AppSettings: Codable, Equatable {
     var snoozeDefaultHour: Int
     var digestCadence: DigestCadence
     var watchedRepositories: [RepositorySubscription]
+    var popoverLayout: PopoverLayout = .tabbed
 
     static var `default`: AppSettings {
         AppSettings(
@@ -253,5 +268,25 @@ struct AppSettings: Codable, Equatable {
             digestCadence: .weekly,
             watchedRepositories: []
         )
+    }
+}
+
+extension AppSettings {
+    private enum CodingKeys: String, CodingKey {
+        case token, refreshInterval, refreshOnLaunch, notifyNeedsReview, notifyNewReviewRequests
+        case quietHours, snoozeDefaultHour, digestCadence, watchedRepositories, popoverLayout
+    }
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        token = try values.decode(String.self, forKey: .token)
+        refreshInterval = try values.decode(TimeInterval.self, forKey: .refreshInterval)
+        refreshOnLaunch = try values.decode(Bool.self, forKey: .refreshOnLaunch)
+        notifyNeedsReview = try values.decode(Bool.self, forKey: .notifyNeedsReview)
+        notifyNewReviewRequests = try values.decode(Bool.self, forKey: .notifyNewReviewRequests)
+        quietHours = try values.decodeIfPresent(QuietHours.self, forKey: .quietHours)
+        snoozeDefaultHour = try values.decode(Int.self, forKey: .snoozeDefaultHour)
+        digestCadence = try values.decode(DigestCadence.self, forKey: .digestCadence)
+        watchedRepositories = try values.decode([RepositorySubscription].self, forKey: .watchedRepositories)
+        popoverLayout = try values.decodeIfPresent(PopoverLayout.self, forKey: .popoverLayout) ?? .tabbed
     }
 }

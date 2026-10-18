@@ -11,10 +11,7 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            if let accounts { AccountSelectorView(accounts: accounts, showSettings: hostActions.showSettings) }
             header
-            if viewModel.savedViews.contains(where: \.enabled) { PRViewTabStrip(viewModel: viewModel) }
-            filters
             if let message = viewModel.errorMessage {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .font(.caption).foregroundStyle(.orange).textSelection(.enabled)
@@ -93,46 +90,43 @@ struct ContentView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                if let accounts {
+                    AccountSelectorView(accounts: accounts, showSettings: hostActions.showSettings)
+                        .disabled(viewModel.isChangingLayout)
+                } else { Text("PR Pulse").font(.headline); Spacer() }
+                Button { viewModel.refreshAll() } label: { Image(systemName: "arrow.clockwise") }
+                    .help("Refresh now").accessibilityLabel("Refresh")
+                    .accessibilityIdentifier("prpulse.refresh").keyboardShortcut("r")
+                    .disabled(viewModel.isRefreshing)
+                PopoverMoreMenu(viewModel: viewModel, actions: hostActions)
+            }
+            if viewModel.settings.popoverLayout == .tabbed {
                 DefaultPRTabs(viewModel: viewModel)
-                .onMoveCommand { direction in
-                    if direction == .left || direction == .right { viewModel.moveViewSelection(forward: direction == .right) }
+                    .onMoveCommand { direction in
+                        if direction == .left || direction == .right { viewModel.moveViewSelection(forward: direction == .right) }
+                    }
+                if viewModel.savedViews.contains(where: \.enabled) {
+                    HStack(spacing: 6) {
+                        Text("Saved views").font(.caption).foregroundStyle(.secondary)
+                        PRViewTabStrip(viewModel: viewModel)
+                    }
+                }
+            } else {
+                HStack {
+                    CompactPRViewPicker(viewModel: viewModel)
+                    Spacer(minLength: 8)
+                    actionableToggle
                 }
             }
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 searchField
-                Button {
-                    viewModel.refreshAll()
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .help("Refresh now")
-                .accessibilityIdentifier("prpulse.refresh")
-                .keyboardShortcut("r")
-
-                Button {
-                    hostActions.showSettings()
-                } label: {
-                    Image(systemName: "gearshape")
-                }
-                .help("Settings")
-                .accessibilityIdentifier("prpulse.settings")
-                .keyboardShortcut(",", modifiers: [.command])
-
-                Button {
-                    hostActions.quit()
-                } label: {
-                    Image(systemName: "power")
-                }
-                .help("Quit PR Pulse")
-                .accessibilityIdentifier("prpulse.quit")
-                .keyboardShortcut("q", modifiers: [.command])
+                PRFilterMenu(viewModel: viewModel)
+                if viewModel.settings.popoverLayout == .tabbed { actionableToggle }
             }
-
         }
     }
-
     private var searchField: some View {
             TextField("Search title or repo", text: Binding(
                 get: { viewModel.filterState.searchText },
@@ -151,35 +145,18 @@ struct ContentView: View {
             }
     }
 
-    private var filters: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack {
-                FilterToggle(title: "Actionable", systemImage: "bolt.badge.a", isOn: Binding(
-                    get: { viewModel.filterState.actionableOnly },
-                    set: { viewModel.filterState.actionableOnly = $0 }
-                ))
-
-                FilterToggle(title: "Hide reviewed", systemImage: "eye.slash", isOn: Binding(
-                    get: { viewModel.filterState.hideReviewed },
-                    set: { viewModel.filterState.hideReviewed = $0 }
-                ))
-
-                FilterToggle(title: "Hide snoozed", systemImage: "zzz", isOn: Binding(
-                    get: { viewModel.filterState.hideSnoozed },
-                    set: { viewModel.filterState.hideSnoozed = $0 }
-                ))
-
-                FilterToggle(title: "Hide N/A", systemImage: "nosign", isOn: Binding(
-                    get: { viewModel.filterState.hideNotApplicable },
-                    set: { viewModel.filterState.hideNotApplicable = $0 }
-                ))
-            }
-        }
+    private var actionableToggle: some View {
+        Toggle("Actionable", isOn: $viewModel.filterState.actionableOnly)
+            .toggleStyle(.switch)
+            .controlSize(.mini)
+            .font(.caption)
+            .fixedSize()
+            .accessibilityIdentifier("prpulse.actionable")
     }
 
     private var listContent: some View {
         ScrollView {
-            LazyVStack(spacing: 10) {
+            LazyVStack(spacing: 0) {
                 ForEach(viewModel.currentItems) { presentation in
                     PullRequestRowView(
                         presentation: presentation,
@@ -188,13 +165,14 @@ struct ContentView: View {
                         },
                         showAuthor: viewModel.selectedTab == .reviewRequested
                     )
+                    Divider().padding(.vertical, 10)
                 }
 
                 if viewModel.hasMoreCurrentItems {
                     Button("Load more") {
                         viewModel.loadMoreCurrentTab()
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.bordered)
                     .frame(maxWidth: .infinity)
                 } else if viewModel.currentItems.isEmpty {
                     if let accounts, accounts.profiles.isEmpty, !accounts.isWorking, accounts.errorMessage == nil {
@@ -212,19 +190,16 @@ struct ContentView: View {
 
     private var footer: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Digest")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Text("\(viewModel.digestSnapshot.openedCount) opened • \(viewModel.digestSnapshot.reviewedCount) reviewed")
-                    .font(.footnote)
-            }
+            Text("\(viewModel.currentItems.count) shown · \(viewModel.currentItems.filter { $0.status.isActionable }.count) actionable")
+                .font(.caption).foregroundStyle(.secondary)
+                .help("Counts reflect the visible, loaded PRs. The menu-bar badge covers all loaded lists.")
             Spacer()
             connectionIndicator
-            Button("View digest") {
+            Button("Activity") {
                 showDigest = true
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.plain)
+            .foregroundStyle(Color.accentColor)
         }
     }
 
@@ -237,10 +212,12 @@ struct ContentView: View {
                     Circle()
                         .fill(Color.green)
                         .frame(width: 8, height: 8)
-                    Text(viewModel.connectionPresentation.statusText)
+                    Text(viewModel.lastRefreshAt.map { "Updated \($0.formatted(.relative(presentation: .named)))" } ?? "Connected")
                         .font(.footnote)
                         .foregroundColor(.secondary)
                 }
+                .help(viewModel.connectionPresentation.statusText)
+                .accessibilityLabel(viewModel.connectionPresentation.statusText)
             } else if viewModel.connectionPresentation == .checking {
                 HStack(spacing: 6) {
                     ProgressView()
@@ -269,24 +246,6 @@ struct ContentView: View {
     }
 }
 
-private struct FilterToggle: View {
-    var title: String
-    var systemImage: String
-    @Binding var isOn: Bool
-
-    var body: some View {
-        Button {
-            isOn.toggle()
-        } label: {
-            Label(title, systemImage: systemImage)
-                .padding(.vertical, 6)
-                .padding(.horizontal, 10)
-                .background(isOn ? Color.accentColor.opacity(0.15) : Color.gray.opacity(0.15))
-                .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-    }
-}
 
 private struct EmptyStateView: View {
     var body: some View {

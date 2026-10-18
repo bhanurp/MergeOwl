@@ -66,7 +66,8 @@ final class PRPulseUITests: XCTestCase {
     }
 
     private func settings() {
-        app.buttons["prpulse.settings"].click()
+        app.descendants(matching: .any)["prpulse.more"].firstMatch.click()
+        app.menuItems["prpulse.settings"].click()
         XCTAssertTrue(app.windows["PR Pulse Settings"].waitForExistence(timeout: 5))
         app.activate()
         let sceneWindow = app.windows["com_apple_SwiftUI_Settings_window"]
@@ -80,6 +81,22 @@ final class PRPulseUITests: XCTestCase {
 
     private func pane(_ name: String) {
         app.windows["PR Pulse Settings"].staticTexts[name].firstMatch.click()
+    }
+
+    private func toggleFilter(_ name: String) {
+        app.descendants(matching: .any)["prpulse.filters"].firstMatch.click()
+        app.menuItems[name].click()
+    }
+
+    private func prTitle(_ title: String) -> XCUIElement { app.buttons[title] }
+
+    private func attachPopover(_ name: String) {
+        let popover = app.descendants(matching: .popover).firstMatch
+        XCTAssertTrue(popover.waitForExistence(timeout: 5))
+        let attachment = XCTAttachment(screenshot: popover.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     private func preference(_ name: String) -> XCUIElement {
@@ -109,10 +126,99 @@ final class PRPulseUITests: XCTestCase {
         app.typeKey("v", modifierFlags: .command)
     }
 
+    private func chooseLayout(_ title: String) {
+        app.descendants(matching: .any)["prpulse.more"].firstMatch.click()
+        app.menuItems["Layout"].click()
+        app.menuItems[title].click()
+    }
+
+    func testLayoutsPreserveSavedViewSearchFiltersAndRestoreAfterRelaunch() {
+        launch()
+        XCTAssertTrue(app.buttons["My PRs"].exists, "Tabbed must be the default")
+        settings()
+        pane("Saved Views")
+        let window = app.windows["PR Pulse Settings"]
+        window.buttons["Create saved view"].click()
+        XCTAssertTrue(app.textFields["prpulse.view-name"].waitForExistence(timeout: 5))
+        enter("API work", in: app.textFields["prpulse.view-name"])
+        enter("API", in: app.textFields["prpulse.view-text"])
+        app.buttons["Save view"].click()
+        XCTAssertTrue(window.buttons["Edit API work"].waitForExistence(timeout: 5))
+        window.buttons[XCUIIdentifierCloseWindow].click()
+        openDashboard()
+        app.buttons["prpulse.saved-view.API work"].click()
+        let search = app.textFields["Search title or repo"]
+        enter("API", in: search)
+        app.descendants(matching: .any)["prpulse.filters"].firstMatch.click()
+        app.menuItems["Hide reviewed"].click()
+        attachPopover("Tabbed dark")
+        chooseLayout("Compact")
+        let picker = app.descendants(matching: .any)["prpulse.view-picker"].firstMatch
+        XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["My PRs"].exists)
+        XCTAssertEqual(search.value as? String, "API")
+        XCTAssertTrue(prTitle("Review API change").exists)
+        XCTAssertTrue(app.descendants(matching: .any)["prpulse.filters"].firstMatch.label.contains("1"))
+        attachPopover("Compact dark")
+        picker.click()
+        XCTAssertTrue(app.menuItems["My PRs"].exists)
+        XCTAssertTrue(app.menuItems["API work"].exists)
+        app.menuItems["API work"].click()
+        app.descendants(matching: .any)["prpulse.pr-more.PR_3"].firstMatch.click()
+        app.menuItems["Mark to do"].click()
+        XCTAssertTrue(app.staticTexts["To do"].waitForExistence(timeout: 5))
+        chooseLayout("Tabbed")
+        XCTAssertTrue(app.buttons["My PRs"].waitForExistence(timeout: 5))
+        XCTAssertEqual(search.value as? String, "API")
+        XCTAssertTrue(app.descendants(matching: .any)["prpulse.filters"].firstMatch.label.contains("1"))
+        XCTAssertTrue(app.staticTexts["To do"].exists)
+        chooseLayout("Compact")
+        XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        app.terminate()
+        app.launchEnvironment.removeValue(forKey: "PRPULSE_E2E_INITIAL_TOKEN")
+        app.launch()
+        openDashboard()
+        XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["My PRs"].exists)
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(prTitle("Improve documentation").waitForExistence(timeout: 10))
+    }
+
+    func testAppearanceLayoutIsSharedAcrossAccountsAndCanReturnToTabbed() {
+        app.launchEnvironment["PRPULSE_E2E_APPEARANCE"] = "light"
+        launch()
+        settings()
+        let window = app.windows["PR Pulse Settings"]
+        XCTAssertTrue(window.buttons["Manage octocat"].waitForExistence(timeout: 10))
+        window.buttons["Add account"].click()
+        enter("e2e-hubot", in: window.descendants(matching: .any)["prpulse.token-input"].firstMatch)
+        window.buttons["Connect GitHub"].click()
+        XCTAssertTrue(window.buttons["Manage hubot"].waitForExistence(timeout: 10))
+        pane("Appearance")
+        window.buttons["prpulse.appearance.compact"].click()
+        XCTAssertTrue(window.staticTexts["Current layout: Compact"].waitForExistence(timeout: 5))
+        window.buttons[XCUIIdentifierCloseWindow].click()
+        openDashboard()
+        app.descendants(matching: .any)["prpulse.account-selector"].firstMatch.click()
+        app.menuItems["hubot"].click()
+        XCTAssertTrue(prTitle("Hubot private work").waitForExistence(timeout: 10))
+        XCTAssertTrue(app.descendants(matching: .any)["prpulse.view-picker"].firstMatch.exists)
+        attachPopover("Compact light")
+        settings()
+        pane("Appearance")
+        window.buttons["prpulse.appearance.tabbed"].click()
+        XCTAssertTrue(window.staticTexts["Current layout: Tabbed"].waitForExistence(timeout: 5))
+        window.buttons[XCUIIdentifierCloseWindow].click()
+        openDashboard()
+        XCTAssertTrue(app.buttons["My PRs"].exists)
+        attachPopover("Tabbed light")
+    }
+
     func testSettingsWindowIsSingleton() throws {
         launch()
         XCTAssertFalse(app.windows["com_apple_SwiftUI_Settings_window"].exists)
-        app.buttons["prpulse.settings"].click()
+        app.descendants(matching: .any)["prpulse.more"].firstMatch.click()
+        app.menuItems["prpulse.settings"].click()
         let window = app.windows["PR Pulse Settings"]
         XCTAssertTrue(window.waitForExistence(timeout: 5))
         for _ in 0..<3 {
@@ -134,12 +240,12 @@ final class PRPulseUITests: XCTestCase {
         window.buttons[XCUIIdentifierCloseWindow].click()
         XCTAssertNotEqual(app.state, .notRunning)
         openDashboard()
-        XCTAssertTrue(app.buttons["prpulse.settings"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["prpulse.more"].firstMatch.exists)
     }
 
     func testSavedViewCreationAndCancel() {
         launch()
-        XCTAssertTrue(app.staticTexts["Review API change"].waitForExistence(timeout: 10))
+        XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
         settings()
         pane("Saved Views")
         let window = app.windows["PR Pulse Settings"]
@@ -159,8 +265,8 @@ final class PRPulseUITests: XCTestCase {
         let view = app.buttons["prpulse.saved-view.API work"]
         XCTAssertTrue(view.waitForExistence(timeout: 5))
         view.click()
-        XCTAssertTrue(app.staticTexts["Review API change"].waitForExistence(timeout: 10))
-        XCTAssertFalse(app.staticTexts["Already reviewed"].exists)
+        XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
+        XCTAssertFalse(prTitle("Already reviewed").exists)
         settings()
         window.buttons["Edit API work"].click()
         enter("API triage", in: app.textFields["prpulse.view-name"])
@@ -177,7 +283,7 @@ final class PRPulseUITests: XCTestCase {
         window.buttons[XCUIIdentifierCloseWindow].click()
         openDashboard()
         XCTAssertFalse(app.buttons["prpulse.saved-view.API triage"].exists)
-        XCTAssertTrue(app.staticTexts["Already reviewed"].waitForExistence(timeout: 10))
+        XCTAssertTrue(prTitle("Already reviewed").waitForExistence(timeout: 10))
         settings()
         window.buttons["Delete API triage"].click()
         let confirm = app.sheets.buttons["Delete view"].firstMatch
@@ -195,7 +301,7 @@ final class PRPulseUITests: XCTestCase {
     func testLightAppearanceLongViewName() {
         app.launchEnvironment["PRPULSE_E2E_APPEARANCE"] = "light"
         launch()
-        XCTAssertTrue(app.staticTexts["Review API change"].waitForExistence(timeout: 10))
+        XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
         settings()
         pane("Saved Views")
         app.windows["PR Pulse Settings"].buttons["Create saved view"].click()
@@ -209,23 +315,23 @@ final class PRPulseUITests: XCTestCase {
     func testPopoverControlsFitAndKeyboardShortcutsWork() {
         launch()
         let search = app.textFields["Search title or repo"]
-        XCTAssertLessThanOrEqual(app.buttons["prpulse.quit"].frame.maxX, app.buttons["View digest"].frame.maxX + 1)
+        XCTAssertLessThanOrEqual(app.descendants(matching: .any)["prpulse.more"].firstMatch.frame.maxX, app.buttons["Activity"].frame.maxX + 1)
         app.typeKey("1", modifierFlags: [.command])
-        XCTAssertTrue(app.staticTexts["Improve documentation"].waitForExistence(timeout: 10))
+        XCTAssertTrue(prTitle("Improve documentation").waitForExistence(timeout: 10))
         app.typeKey("f", modifierFlags: [.command])
         enter("token", in: search, clickToFocus: false)
         XCTAssertEqual(search.value as? String, "token")
-        XCTAssertTrue(app.staticTexts["Fix token handling"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts["Improve documentation"].exists)
+        XCTAssertTrue(prTitle("Fix token handling").waitForExistence(timeout: 5))
+        XCTAssertFalse(prTitle("Improve documentation").exists)
         app.typeKey("a", modifierFlags: [.command])
         app.typeKey(.delete, modifierFlags: [])
         app.typeKey("2", modifierFlags: [.command])
-        XCTAssertTrue(app.staticTexts["Review API change"].waitForExistence(timeout: 10))
+        XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
     }
 
     func testMultipleAccountsSwitchAndRestoreSelection() {
         launch()
-        XCTAssertTrue(app.staticTexts["Review API change"].waitForExistence(timeout: 10))
+        XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
         settings()
         let window = app.windows["PR Pulse Settings"]
         XCTAssertTrue(window.buttons["Manage octocat"].waitForExistence(timeout: 10))
@@ -237,17 +343,17 @@ final class PRPulseUITests: XCTestCase {
         openDashboard()
         app.descendants(matching: .any)["prpulse.account-selector"].firstMatch.click()
         app.menuItems["hubot"].click()
-        XCTAssertTrue(app.staticTexts["Hubot private work"].waitForExistence(timeout: 10), app.debugDescription)
-        XCTAssertFalse(app.staticTexts["Review API change"].exists)
+        XCTAssertTrue(prTitle("Hubot private work").waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertFalse(prTitle("Review API change").exists)
         app.terminate()
         app.launchEnvironment.removeValue(forKey: "PRPULSE_E2E_INITIAL_TOKEN")
         app.launch()
         openDashboard()
-        XCTAssertTrue(app.staticTexts["Hubot private work"].waitForExistence(timeout: 10))
+        XCTAssertTrue(prTitle("Hubot private work").waitForExistence(timeout: 10))
         app.descendants(matching: .any)["prpulse.account-selector"].firstMatch.click()
         app.menuItems["octocat"].click()
-        XCTAssertTrue(app.staticTexts["Review API change"].waitForExistence(timeout: 10))
-        XCTAssertFalse(app.staticTexts["Hubot private work"].exists)
+        XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
+        XCTAssertFalse(prTitle("Hubot private work").exists)
     }
 
     func testAddAccountRequestLeavesRetainedSettingsPane() {
@@ -275,7 +381,7 @@ final class PRPulseUITests: XCTestCase {
 
     func testRemoveLastAccountDoesNotResurrectLegacyCredential() {
         launch()
-        XCTAssertTrue(app.staticTexts["Review API change"].waitForExistence(timeout: 10))
+        XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
         settings()
         let window = app.windows["PR Pulse Settings"]
         XCTAssertTrue(window.buttons["Remove account"].waitForExistence(timeout: 5))
@@ -290,12 +396,12 @@ final class PRPulseUITests: XCTestCase {
         app.launch()
         openDashboard()
         XCTAssertTrue(app.buttons["Open account settings"].waitForExistence(timeout: 10))
-        XCTAssertFalse(app.staticTexts["Review API change"].exists)
+        XCTAssertFalse(prTitle("Review API change").exists)
     }
 
     func testMenuBarPopoverBadgeSettingsAndQuit() {
         launch()
-        XCTAssertTrue(app.staticTexts["Connected as @octocat"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.descendants(matching: .any)["Connected as @octocat"].firstMatch.waitForExistence(timeout: 10))
         let item = app.descendants(matching: .statusItem)["prpulse.status-item"]
         XCTAssertTrue(item.label.contains("actionable"))
         item.click()
@@ -305,55 +411,59 @@ final class PRPulseUITests: XCTestCase {
         app.windows["PR Pulse Settings"].buttons[XCUIIdentifierCloseWindow].click()
         XCTAssertNotEqual(app.state, .notRunning)
         openDashboard()
-        app.buttons["prpulse.quit"].click()
+        app.descendants(matching: .any)["prpulse.more"].firstMatch.click()
+        app.menuItems["prpulse.quit"].click()
         XCTAssertTrue(app.wait(for: .notRunning, timeout: 5))
     }
 
     func testTabsSearchRefreshAndPagination() {
         launch()
-        XCTAssertTrue(app.staticTexts["Review API change"].waitForExistence(timeout: 10))
+        XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
         selectTab("My PRs")
-        XCTAssertTrue(app.staticTexts["Improve documentation"].waitForExistence(timeout: 10))
+        XCTAssertTrue(prTitle("Improve documentation").waitForExistence(timeout: 10))
         let search = app.textFields["Search title or repo"]
         enter("token", in: search)
-        XCTAssertTrue(app.staticTexts["Fix token handling"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts["Improve documentation"].exists)
+        XCTAssertTrue(prTitle("Fix token handling").waitForExistence(timeout: 5))
+        XCTAssertFalse(prTitle("Improve documentation").exists)
         search.typeKey("a", modifierFlags: .command)
         search.typeKey(.delete, modifierFlags: [])
         app.buttons["Load more"].click()
-        XCTAssertTrue(app.staticTexts["Next page PR"].waitForExistence(timeout: 10))
+        XCTAssertTrue(prTitle("Next page PR").waitForExistence(timeout: 10))
         app.buttons["prpulse.refresh"].click()
-        XCTAssertTrue(app.staticTexts["Improve documentation"].waitForExistence(timeout: 10))
+        XCTAssertTrue(prTitle("Improve documentation").waitForExistence(timeout: 10))
     }
 
     func testReviewedFilterActionableFilterAndQuickActions() {
         launch()
-        XCTAssertTrue(app.staticTexts["Already reviewed"].waitForExistence(timeout: 10))
-        app.buttons["Hide reviewed"].click()
-        XCTAssertFalse(app.staticTexts["Already reviewed"].exists)
-        app.buttons["Hide reviewed"].click()
-        app.buttons["Actionable"].click()
-        XCTAssertFalse(app.staticTexts["Already reviewed"].exists)
-        app.buttons["Actionable"].click()
-        app.buttons["N/A"].firstMatch.click()
-        app.buttons["Hide N/A"].click()
-        XCTAssertFalse(app.staticTexts["Review API change"].exists)
+        XCTAssertTrue(prTitle("Already reviewed").waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Reviewed"].exists)
+        XCTAssertTrue(app.staticTexts["Pending"].exists, "Review status must not hide merge readiness")
+        toggleFilter("Hide reviewed")
+        XCTAssertFalse(prTitle("Already reviewed").exists)
+        toggleFilter("Hide reviewed")
+        app.descendants(matching: .any)["prpulse.actionable"].firstMatch.click()
+        XCTAssertFalse(prTitle("Already reviewed").exists)
+        app.descendants(matching: .any)["prpulse.actionable"].firstMatch.click()
+        app.descendants(matching: .any)["prpulse.pr-more.PR_3"].firstMatch.click()
+        app.menuItems["Mark not relevant"].click()
+        toggleFilter("Hide N/A")
+        XCTAssertFalse(prTitle("Review API change").exists)
     }
 
     func testSnoozeAndOverridePersistence() {
         launch()
-        XCTAssertTrue(app.staticTexts["Review API change"].waitForExistence(timeout: 10))
+        XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
         app.descendants(matching: .any)["Snooze"].firstMatch.click()
         app.menuItems["1 hour"].click()
-        app.buttons["Hide snoozed"].click()
-        XCTAssertFalse(app.staticTexts["Review API change"].exists)
+        toggleFilter("Hide snoozed")
+        XCTAssertFalse(prTitle("Review API change").exists)
         app.terminate()
         app.launchEnvironment.removeValue(forKey: "PRPULSE_E2E_INITIAL_TOKEN")
         app.launch()
         openDashboard()
-        XCTAssertTrue(app.staticTexts["Already reviewed"].waitForExistence(timeout: 10))
-        app.buttons["Hide snoozed"].click()
-        XCTAssertFalse(app.staticTexts["Review API change"].exists)
+        XCTAssertTrue(prTitle("Already reviewed").waitForExistence(timeout: 10))
+        toggleFilter("Hide snoozed")
+        XCTAssertFalse(prTitle("Review API change").exists)
     }
 
     func testTokenUpdateAndKeychainPersistence() {
@@ -368,7 +478,7 @@ final class PRPulseUITests: XCTestCase {
         app.launchEnvironment.removeValue(forKey: "PRPULSE_E2E_INITIAL_TOKEN")
         app.launch()
         openDashboard()
-        XCTAssertTrue(app.staticTexts["Connected as @octocat"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.descendants(matching: .any)["Connected as @octocat"].firstMatch.waitForExistence(timeout: 10))
         settings()
         XCTAssertEqual(app.windows["PR Pulse Settings"].descendants(matching: .any)["prpulse.token-input"].firstMatch.value as? String, "")
         app.windows["PR Pulse Settings"].buttons["Test connection"].firstMatch.click()
@@ -385,8 +495,8 @@ final class PRPulseUITests: XCTestCase {
 
     func testPartialAccessKeepsAccountConnectedAndShowsPRs() {
         launch(token: "e2e-partial")
-        XCTAssertTrue(app.staticTexts["Review API change"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Connected as @octocat"].exists)
+        XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
+        XCTAssertTrue(app.descendants(matching: .any)["Connected as @octocat"].firstMatch.exists)
         XCTAssertTrue(app.staticTexts["Some PR data is unavailable. Showing accessible PRs."].exists)
         XCTAssertFalse(app.buttons["Connection issue"].exists)
         settings()
@@ -396,8 +506,8 @@ final class PRPulseUITests: XCTestCase {
     func testEmptyStateAndDigest() {
         launch(token: "e2e-empty")
         XCTAssertTrue(app.staticTexts["No pull requests"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Connected as @octocat"].exists)
-        app.buttons["View digest"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["Connected as @octocat"].firstMatch.exists)
+        app.buttons["Activity"].click()
         XCTAssertTrue(app.buttons["Close"].waitForExistence(timeout: 5))
         app.buttons["Close"].click()
         XCTAssertTrue(app.textFields["Search title or repo"].exists)
@@ -435,6 +545,6 @@ final class PRPulseUITests: XCTestCase {
         openDashboard()
         selectTab("Watched")
         app.buttons["prpulse.refresh"].click()
-        XCTAssertTrue(app.staticTexts["Watched repository update"].waitForExistence(timeout: 10))
+        XCTAssertTrue(prTitle("Watched repository update").waitForExistence(timeout: 10))
     }
 }

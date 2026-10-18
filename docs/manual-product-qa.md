@@ -2,6 +2,24 @@
 
 This is a release gate, not a claim that every check below has passed.
 
+## Unreleased layout verification
+
+- Tabbed (B) is the default for fresh installs and preferences without a layout key.
+- Compact (A) and Tabbed share account selection, saved-view selection, search, filters, triage and keyboard shortcuts.
+- More → Layout and Settings → Appearance must both save the same app-wide preference, including after account switching and app restart.
+- A failed preference write must retain the previous layout and report an error.
+- Verify More → Settings after switching accounts, not only on first launch.
+- Native tests use synthetic accounts and isolated credentials; never replace the installed app to run this checklist.
+
+### Local evidence (2026-10-18)
+
+- The expanded native suite passed all 19 journeys. After review fixes, the layout/relaunch, Appearance/account-switch and reviewed-PR/readiness journeys passed again (3 journeys, zero failures).
+- The full Swift unit suite passed with 79 tests and zero failures after the final review fixes.
+- Persistence regressions cover old preferences, unknown layouts, account/restart persistence, failed writes, corrupt repository isolation and stale settings snapshots.
+- Actual popover captures were inspected in dark and forced Aqua appearance. The test-only override explicitly sets the popover appearance; it does not change production appearance behavior.
+- Apple Silicon and Intel release builds and both temporary-fixture installer regressions passed. The installed production app was not replaced.
+- A native rerun with an overlapping fixture-server port failed; it is not passing evidence. The subsequent isolated rerun is the relevant result.
+
 ## Isolation
 
 Use `bash scripts/test_e2e.sh` on a logged-in macOS desktop. It builds `dev.prpulse.e2e` with synthetic GitHub responses, a fresh data directory and Keychain service for each journey. Do not install over the user's production app, use real credentials, or change production Keychain entries.
