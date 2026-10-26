@@ -2,7 +2,7 @@
 
 All notable changes to PR Pulse are documented in this file.
 
-## [Unreleased]
+## [0.2.1] - 2026-10-26
 
 ### Added
 
