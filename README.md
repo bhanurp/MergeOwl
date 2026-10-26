@@ -16,6 +16,8 @@ PR Pulse brings together PRs you authored, reviews requested from you, and repos
 
 ## A quick look
 
+The captures below show v0.2.0. v0.2.1 keeps these account and saved-view workflows, with refreshed layouts and controls described under [Layout options](#layout-options-v021-and-newer).
+
 <img src="docs/screenshots/popover-current.png" width="420" alt="Actual PR Pulse popover with octocat selected, loaded PR counts, API work saved view, review-request cards and connected account status">
 
 Click the flower icon to open this popover. Select an account, choose a PR list or saved view, and act on a PR without opening Settings.
@@ -107,12 +109,12 @@ For a classic token, use [GitHub’s classic token settings](https://github.com/
 
 ### Save and verify the connection
 
-1. Click the flower menu-bar icon, then the **gear** button to open Settings.
+1. Click the flower menu-bar icon, then **More (…) → Settings**. On v0.2.0, use the **gear** button instead.
 2. Select **Account** in the sidebar.
 3. Paste the token into **Personal access token**.
 4. Click **Connect GitHub** (or **Update token** if already configured).
 5. Wait for **Connected as `<your username>`**. Return to the popover and click the **refresh** button.
-6. Choose **My PRs** or **Review Requested**. An empty list can be correct if you have no matching open PRs.
+6. Choose **My PRs** or **Reviews** (called **Review Requested** in the Compact picker and v0.2.0). An empty list can be correct if you have no matching open PRs.
 
 **Test connection** checks a token but does not save a newly entered token. If the status says **Token verified — save to connect**, click **Connect GitHub** or **Update token** to persist it.
 
@@ -140,23 +142,23 @@ Existing single-account data is copied only after GitHub verifies the legacy tok
 
 ## Use PR Pulse
 
-### Layout options (unreleased source builds)
+### Layout options (v0.2.1 and newer)
 
-The source supports two popover layouts. **Tabbed (B)** is the default: PR tabs and saved-view shortcuts remain visible. **Compact (A)** puts default lists and saved views in one view picker, leaving more room for PRs.
+PR Pulse supports two popover layouts. **Tabbed (B)** is the default: PR tabs and saved-view shortcuts remain visible. **Compact (A)** puts default lists and saved views in one view picker, leaving more room for PRs.
 
 Use **More (…) → Layout → Tabbed / Compact**, or open **More → Settings → Appearance** for layout previews. The choice is saved automatically across restarts and applies to every account. Changing layout keeps the active account, selected view, search, filters and local triage unchanged. Search, tab and refresh keyboard shortcuts work in both layouts.
 
-In these source builds, **More** also contains Settings and Quit; **Filters** contains Hide reviewed, Hide snoozed and Hide N/A. Click a PR title to open GitHub, use **Snooze** directly, or use its **More PR actions** menu for **Mark to do**, **Mark not relevant** and **Clear override**. **Activity** opens the digest. The footer counts visible loaded PRs; the menu-bar badge still covers all loaded lists.
+**More** also contains Settings and Quit; **Filters** contains Hide reviewed, Hide snoozed and Hide N/A. Click a PR title to open GitHub, use **Snooze** directly, or use its **More PR actions** menu for **Mark to do**, **Mark not relevant** and **Clear override**. **Activity** opens the digest. The footer counts visible loaded PRs; the menu-bar badge still covers all loaded lists.
 
-These layout changes are not in v0.2.0. The screenshots and downloaded-release instructions on this page still describe v0.2.0.
+These layout changes are not in v0.2.0. The captures above show that earlier interface; the installation and connection instructions describe v0.2.1 and note older controls where needed.
 
 ### Find the PRs that matter
 
 - **My PRs:** open PRs authored by you.
-- **Review Requested:** open PRs requesting your review.
+- **Reviews / Review Requested:** open PRs requesting your review.
 - **Watched:** open PRs in repositories added under **Settings → Repositories**. Enter `owner/repo`, for example `apple/swift`, and click **Add**.
 
-Search by title or repository. Use **Actionable**, **Hide reviewed**, **Hide snoozed**, and the not-applicable filter to narrow the list. If PRs seem missing, clear search and turn off filters first.
+Search by title or repository. Use **Actionable** and **Filters → Hide reviewed / Hide snoozed / Hide N/A** to narrow the list. On v0.2.0 these filters appear directly in the popover. If PRs seem missing, clear search and turn off filters first.
 
 The menu-bar badge counts actionable PRs. Click the icon to see the list; the PR list is not displayed directly in the menu bar.
 
@@ -164,7 +166,7 @@ The menu-bar badge counts actionable PRs. Click the icon to see the list; the PR
 
 Open **Settings → Saved Views → Create saved view**. Give it a unique name (1–40 characters), optionally enter exact `owner/repo` names separated by commas, choose a PR-state rule, and optionally match text in the title or repository. All supplied rules must match. **Cancel** leaves the existing definition unchanged.
 
-Enabled saved views appear beneath the default tabs. Use **All saved views** to reach names outside the scrollable strip. In Settings you can edit, reorder, disable or delete views; the three default tabs remain available. Views belong only to the selected account.
+In Tabbed layout, enabled saved views appear beneath the default tabs. Use **All saved views** to reach names outside the scrollable strip. In Compact layout, select them in the view picker. In Settings you can edit, reorder, disable or delete views; the three default PR lists remain available. Views belong only to the selected account.
 
 Saved views combine the PRs already loaded from My PRs, Review Requested and Watched. Counts cover **loaded data**, not every PR on GitHub. **Refresh** fetches the first page of each source; **Load more** fetches another page from sources that have more results. PRs shared by several lists or views count once in the global badge. Snoozed and N/A PRs do not count as actionable, and search filters do not change the badge.
 
@@ -172,13 +174,13 @@ With the popover active, use **Command-1/2/3** for the default tabs, **Command-F
 
 ### Triage without changing GitHub
 
-Open a PR on GitHub, mark it **TODO** or **N/A**, or use **Snooze** to defer it. Triage and snooze are local app actions; they do not submit a GitHub review or merge a PR.
+Click a PR title to open it on GitHub, use its **More PR actions** menu to **Mark to do** or **Mark not relevant**, or use **Snooze** to defer it. On v0.2.0, use **Open**, **TODO** and **N/A** instead. Triage and snooze are local app actions; they do not submit a GitHub review or merge a PR.
 
 ### Tune refresh and notifications
 
 - **Settings → Refresh:** choose the refresh interval and whether to refresh on launch.
 - **Settings → Notifications:** configure re-review and new-review-request alerts, digest cadence, and default reminder time. Allow notifications in macOS System Settings if prompted.
-- **View digest:** open the activity summary from the popover footer.
+- **Activity:** open the activity summary from the popover footer (**View digest** on v0.2.0).
 - **Settings → Advanced:** refresh immediately, test a notification, or export diagnostics.
 
 ## Troubleshooting
@@ -198,7 +200,7 @@ Still stuck? [Open an issue](https://github.com/bhanurp/prpulse/issues) with you
 
 ## Update or uninstall
 
-To update, quit PR Pulse using the popover’s power button, download the latest DMG, replace the app in Applications, and launch it again. App replacement does not intentionally remove your Keychain token or local preferences.
+To update, quit PR Pulse using **More → Quit PR Pulse** (the power button on v0.2.0), download the latest DMG, replace the app in Applications, and launch it again. App replacement does not intentionally remove your Keychain token or local preferences.
 
 To uninstall, remove each saved account in **Settings → Account** first, then quit and move **PRPulseApp.app** to Trash. On v0.1.5 and earlier, use **Remove token** instead. Revoke tokens on GitHub if no longer needed, including any retained legacy migration token. Removing the app alone does not remove Keychain credentials, migration backups or local preferences.
 
