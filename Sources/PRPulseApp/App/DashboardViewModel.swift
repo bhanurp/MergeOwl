@@ -11,6 +11,7 @@ final class DashboardViewModel: ObservableObject {
         var hasNextPage: Bool = false
         var isLoading: Bool = false
         var warnings: [String] = []
+        var coverageWarnings: [String] = []
     }
 
     enum QuickAction {
@@ -39,6 +40,10 @@ final class DashboardViewModel: ObservableObject {
     @Published private(set) var connectionErrors: [String] = []
     var accessWarnings: [String] {
         Array(Set(listStates.values.flatMap(\.warnings))).sorted()
+    }
+    var listCoverageWarnings: [String] {
+        if selectedSavedViewID != nil { return Array(Set(listStates.values.flatMap(\.coverageWarnings))).sorted() }
+        return listStates[selectedTab]?.coverageWarnings ?? []
     }
     private var publishingSavedLayout = false
     let ciMonitor: CIMonitor
@@ -532,6 +537,8 @@ final class DashboardViewModel: ObservableObject {
             state.cursor = page.cursor
             state.hasNextPage = page.hasNextPage
             state.warnings = reset ? page.warnings : Array(Set(state.warnings + page.warnings)).sorted()
+            let coverage = page.coverageWarning.map { [$0] } ?? []
+            state.coverageWarnings = reset ? coverage : Array(Set(state.coverageWarnings + coverage)).sorted()
             state.isLoading = false
             listStates[tab] = state
             finishLoad(for: tab, requestID: requestID)

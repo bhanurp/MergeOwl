@@ -4,7 +4,7 @@ This is a release gate, not a claim that every check below has passed.
 
 ## CI monitoring local verification (unreleased, 2026-10-27)
 
-- Final Swift suite: 95 tests, zero failures. New coverage includes CI aggregation, current/test-merge revision checks, check pagination, rate-limit backoff, partial responses, successful reruns, distinct workflows, silent baselines, restart deduplication, mute/unmute, discovery across pages, retirement, rescheduling and stale visible rows.
+- Initial CI implementation Swift suite: 95 tests, zero failures. New coverage includes CI aggregation, current/test-merge revision checks, check pagination, rate-limit backoff, partial responses, successful reruns, distinct workflows, silent baselines, restart deduplication, mute/unmute, discovery across pages, retirement, rescheduling and stale visible rows.
 - The full native suite passed all 20 journeys (`results-1793064505.xcresult`). After the final monitoring and actionability refinements, the CI/both-layout/relaunch journey, saved-view/layout journey and review/actionable-filter journey passed again: 3 journeys, zero failures (`results-1793065045.xcresult`).
 - The CI journey verifies failed check details and links, own-failure actionability, enabled monitoring across authored pages, 15-minute interval persistence, per-PR mute persistence, both layouts and the absence of mute actions on another author's PR.
 - Actual Tabbed and Compact popover captures were inspected locally. These are synthetic test data, not new published README media. Earlier README captures retain their release labels.
@@ -14,6 +14,14 @@ This is a release gate, not a claim that every check below has passed.
 - Production installation, credentials and Keychain were not modified. Native fixtures suppress actual OS notification delivery; the monitoring delivery boundary is tested with a recorder. Live GitHub/organization SSO and real OS banner delivery remain manual verification limits.
 
 See the [CI monitoring guide](ci-monitoring.md) for behavior, permissions and coverage limits.
+
+### CodeRabbit and hosted-CI follow-up
+
+- Both initial CodeRabbit findings were verified: GraphQL `EXPECTED` contexts now map to queued and do not suppress other failure observations; search caps have a separate, list-specific coverage channel, excluded from Watched and from token-access warnings.
+- Expanded Swift suite: 97 tests, zero failures. Both architecture release builds passed again. New API regressions cover expected contexts and all three list scopes; a native fixture verifies separate Reviews/My PRs coverage messages without token-access advice.
+- The initial PR native check passed, but the duplicate push run failed at an immediate post-delete assertion. The hosted screenshot already showed the view removed, and the source performs deletion asynchronously. The test now waits for disappearance and still verifies persistence after relaunch. Its local journey passed with the correction.
+- An affected local rerun lost app focus while traversing Layout. The helper now activates the test app before opening that menu and waits for the requested menu item. The CI/both-layout journey and saved-view/layout journey then both passed (`results-1793066979.xcresult`, 2 journeys). The corrected deletion and new coverage journey also passed in `results-1793066824.xcresult`; that run's layout focus failure is not passing evidence.
+- Latest-head hosted checks and CodeRabbit review remain merge gates; these local results do not waive them.
 
 ## Unreleased layout verification
 

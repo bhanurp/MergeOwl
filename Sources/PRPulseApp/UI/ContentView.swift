@@ -25,6 +25,10 @@ struct ContentView: View {
                     .font(.caption)
             }
             listContent
+            ForEach(viewModel.listCoverageWarnings, id: \.self) { warning in
+                Text(warning).font(.caption).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("prpulse.coverage-warning")
+            }
             footer
         }
         .padding()

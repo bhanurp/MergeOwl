@@ -101,6 +101,7 @@ final class CIMonitor {
                 let page = try await client.fetchPullRequests(tab: .mine, cursor: cursor)
                 guard active() else { return }
                 warnings += page.warnings
+                if let coverage = page.coverageWarning { warnings.append(coverage) }
                 for pr in page.items where pr.author.login.caseInsensitiveCompare(viewer) == .orderedSame { open[pr.id] = pr }
                 if !page.hasNextPage { break }
                 guard let next = page.cursor, cursors.insert(next).inserted else {

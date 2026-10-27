@@ -31,6 +31,7 @@ For a PR you authored, open **More PR actions (…) → Mute CI failure alerts**
 
 - The app must be running and the Mac awake. Closing the popover is fine; quitting the app stops monitoring. Polling is not immediate push delivery, and sleep/network delays can extend the interval.
 - Token permissions, organization SSO, GitHub search limits and rate limits can limit coverage. A valid account connection does not guarantee access to checks. The monitor reports incomplete coverage and backs off after rate-limit responses. GitHub search returns at most 1,000 results; the app does not claim exhaustive coverage beyond that limit.
+- My PRs and Reviews report search limits separately from token-access warnings. Only authored-PR discovery affects the failure monitor's coverage status. Watched keeps its documented latest-loaded subset instead of showing a search-cap warning.
 - A fine-grained token may need repository **Checks: read** and **Commit statuses: read** in addition to existing repository/PR access. Follow your organization's policy; never grant write access just to view CI. [GitHub's fine-grained permission reference](https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens) describes endpoint permissions.
 - If macOS notifications are disabled, use **Open macOS notification settings**. The CI display still works without OS alerts.
 - No workflow reruns, approvals or merges are performed. No private CI logs are uploaded or summarized.

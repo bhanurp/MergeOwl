@@ -78,7 +78,7 @@ struct GitHubAPIClient: GitHubClient {
         switch tab {
         case .mine, .reviewRequested:
             let query = Self.searchQuery(for: tab)
-            page = try await fetchSearchPage(query: query, cursor: cursor)
+            page = try await fetchSearchPage(query: query, cursor: cursor, scope: tab)
         case .watched:
             page = try await fetchWatchedPage(cursor: cursor)
         }
@@ -105,10 +105,10 @@ struct GitHubAPIClient: GitHubClient {
             }
             enriched.append(copy)
         }
-        return PullRequestPage(items: enriched, cursor: page.cursor, hasNextPage: page.hasNextPage, warnings: page.warnings)
+        return PullRequestPage(items: enriched, cursor: page.cursor, hasNextPage: page.hasNextPage, warnings: page.warnings, coverageWarning: page.coverageWarning)
     }
 
-    private func fetchSearchPage(query: String, cursor: String?) async throws -> PullRequestPage {
+    private func fetchSearchPage(query: String, cursor: String?, scope: PullRequestTab) async throws -> PullRequestPage {
         let variables = SearchVariables(query: query, after: cursor)
         let (data, warnings): (SearchData, [String]) = try await performGraphQLResult(query: Self.searchPullRequestsQuery, variables: variables)
 
@@ -141,13 +141,17 @@ struct GitHubAPIClient: GitHubClient {
             )
         }
 
-        var coverageWarnings = warnings
-        if (data.search.issueCount ?? 0) > 1000 { coverageWarnings.append("GitHub search limits results to 1,000 PRs; monitoring coverage is incomplete.") }
+        let coverageWarning: String?
+        if scope != .watched, (data.search.issueCount ?? 0) > 1000 {
+            let label = scope == .mine ? "My PRs" : "Reviews"
+            coverageWarning = "\(label): GitHub search returns at most 1,000 PRs. List coverage is incomplete."
+        } else { coverageWarning = nil }
         return PullRequestPage(
             items: items,
             cursor: data.search.pageInfo.endCursor,
             hasNextPage: data.search.pageInfo.hasNextPage,
-            warnings: coverageWarnings
+            warnings: warnings,
+            coverageWarning: coverageWarning
         )
     }
 
@@ -169,7 +173,7 @@ struct GitHubAPIClient: GitHubClient {
         var warnings: [String] = []
         for repo in Set(watchedRepos) {
             let query = "repo:\(repo) is:pr is:open sort:updated-desc"
-            let page = try await fetchSearchPage(query: query, cursor: nil)
+            let page = try await fetchSearchPage(query: query, cursor: nil, scope: .watched)
             merged.append(contentsOf: page.items)
             warnings.append(contentsOf: page.warnings)
         }

@@ -127,8 +127,10 @@ final class PRPulseUITests: XCTestCase {
     }
 
     private func chooseLayout(_ title: String) {
+        app.activate()
         app.descendants(matching: .any)["prpulse.more"].firstMatch.click()
         app.menuItems["Layout"].click()
+        XCTAssertTrue(app.menuItems[title].waitForExistence(timeout: 5))
         app.menuItems[title].click()
     }
 
@@ -181,6 +183,19 @@ final class PRPulseUITests: XCTestCase {
         app.typeKey(.escape, modifierFlags: [])
         settings(); pane("Notifications")
         XCTAssertEqual(app.popUpButtons["prpulse.ci-interval"].value as? String, "15 min")
+    }
+
+    func testSearchCoverageIsSeparateFromTokenAccessWarnings() {
+        launch(token: "e2e-cap")
+        XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
+        let coverage = app.staticTexts["prpulse.coverage-warning"]
+        XCTAssertTrue(coverage.waitForExistence(timeout: 5))
+        XCTAssertTrue((coverage.value as? String ?? coverage.label).contains("Reviews"))
+        XCTAssertFalse(app.links["Manage GitHub token access"].exists)
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(prTitle("Improve documentation").waitForExistence(timeout: 10))
+        XCTAssertTrue((coverage.value as? String ?? coverage.label).contains("My PRs"))
+        XCTAssertFalse(app.links["Manage GitHub token access"].exists)
     }
 
     func testLayoutsPreserveSavedViewSearchFiltersAndRestoreAfterRelaunch() {
@@ -340,7 +355,7 @@ final class PRPulseUITests: XCTestCase {
         let confirm = app.sheets.buttons["Delete view"].firstMatch
         XCTAssertTrue(confirm.waitForExistence(timeout: 5))
         confirm.click()
-        XCTAssertFalse(window.buttons["Edit API triage"].exists)
+        XCTAssertTrue(window.buttons["Edit API triage"].waitForNonExistence(timeout: 5), "Wait for the asynchronous saved-view deletion to finish")
         app.terminate()
         app.launchEnvironment.removeValue(forKey: "PRPULSE_E2E_INITIAL_TOKEN")
         app.launch()

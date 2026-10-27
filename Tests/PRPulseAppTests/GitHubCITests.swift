@@ -3,6 +3,26 @@ import XCTest
 @testable import PRPulseApp
 
 final class GitHubCITests: XCTestCase {
+    func testExpectedStatusIsQueuedAndDoesNotSuppressOtherFailureObservation() async throws {
+        let ci = try await client("expected").fetchCI(for: pr)
+        XCTAssertEqual(ci.checks.first(where: { $0.name == "External CI" })?.state, .queued)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try CIMonitorStore(directory: directory, lifetime: AccountSessionLifetime())
+        var initial = ci; initial.checks.removeAll(where: { $0.state == .failure })
+        _ = try store.observe(pr: pr, snapshot: initial)
+        XCTAssertEqual(try store.observe(pr: pr, snapshot: ci).map(\.name), ["Build"])
+    }
+    func testSearchCapsAreListSpecificAndDoNotSuggestTokenAccessProblems() async throws {
+        for (tab, label) in [(PullRequestTab.mine, "My PRs"), (.reviewRequested, "Reviews")] {
+            let page = try await client("large").fetchPullRequests(tab: tab, cursor: nil)
+            XCTAssertTrue(page.warnings.isEmpty)
+            XCTAssertTrue(page.coverageWarning?.contains(label) ?? false)
+        }
+        let watched = try await client("large").fetchPullRequests(tab: .watched, cursor: nil)
+        XCTAssertTrue(watched.warnings.isEmpty)
+        XCTAssertNil(watched.coverageWarning)
+    }
     func testSuccessfulRerunSupersedesOlderFailureWithoutMergingDifferentWorkflows() async throws {
         let rerun = try await client("rerun").fetchCI(for: pr)
         XCTAssertEqual(rerun.state, .passed)
@@ -52,7 +72,8 @@ final class GitHubCITests: XCTestCase {
     private func client(_ mode: String = "normal") -> GitHubAPIClient {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [CIProtocol.self]
-        return GitHubAPIClient(session: URLSession(configuration: configuration), tokenProvider: { mode })
+        return GitHubAPIClient(session: URLSession(configuration: configuration), tokenProvider: { mode },
+                               watchedRepositoriesProvider: { [.init(nameWithOwner: "example/repo", notificationsEnabled: true)] })
     }
 }
 
@@ -88,7 +109,7 @@ private final class CIProtocol: URLProtocol, @unchecked Sendable {
                  "createdAt": "2026-10-01T00:00:00Z", "updatedAt": "2026-10-01T00:00:00Z", "isDraft": false,
                  "author": ["login": "me"], "repository": ["nameWithOwner": "example/repo"]]
             }
-            result = ["data": ["search": ["nodes": nodes, "pageInfo": ["hasNextPage": false, "endCursor": NSNull()]]]]
+            result = ["data": ["search": ["issueCount": mode.contains("large") ? 1001 : 2, "nodes": mode.contains("large") ? [] : nodes, "pageInfo": ["hasNextPage": false, "endCursor": NSNull()]]]]
         } else if raw.contains("query PRDetails") {
             result = ["data": ["nodes": []]]
         } else if raw.contains("query PRCIRevision") {
@@ -96,7 +117,7 @@ private final class CIProtocol: URLProtocol, @unchecked Sendable {
             result = ["data": ["node": ["state": "OPEN", "headRefOid": changed ? "new" : "head",
                                        "potentialMergeCommit": ["id": "M", "oid": "merge"]]]]
         } else if raw.contains("query CIContexts") {
-            var checks: [[String: Any]] = [["__typename": "StatusContext", "id": "S1", "context": "External CI", "state": "SUCCESS", "targetUrl": "https://ci.example.com/1", "createdAt": "2026-10-01T00:01:00Z"]]
+            var checks: [[String: Any]] = [["__typename": "StatusContext", "id": "S1", "context": "External CI", "state": mode.contains("expected") ? "EXPECTED" : "SUCCESS", "targetUrl": "https://ci.example.com/1", "createdAt": "2026-10-01T00:01:00Z"]]
             if mode.contains("rerun") || mode.contains("different-workflow") {
                 var latest = check
                 latest["id"] = "C2"; latest["conclusion"] = "SUCCESS"; latest["startedAt"] = "2026-10-01T00:02:00Z"

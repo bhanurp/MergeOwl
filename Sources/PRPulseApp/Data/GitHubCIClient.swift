@@ -141,7 +141,7 @@ private struct CIContext: Decodable {
         case "SUCCESS": value = .success
         case "FAILURE", "ERROR", "TIMED_OUT", "STARTUP_FAILURE": value = .failure
         case "IN_PROGRESS": value = .running
-        case "QUEUED", "PENDING", "REQUESTED": value = .queued
+        case "QUEUED", "PENDING", "REQUESTED", "EXPECTED": value = .queued
         case "WAITING", "ACTION_REQUIRED": value = .actionRequired
         case "CANCELLED": value = .cancelled
         case "SKIPPED": value = .skipped

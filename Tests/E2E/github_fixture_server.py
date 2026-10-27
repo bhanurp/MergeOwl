@@ -25,7 +25,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def authorized(self):
         token = self.headers.get("Authorization", "").removeprefix("Bearer ")
-        if token not in {"e2e-valid", "e2e-partial", "e2e-empty", "e2e-hubot"}:
+        if token not in {"e2e-valid", "e2e-partial", "e2e-empty", "e2e-hubot", "e2e-cap"}:
             self.respond(dict(message="Bad credentials"), 401)
             return None
         return token
@@ -64,6 +64,8 @@ class Handler(BaseHTTPRequestHandler):
                 nodes = [pr("PR_1", "Improve documentation"), pr("PR_2", "Fix token handling")]
             has_next = "author:@me" in search and not variables.get("after") and bool(nodes)
             payload = dict(data=dict(search=dict(nodes=nodes, pageInfo=dict(hasNextPage=has_next, endCursor="page2" if has_next else None))))
+            if token == "e2e-cap":
+                payload["data"]["search"]["issueCount"] = 1001
             if token == "e2e-partial":
                 payload["errors"] = [dict(message="Resource protected by organization SAML enforcement. Authorize your token for SSO.")]
                 payload["data"]["search"]["nodes"].append(None)
