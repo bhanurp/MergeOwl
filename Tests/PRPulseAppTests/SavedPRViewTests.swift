@@ -5,6 +5,8 @@ final class SavedPRViewTests: XCTestCase {
     func testAwaitingReviewAndChangesRequestedPositiveRules() {
         var item = PullRequest(id: "review", number: 1, title: "Review this API", url: URL(string: "https://github.com/a/b/pull/1")!, repository: .init(nameWithOwner: "a/b"), author: .init(login: "bob"), createdAt: Date(), updatedAt: Date(), isDraft: false, detail: .init(mergeable: .mergeable, reviewDecision: .approved))
         let calculator = PullRequestStatusCalculator(currentUserLogin: "alice")
+        item.detail.ci = CIStatus(headSHA: "head", revision: "head", checks: [])
+        item.detail.mergeStateStatus = "CLEAN"
         var presentation = PullRequestPresentation(pullRequest: item, status: calculator.status(for: item))
         XCTAssertTrue(SavedPRViewMatcher.matches(presentation, view: .init(name: "Review", stateRule: .awaitingReview), viewerLogin: "alice"))
         XCTAssertFalse(SavedPRViewMatcher.matches(presentation, view: .init(name: "Unmatched", text: "unrelated"), viewerLogin: "alice"))
@@ -121,7 +123,7 @@ final class SavedPRViewTests: XCTestCase {
 private struct RepeatedPRClient: GitHubClient {
     nonisolated(nonsending) func fetchViewer() async throws -> String { "alice" }
     nonisolated(nonsending) func fetchPullRequests(tab: PullRequestTab, cursor: String?) async throws -> PullRequestPage {
-        let item = PullRequest(id: "shared", number: 1, title: "Shared PR", url: URL(string: "https://github.com/a/b/pull/1")!, repository: .init(nameWithOwner: "a/b"), author: .init(login: "bob"), createdAt: Date(), updatedAt: Date(), isDraft: false, detail: .init(mergeable: .mergeable, reviewDecision: .approved))
+        let item = PullRequest(id: "shared", number: 1, title: "Shared PR", url: URL(string: "https://github.com/a/b/pull/1")!, repository: .init(nameWithOwner: "a/b"), author: .init(login: "bob"), createdAt: Date(), updatedAt: Date(), isDraft: false, detail: .init(mergeable: .mergeable, reviewDecision: .approved, ci: .init(headSHA: "head", revision: "head", checks: []), mergeStateStatus: "CLEAN"))
         var snoozed = item
         snoozed.id = "snoozed"
         return PullRequestPage(items: [item, item, snoozed], cursor: nil, hasNextPage: false)

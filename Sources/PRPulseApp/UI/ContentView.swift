@@ -163,7 +163,13 @@ struct ContentView: View {
                         actionHandler: { action in
                             viewModel.perform(action: action, on: presentation)
                         },
-                        showAuthor: viewModel.selectedTab == .reviewRequested
+                        showAuthor: viewModel.selectedTab == .reviewRequested,
+                        ciRefreshInterval: viewModel.settings.ciRefreshInterval,
+                        ciMuted: viewModel.ciMonitor.isMuted(presentation.id),
+                        toggleCIMute: presentation.pullRequest.author.login.caseInsensitiveCompare(viewModel.viewerLogin) == .orderedSame ? {
+                            do { try viewModel.ciMonitor.setMuted(!viewModel.ciMonitor.isMuted(presentation.id), for: presentation.id) }
+                            catch { viewModel.errorMessage = "Could not save CI mute. Please try again." }
+                        } : nil
                     )
                     Divider().padding(.vertical, 10)
                 }

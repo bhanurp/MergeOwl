@@ -5,6 +5,9 @@ struct PullRequestRowView: View {
     var presentation: PullRequestPresentation
     var actionHandler: (DashboardViewModel.QuickAction) -> Void
     var showAuthor: Bool = false
+    var ciRefreshInterval: TimeInterval = 300
+    var ciMuted = false
+    var toggleCIMute: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -19,6 +22,10 @@ struct PullRequestRowView: View {
             .help("Open on GitHub")
             .accessibilityIdentifier("prpulse.open.\(presentation.id)")
             Text(metadataText).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+            HStack(spacing: 10) {
+                CIStatusView(pullRequest: presentation.pullRequest, refreshInterval: ciRefreshInterval)
+                if ciMuted { Label("CI alerts muted", systemImage: "bell.slash").font(.caption2).foregroundStyle(.secondary) }
+            }
             if !presentation.pullRequest.detail.linkedReferences.isEmpty {
                 HStack(spacing: 8) {
                     ForEach(Array(presentation.pullRequest.detail.linkedReferences.prefix(3))) { ref in
@@ -58,6 +65,10 @@ struct PullRequestRowView: View {
                     Button("Mark to do") { actionHandler(.markTodo) }
                     Button("Mark not relevant") { actionHandler(.markNotApplicable) }
                     Button("Clear override") { actionHandler(.clearOverride) }
+                    if let toggleCIMute {
+                        Divider()
+                        Button(ciMuted ? "Unmute CI failure alerts" : "Mute CI failure alerts", action: toggleCIMute)
+                    }
                 } label: { Image(systemName: "ellipsis") }
                 .menuStyle(.borderlessButton).fixedSize()
                 .accessibilityLabel("More PR actions")
@@ -90,7 +101,7 @@ struct PullRequestRowView: View {
     private var readinessBadge: some View {
         switch presentation.status.readiness {
         case .ready:
-            return Text("Ready to merge")
+            return Text("No known blockers")
                 .font(.caption)
                 .foregroundStyle(.green)
         case .pending:

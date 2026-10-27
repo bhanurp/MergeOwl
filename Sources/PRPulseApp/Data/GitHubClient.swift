@@ -3,6 +3,11 @@ import Foundation
 protocol GitHubClient {
     nonisolated(nonsending) func fetchViewer() async throws -> String
     nonisolated(nonsending) func fetchPullRequests(tab: PullRequestTab, cursor: String?) async throws -> PullRequestPage
+    nonisolated(nonsending) func fetchCI(for pullRequest: PullRequest) async throws -> CIStatus
+}
+
+extension GitHubClient {
+    nonisolated(nonsending) func fetchCI(for pullRequest: PullRequest) async throws -> CIStatus { .unavailable }
 }
 
 enum GitHubClientError: LocalizedError {
@@ -11,6 +16,8 @@ enum GitHubClientError: LocalizedError {
     case invalidDate(String)
     case graphQLErrors([String])
     case apiFailure(String)
+    case rateLimited(Date)
+    case obsoleteCI
 
     var isAccessRestriction: Bool {
         let messages: [String]
@@ -37,6 +44,10 @@ enum GitHubClientError: LocalizedError {
             return messages.joined(separator: "\n")
         case .apiFailure(let message):
             return message
+        case .rateLimited(let until):
+            return "GitHub rate limit reached. Retrying after \(until.formatted(date: .omitted, time: .shortened))."
+        case .obsoleteCI:
+            return "The PR changed while checking CI. Results will be refreshed."
         }
     }
 }
@@ -45,6 +56,7 @@ struct GitHubAPIClient: GitHubClient {
     private let session: URLSession
     private let tokenProvider: @Sendable () -> String?
     private let watchedRepositoriesProvider: @Sendable () async -> [RepositorySubscription]
+    private let requestGate = GitHubRequestGate()
 
     init(
         session: URLSession = .shared,
@@ -77,12 +89,21 @@ struct GitHubAPIClient: GitHubClient {
 
         let (detailByID, detailWarnings) = try await fetchDetails(ids: page.items.map(\.id))
         page.warnings.append(contentsOf: detailWarnings)
-        let enriched = page.items.map { item -> PullRequest in
+        var enriched: [PullRequest] = []
+        for item in page.items {
             var copy = item
             if let detail = detailByID[item.id] {
                 copy.detail = detail
             }
-            return copy
+            do { copy.detail.ci = try await fetchCI(for: copy) }
+            catch {
+                if error is CancellationError { throw error }
+                if case GitHubClientError.rateLimited = error { throw error }
+                var ci = CIStatus.unavailable
+                ci.warning = "Check access could not be verified. Open GitHub for details."
+                copy.detail.ci = ci
+            }
+            enriched.append(copy)
         }
         return PullRequestPage(items: enriched, cursor: page.cursor, hasNextPage: page.hasNextPage, warnings: page.warnings)
     }
@@ -120,11 +141,13 @@ struct GitHubAPIClient: GitHubClient {
             )
         }
 
+        var coverageWarnings = warnings
+        if (data.search.issueCount ?? 0) > 1000 { coverageWarnings.append("GitHub search limits results to 1,000 PRs; monitoring coverage is incomplete.") }
         return PullRequestPage(
             items: items,
             cursor: data.search.pageInfo.endCursor,
             hasNextPage: data.search.pageInfo.hasNextPage,
-            warnings: warnings
+            warnings: coverageWarnings
         )
     }
 
@@ -258,6 +281,7 @@ struct GitHubAPIClient: GitHubClient {
                 reviews: reviews,
                 linkedReferences: sortedLinkedRefs
             )
+            detailByID[id]?.mergeStateStatus = node.mergeStateStatus
         }
 
         return (detailByID, warnings)
@@ -271,10 +295,12 @@ struct GitHubAPIClient: GitHubClient {
         return data
     }
 
-    private func performGraphQLResult<Variables: Encodable, DataType: Decodable>(
+    func performGraphQLResult<Variables: Encodable, DataType: Decodable>(
         query: String,
         variables: Variables
     ) async throws -> (DataType, [String]) {
+        try Task.checkCancellation()
+        try await requestGate.check()
         guard let token = tokenProvider(), !token.isEmpty else {
             throw GitHubClientError.missingToken
         }
@@ -290,6 +316,13 @@ struct GitHubAPIClient: GitHubClient {
         guard let http = response as? HTTPURLResponse else {
             throw GitHubClientError.invalidResponse
         }
+        if http.statusCode == 429 || (http.statusCode == 403 && (http.value(forHTTPHeaderField: "Retry-After") != nil || http.value(forHTTPHeaderField: "X-RateLimit-Remaining") == "0")) {
+            let retry = http.value(forHTTPHeaderField: "Retry-After").flatMap(Double.init).map { Date().addingTimeInterval(max(60, $0)) }
+            let reset = http.value(forHTTPHeaderField: "X-RateLimit-Reset").flatMap(Double.init).map { Date(timeIntervalSince1970: $0) }
+            let until = max(Date().addingTimeInterval(60), retry ?? reset ?? Date().addingTimeInterval(300))
+            await requestGate.deferUntil(until)
+            throw GitHubClientError.rateLimited(until)
+        }
 
         guard (200...299).contains(http.statusCode) else {
             let failure = try? Self.decoder.decode(APIFailure.self, from: data)
@@ -297,6 +330,11 @@ struct GitHubAPIClient: GitHubClient {
         }
 
         let decoded = try Self.decoder.decode(GraphQLResponse<DataType>.self, from: data)
+        if decoded.errors?.contains(where: { $0.type == "RATE_LIMITED" }) == true {
+            let until = Date().addingTimeInterval(300)
+            await requestGate.deferUntil(until)
+            throw GitHubClientError.rateLimited(until)
+        }
         if let errors = decoded.errors, !errors.isEmpty, decoded.data == nil {
             throw GitHubClientError.graphQLErrors(errors.map(\.message))
         }
@@ -318,7 +356,7 @@ struct GitHubAPIClient: GitHubClient {
         }
     }
 
-    private static func parseISODate(_ raw: String) -> Date? {
+    static func parseISODate(_ raw: String) -> Date? {
         let withFractional = ISO8601DateFormatter()
         withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         if let value = withFractional.date(from: raw) {
@@ -374,6 +412,7 @@ struct GitHubAPIClient: GitHubClient {
     private static let searchPullRequestsQuery = """
     query SearchPRs($query: String!, $after: String) {
       search(query: $query, type: ISSUE, first: 20, after: $after) {
+        issueCount
         pageInfo { hasNextPage endCursor }
         nodes {
           ... on PullRequest {
@@ -398,6 +437,7 @@ struct GitHubAPIClient: GitHubClient {
         ... on PullRequest {
           id
           mergeable
+          mergeStateStatus
           reviewDecision
           commits(last: 1) {
             nodes { commit { committedDate } }
@@ -455,6 +495,7 @@ private struct GraphQLResponse<DataType: Decodable>: Decodable {
 
 private struct GraphQLError: Decodable {
     let message: String
+    let type: String?
 }
 
 private struct APIFailure: Decodable {
@@ -475,6 +516,7 @@ private struct SearchVariables: Encodable {
 
 private struct SearchData: Decodable {
     struct SearchConnection: Decodable {
+        let issueCount: Int?
         struct PageInfo: Decodable {
             let hasNextPage: Bool
             let endCursor: String?
@@ -513,6 +555,7 @@ private struct DetailVariables: Encodable {
 
 private struct DetailData: Decodable {
     struct PullRequestNode: Decodable {
+        let mergeStateStatus: String?
         struct Commits: Decodable {
             struct CommitNode: Decodable {
                 struct Commit: Decodable {

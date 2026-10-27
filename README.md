@@ -178,6 +178,8 @@ Click a PR title to open it on GitHub, use its **More PR actions** menu to **Mar
 
 ### Tune refresh and notifications
 
+**In development:** the CI-monitoring source branch adds check status in both layouts, optional failure alerts for all accessible open My PRs, and persistent per-PR mutes. These are not in the v0.2.1 download. See the [CI monitoring guide](docs/ci-monitoring.md) for controls and limits.
+
 - **Settings → Refresh:** choose the refresh interval and whether to refresh on launch.
 - **Settings → Notifications:** configure re-review and new-review-request alerts, digest cadence, and default reminder time. Allow notifications in macOS System Settings if prompted.
 - **Activity:** open the activity summary from the popover footer (**View digest** on v0.2.0).

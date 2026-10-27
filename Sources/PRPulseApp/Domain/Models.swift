@@ -99,19 +99,25 @@ struct PullRequestDetail: Codable, Equatable, Hashable {
     var latestCommitAt: Date?
     var reviews: [Review]
     var linkedReferences: [LinkedReference]
+    var ci: CIStatus?
+    var mergeStateStatus: String?
 
     init(
         mergeable: MergeableState = .unknown,
         reviewDecision: ReviewDecision? = nil,
         latestCommitAt: Date? = nil,
         reviews: [Review] = [],
-        linkedReferences: [LinkedReference] = []
+        linkedReferences: [LinkedReference] = [],
+        ci: CIStatus? = nil,
+        mergeStateStatus: String? = nil
     ) {
         self.mergeable = mergeable
         self.reviewDecision = reviewDecision
         self.latestCommitAt = latestCommitAt
         self.reviews = reviews
         self.linkedReferences = linkedReferences
+        self.ci = ci
+        self.mergeStateStatus = mergeStateStatus
     }
 }
 
@@ -255,6 +261,8 @@ struct AppSettings: Codable, Equatable {
     var digestCadence: DigestCadence
     var watchedRepositories: [RepositorySubscription]
     var popoverLayout: PopoverLayout = .tabbed
+    var ciFailureAlerts: Bool = false
+    var ciRefreshInterval: TimeInterval = 300
 
     static var `default`: AppSettings {
         AppSettings(
@@ -275,6 +283,7 @@ extension AppSettings {
     private enum CodingKeys: String, CodingKey {
         case token, refreshInterval, refreshOnLaunch, notifyNeedsReview, notifyNewReviewRequests
         case quietHours, snoozeDefaultHour, digestCadence, watchedRepositories, popoverLayout
+        case ciFailureAlerts, ciRefreshInterval
     }
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -288,5 +297,8 @@ extension AppSettings {
         digestCadence = try values.decode(DigestCadence.self, forKey: .digestCadence)
         watchedRepositories = try values.decode([RepositorySubscription].self, forKey: .watchedRepositories)
         popoverLayout = try values.decodeIfPresent(PopoverLayout.self, forKey: .popoverLayout) ?? .tabbed
+        ciFailureAlerts = try values.decodeIfPresent(Bool.self, forKey: .ciFailureAlerts) ?? false
+        let interval = try values.decodeIfPresent(TimeInterval.self, forKey: .ciRefreshInterval) ?? 300
+        ciRefreshInterval = [60.0, 300, 900, 1800].contains(interval) ? interval : 300
     }
 }

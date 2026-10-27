@@ -29,7 +29,7 @@ final class PullRequestStatusTests: XCTestCase {
         let status = calculator.status(for: pr)
 
         XCTAssertEqual(status.badge, .reviewed)
-        XCTAssertTrue(status.isActionable)
+        XCTAssertEqual(status.readiness, .checking, "Review approval cannot establish CI or branch-rule readiness")
     }
 
     func testNeedsReReviewWhenCommitAfterReview() throws {

@@ -91,11 +91,20 @@ struct PullRequestStatusCalculator {
             return .blocked(reason: "Changes requested")
         }
 
+        guard let ci = detail.ci else { return .checking }
+        if ci.state == .failed { return .blocked(reason: "CI failed") }
+        guard ci.isComplete else { return .checking }
+        switch ci.state {
+        case .running, .queued, .unavailable: return .checking
+        case .cancelled, .actionRequired: return .blocked(reason: "CI needs attention")
+        default: break
+        }
+
         if let decision = detail.reviewDecision, decision != .approved {
             return .pending
         }
 
-        return .ready
+        return detail.mergeStateStatus == "CLEAN" ? .ready : .pending
     }
 
     private func computeActionability(
@@ -110,6 +119,9 @@ struct PullRequestStatusCalculator {
         switch readiness {
         case .ready:
             return true
+        case .blocked(let reason) where reason == "CI failed" || reason == "CI needs attention":
+            return pullRequest.author.login.caseInsensitiveCompare(currentUserLogin) == .orderedSame
+                || pullRequest.override.state == .todo
         case .pending, .blocked:
             return pullRequest.override.state == .todo
         case .checking:

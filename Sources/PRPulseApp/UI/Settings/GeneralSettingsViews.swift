@@ -98,6 +98,35 @@ struct NotificationSettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section("CI monitoring") {
+                Toggle("CI failure alerts for My PRs", isOn: Binding(
+                    get: { viewModel.settings.ciFailureAlerts },
+                    set: { viewModel.settings.ciFailureAlerts = $0 }
+                ))
+                .accessibilityIdentifier("prpulse.ci-alerts")
+                Picker("Check CI every", selection: Binding(
+                    get: { viewModel.settings.ciRefreshInterval },
+                    set: { viewModel.settings.ciRefreshInterval = $0 }
+                )) {
+                    ForEach([1, 5, 15, 30], id: \.self) { minutes in
+                        Text("\(minutes) min").tag(TimeInterval(minutes * 60))
+                    }
+                }
+                .disabled(!viewModel.settings.ciFailureAlerts)
+                .accessibilityIdentifier("prpulse.ci-interval")
+                Text("Automatically monitors all accessible open PRs authored by the active account, regardless of filters. Mute individual PRs in More PR actions. Requires this app to be running and your Mac awake.")
+                    .font(.footnote).foregroundStyle(.secondary)
+                Text(viewModel.ciMonitor.message).font(.footnote).textSelection(.enabled)
+                if viewModel.settings.ciFailureAlerts {
+                    if let last = viewModel.ciMonitor.lastChecked { Text("Last checked: \(last, style: .time)").font(.caption) }
+                    if let next = viewModel.ciMonitor.nextCheck { Text("Next check: \(next, style: .time)").font(.caption) }
+                    Text(viewModel.ciMonitor.notificationPermission).font(.footnote).foregroundStyle(.secondary)
+                    Button("Open macOS notification settings") {
+                        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension")!)
+                    }
+                }
+            }
+
             Section("Digest") {
                 Picker("Digest cadence", selection: Binding(
                     get: { viewModel.settings.digestCadence },

@@ -74,10 +74,23 @@ class Handler(BaseHTTPRequestHandler):
                 reviews = []
                 if identifier == "PR_4":
                     reviews = [dict(author=dict(login="octocat"), state="APPROVED", submittedAt="2026-01-03T00:00:00Z")]
-                nodes.append(dict(id=identifier, mergeable="MERGEABLE", reviewDecision="REVIEW_REQUIRED" if identifier == "PR_4" else "APPROVED",
+                nodes.append(dict(id=identifier, mergeable="MERGEABLE", mergeStateStatus="CLEAN", reviewDecision="REVIEW_REQUIRED" if identifier == "PR_4" else "APPROVED",
                                   commits=dict(nodes=[dict(commit=dict(committedDate="2026-01-02T00:00:00Z"))]),
                                   reviews=dict(nodes=reviews), closingIssuesReferences=dict(nodes=[]), timelineItems=dict(nodes=[])))
             self.respond(dict(data=dict(nodes=nodes)))
+        elif "query PRCI" in query:
+            identifier = variables["id"]
+            head = f"head-{identifier}"
+            node = dict(state="OPEN", headRefOid=head, potentialMergeCommit=None)
+            if "query PRCIRevision" not in query:
+                checks = [dict(__typename="CheckRun", id=f"check-{identifier}", name="Unit tests",
+                               status="IN_PROGRESS" if identifier == "PR_2" else "COMPLETED",
+                               conclusion="FAILURE" if identifier == "PR_1" else "SUCCESS",
+                               detailsUrl="https://github.com/example/repo/actions/runs/1",
+                               startedAt="2026-10-27T00:00:00Z", completedAt=None)]
+                node["commits"] = dict(nodes=[dict(commit=dict(id=f"commit-{identifier}", oid=head,
+                    statusCheckRollup=dict(contexts=dict(nodes=checks, pageInfo=dict(hasNextPage=False, endCursor=None)))))])
+            self.respond(dict(data=dict(node=node)))
         else:
             self.respond(dict(errors=[dict(message="Unexpected fixture query")]), 400)
 
