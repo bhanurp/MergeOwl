@@ -30,3 +30,4 @@ jobs:
         run: |
           bash Tests/InstallerTests/test_install_latest_release.sh
           bash Tests/InstallerTests/test_install_prpulse.sh
+          bash Tests/InstallerTests/test_installed_owl_resources.sh

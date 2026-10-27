@@ -130,7 +130,7 @@ struct AccountSettingsView: View {
                         .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("PRPulse")
+                        Text("MergeOwl")
                             .font(.headline)
                         Text("GitHub account")
                             .foregroundStyle(.secondary)
@@ -228,7 +228,7 @@ struct AccountSettingsView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("PRPulse will no longer be able to load your GitHub pull requests.")
+            Text("MergeOwl will no longer be able to load your GitHub pull requests.")
         }
     }
 

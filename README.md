@@ -1,18 +1,22 @@
-# PR Pulse
+# MergeOwl
 
-<img src="Sources/PRPulseApp/Resources/PRPulseFlower@2x.png" width="72" alt="PR Pulse flower icon">
+<img src="Sources/PRPulseApp/Resources/MergeOwl.png" width="72" alt="MergeOwl amber owl icon">
 
-[![Latest release](https://img.shields.io/github/v/release/bhanurp/prpulse)](https://github.com/bhanurp/prpulse/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/bhanurp/MergeOwl)](https://github.com/bhanurp/MergeOwl/releases/latest)
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-111827?logo=apple&logoColor=white)](#install)
-[![MIT license](https://img.shields.io/github/license/bhanurp/prpulse)](LICENSE)
-[![Swift tests](https://github.com/bhanurp/prpulse/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/bhanurp/prpulse/actions/workflows/test.yml)
-[![macOS E2E](https://github.com/bhanurp/prpulse/actions/workflows/e2e.yml/badge.svg?branch=master)](https://github.com/bhanurp/prpulse/actions/workflows/e2e.yml)
+[![MIT license](https://img.shields.io/github/license/bhanurp/MergeOwl)](LICENSE)
+[![Swift tests](https://github.com/bhanurp/MergeOwl/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/bhanurp/MergeOwl/actions/workflows/test.yml)
+[![macOS E2E](https://github.com/bhanurp/MergeOwl/actions/workflows/e2e.yml/badge.svg?branch=master)](https://github.com/bhanurp/MergeOwl/actions/workflows/e2e.yml)
 
 Keep your GitHub pull requests one click away, in your Mac’s menu bar.
 
-PR Pulse brings together PRs you authored, reviews requested from you, and repositories you watch. Switch between GitHub accounts, organize loaded PRs into saved views, and open or snooze what needs attention—without keeping another dashboard open.
+MergeOwl brings together PRs you authored, reviews requested from you, and repositories you watch. Switch between GitHub accounts, organize loaded PRs into saved views, and open or snooze what needs attention—without keeping another dashboard open.
 
-[Download latest release](https://github.com/bhanurp/prpulse/releases/latest) · [Report a problem](https://github.com/bhanurp/prpulse/issues) · [Release notes](CHANGELOG.md) · [Contribute](CONTRIBUTING.md)
+[Download latest release](https://github.com/bhanurp/MergeOwl/releases/latest) · [Report a problem](https://github.com/bhanurp/MergeOwl/issues) · [Release notes](CHANGELOG.md) · [Contribute](CONTRIBUTING.md)
+
+**MergeOwl is the new name for PR Pulse.** The transparent amber owl and MergeOwl app name are currently unreleased source changes. The latest published v0.2.1 download is still named **PRPulseApp.app** and uses the flower icon. Historical screenshots below retain their original release labels.
+
+The rename preserves existing account profiles, settings and Keychain credentials. New releases will use **MergeOwl.app**, **MergeOwl.dmg** and **MergeOwl.zip**; existing release files keep their old names. See the [rename and upgrade guide](docs/branding-and-upgrade.md).
 
 ## A quick look
 
@@ -57,7 +61,7 @@ Real v0.2.0 Settings captures with synthetic GitHub data, cycling through captur
 
 Keep **My PRs**, **Review Requested**, and **Watched**, then add account-specific views using repository, PR-state and text rules. Enabled views appear in the click-open popover; their counts cover loaded PRs only.
 
-The new Settings images show the v0.2.0 UI with synthetic fixture data. They are window-content captures, not mockups. [v0.2.0 is available](https://github.com/bhanurp/prpulse/releases/tag/v0.2.0) for Apple Silicon and Intel Macs; older installations need a manual update to use accounts and saved views.
+The new Settings images show the v0.2.0 UI with synthetic fixture data. They are window-content captures, not mockups. [v0.2.0 is available](https://github.com/bhanurp/MergeOwl/releases/tag/v0.2.0) for Apple Silicon and Intel Macs; older installations need a manual update to use accounts and saved views.
 
 </details>
 
@@ -76,9 +80,11 @@ These older captures use synthetic GitHub fixture data. The GIF cycles through c
 
 **Early release:** the app is ad-hoc signed, not Apple-notarized. Read the first-launch instructions below before installing. GitHub.com and macOS are the supported targets; GitLab, Windows, Linux, and custom GitHub Enterprise Server hosts are not supported.
 
-## Install
+<a id="install"></a>
 
-1. Open the [latest release](https://github.com/bhanurp/prpulse/releases/latest) and download **PRPulseApp.dmg**. The universal build supports Apple Silicon and Intel.
+## Install the current published release
+
+1. Open the [latest release](https://github.com/bhanurp/MergeOwl/releases/latest) and download **PRPulseApp.dmg**. The universal build supports Apple Silicon and Intel.
 2. Open the DMG and drag **PRPulseApp.app** into **Applications**.
 3. Launch **PRPulseApp.app** from Applications.
 4. Look for the orange flower icon in the menu bar at the top of your screen. Click it to open the PR list. This is a menu-bar app, not a normal Dock window.
@@ -93,12 +99,12 @@ Use the manual DMG installation above. Automated release installation is not rec
 
 ## Connect GitHub
 
-PR Pulse does not automatically reuse your browser or GitHub CLI login. Connect your account inside the app.
+MergeOwl does not automatically reuse your browser or GitHub CLI login. Connect your account inside the app.
 
 ### Create a token
 
 1. Open [GitHub’s fine-grained token settings](https://github.com/settings/personal-access-tokens/new).
-2. Name the token, for example **PR Pulse**, and choose an expiration date.
+2. Name the token, for example **MergeOwl**, and choose an expiration date.
 3. Select the **Resource owner** that owns the repositories you want to follow. Under **Repository access**, select those repositories.
 4. Set **Pull requests: Read-only**. **Metadata: Read-only** is included automatically. Additional data or organization policy may require additional access; do not grant write permissions just to dismiss a warning.
 5. Generate the token and copy it. GitHub only shows its value once.
@@ -109,7 +115,7 @@ For a classic token, use [GitHub’s classic token settings](https://github.com/
 
 ### Save and verify the connection
 
-1. Click the flower menu-bar icon, then **More (…) → Settings**. On v0.2.0, use the **gear** button instead.
+1. Click the **owl** menu-bar icon in MergeOwl source builds (the **flower** in published PR Pulse releases), then **More (…) → Settings**. On v0.2.0, use the **gear** button instead.
 2. Select **Account** in the sidebar.
 3. Paste the token into **Personal access token**.
 4. Click **Connect GitHub** (or **Update token** if already configured).
@@ -140,11 +146,11 @@ Existing single-account data is copied only after GitHub verifies the legacy tok
 
 **Remove account** requires confirmation and removes that profile’s credential and local data, not the GitHub account or repositories. The first remaining account becomes active when the active account is removed. The legacy migration backup is retained; revoke obsolete tokens on GitHub when no longer needed.
 
-## Use PR Pulse
+## Use MergeOwl
 
 ### Layout options (v0.2.1 and newer)
 
-PR Pulse supports two popover layouts. **Tabbed (B)** is the default: PR tabs and saved-view shortcuts remain visible. **Compact (A)** puts default lists and saved views in one view picker, leaving more room for PRs.
+MergeOwl supports two popover layouts. **Tabbed (B)** is the default: PR tabs and saved-view shortcuts remain visible. **Compact (A)** puts default lists and saved views in one view picker, leaving more room for PRs.
 
 Use **More (…) → Layout → Tabbed / Compact**, or open **More → Settings → Appearance** for layout previews. The choice is saved automatically across restarts and applies to every account. Changing layout keeps the active account, selected view, search, filters and local triage unchanged. Search, tab and refresh keyboard shortcuts work in both layouts.
 
@@ -178,7 +184,7 @@ Click a PR title to open it on GitHub, use its **More PR actions** menu to **Mar
 
 ### Tune refresh and notifications
 
-**In development:** the CI-monitoring source branch adds check status in both layouts, optional failure alerts for all accessible open My PRs, and persistent per-PR mutes. These are not in the v0.2.1 download. See the [CI monitoring guide](docs/ci-monitoring.md) for controls and limits.
+**Available in source, unreleased:** CI monitoring adds check status in both layouts, optional failure alerts for all accessible open My PRs, and persistent per-PR mutes. It was merged in PR #18 and is not in the v0.2.1 download. See the [CI monitoring guide](docs/ci-monitoring.md) for controls and limits.
 
 - **Settings → Refresh:** choose the refresh interval and whether to refresh on launch.
 - **Settings → Notifications:** configure re-review and new-review-request alerts, digest cadence, and default reminder time. Allow notifications in macOS System Settings if prompted.
@@ -195,14 +201,16 @@ Click a PR title to open it on GitHub, use its **More PR actions** menu to **Mar
 | No pull requests | Clear search/filters, refresh, and check the selected tab. **Watched** requires configured repositories. Compare with open PRs visible to your account on GitHub. |
 | Token field is blank after relaunch | This is intentional. Check the connection status or use **Test connection** without entering a token. |
 | Repeated Keychain prompts | Use one installed app copy; development and release builds can have different identities/signatures. Do not delete your Keychain as a workaround. Report persistent prompts. |
-| Two Settings windows on v0.1.5 or earlier | The activation issue is tracked in [#9](https://github.com/bhanurp/prpulse/issues/9). Close the extra window and use the popover’s gear button. The v0.2.0 source uses one retained native preferences window. |
+| Two Settings windows on v0.1.5 or earlier | The activation issue is tracked in [#9](https://github.com/bhanurp/MergeOwl/issues/9). Close the extra window and use the popover’s gear button. The v0.2.0 source uses one retained native preferences window. |
 | Notifications do not arrive | Check macOS notification permission and **Settings → Notifications**. Live OS delivery is not covered by automated fixture tests. |
 
-Still stuck? [Open an issue](https://github.com/bhanurp/prpulse/issues) with your macOS version, app release version, reproduction steps, and error text. Redact tokens, private repository names, and sensitive information from screenshots or exported logs. Never paste a token into an issue.
+Still stuck? [Open an issue](https://github.com/bhanurp/MergeOwl/issues) with your macOS version, app release version, reproduction steps, and error text. Redact tokens, private repository names, and sensitive information from screenshots or exported logs. Never paste a token into an issue.
 
 ## Update or uninstall
 
 To update, quit PR Pulse using **More → Quit PR Pulse** (the power button on v0.2.0), download the latest DMG, replace the app in Applications, and launch it again. App replacement does not intentionally remove your Keychain token or local preferences.
+
+Once a MergeOwl-branded release is published, quit the old app first and install **MergeOwl.app**. Verify your saved accounts in MergeOwl, then remove the old PRPulseApp application copy to avoid launching two menu-bar apps. Do not delete account data or Keychain entries during the rename.
 
 To uninstall, remove each saved account in **Settings → Account** first, then quit and move **PRPulseApp.app** to Trash. On v0.1.5 and earlier, use **Remove token** instead. Revoke tokens on GitHub if no longer needed, including any retained legacy migration token. Removing the app alone does not remove Keychain credentials, migration backups or local preferences.
 
@@ -210,18 +218,18 @@ To uninstall, remove each saved account in **Settings → Account** first, then 
 
 The source includes three PR lists, actionable badge, search and filters, local triage, snooze, watched repositories, refresh/notification preferences, digest, Keychain-backed account profiles and account-specific rule-based saved views. See the version notes above when using an older downloaded build.
 
-**Deferred:** [secure automatic updates](docs/superpowers/specs/2026-10-11-secure-auto-updates-design.md), Developer ID signing and notarization. Updates still require manual DMG replacement. Manual per-PR collections, team sharing and cloud sync are not implemented. See the [product roadmap](docs/superpowers/specs/2026-09-12-prpulse-public-product-roadmap-design.md), [open issues](https://github.com/bhanurp/prpulse/issues), and [changelog](CHANGELOG.md). Roadmap items are intentions, not promises of availability.
+**Deferred:** [secure automatic updates](docs/superpowers/specs/2026-10-11-secure-auto-updates-design.md), Developer ID signing and notarization. Updates still require manual DMG replacement. Manual per-PR collections, team sharing and cloud sync are not implemented. See the [product roadmap](docs/superpowers/specs/2026-09-12-prpulse-public-product-roadmap-design.md), [open issues](https://github.com/bhanurp/MergeOwl/issues), and [changelog](CHANGELOG.md). Roadmap items are intentions, not promises of availability.
 
 ## Build and test from source
 
 Source builds require macOS 14+ and Swift 6.2 or newer. Native UI tests also require full Xcode, a logged-in desktop, and XcodeGen.
 
 ```bash
-git clone https://github.com/bhanurp/prpulse.git
-cd prpulse
+git clone https://github.com/bhanurp/MergeOwl.git
+cd MergeOwl
 swift test
 bash scripts/install_prpulse.sh
-open "$HOME/Applications/PRPulseApp.app"
+open "$HOME/Applications/MergeOwl.app"
 ```
 
 The installer builds and packages a local development app. Its bundle identity/version metadata differs from the published release; do not treat it as the official downloaded build or run both copies together.
@@ -231,6 +239,7 @@ Installer regression tests:
 ```bash
 bash Tests/InstallerTests/test_install_latest_release.sh
 bash Tests/InstallerTests/test_install_prpulse.sh
+bash Tests/InstallerTests/test_installed_owl_resources.sh
 ```
 
 Native end-to-end tests:
@@ -244,6 +253,6 @@ Read the [E2E guide](Tests/E2E/README.md) first: UI tests control the desktop. C
 
 ## Contribute and support
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) for development and PR expectations, and [SECURITY.md](SECURITY.md) for vulnerability reporting. PR Pulse is available under the [MIT license](LICENSE).
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for development and PR expectations, and [SECURITY.md](SECURITY.md) for vulnerability reporting. MergeOwl is available under the [MIT license](LICENSE).
 
-Found PR Pulse useful? Star the repository to help other developers discover it. Reproducible bug reports, onboarding feedback, and documentation fixes are equally welcome.
+Found MergeOwl useful? Star the repository to help other developers discover it. Reproducible bug reports, onboarding feedback, and documentation fixes are equally welcome.

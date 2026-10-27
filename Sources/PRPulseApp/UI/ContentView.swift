@@ -99,7 +99,7 @@ struct ContentView: View {
                 if let accounts {
                     AccountSelectorView(accounts: accounts, showSettings: hostActions.showSettings)
                         .disabled(viewModel.isChangingLayout)
-                } else { Text("PR Pulse").font(.headline); Spacer() }
+                } else { Text("MergeOwl").font(.headline); Spacer() }
                 Button { viewModel.refreshAll() } label: { Image(systemName: "arrow.clockwise") }
                     .help("Refresh now").accessibilityLabel("Refresh")
                     .accessibilityIdentifier("prpulse.refresh").keyboardShortcut("r")

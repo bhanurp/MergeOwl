@@ -15,6 +15,10 @@ targets:
     sources:
       - path: ../../Sources/PRPulseApp
         excludes: ["**/README.md", "Resources"]
+      - path: ../../Sources/PRPulseApp/Resources/MergeOwl.png
+        buildPhase: resources
+      - path: ../../Sources/PRPulseApp/Resources/MergeOwl.icns
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.prpulse.e2e
@@ -22,7 +26,9 @@ targets:
     info:
       path: Generated/AppInfo.plist
       properties:
-        CFBundleDisplayName: PR Pulse
+        CFBundleDisplayName: MergeOwl
+        CFBundleName: MergeOwl
+        CFBundleIconFile: MergeOwl.icns
         LSUIElement: true
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true

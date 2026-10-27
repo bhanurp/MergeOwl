@@ -12,11 +12,11 @@ final class BadgeIconTests: XCTestCase {
     func testAccessibilityLabelDescribesActionableCount() {
         XCTAssertEqual(
             StatusItemIconPresentation.accessibilityLabel(for: -1),
-            "PR Pulse, 0 actionable"
+            "MergeOwl, 0 actionable"
         )
         XCTAssertEqual(
             StatusItemIconPresentation.accessibilityLabel(for: 3),
-            "PR Pulse, 3 actionable"
+            "MergeOwl, 3 actionable"
         )
     }
 

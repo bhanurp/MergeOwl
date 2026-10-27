@@ -20,7 +20,7 @@ actor NotificationDispatcher: CINotificationSending {
         guard notificationsSupported() else { return "Notifications unavailable in this host." }
         let settings = await UNUserNotificationCenter.current().notificationSettings()
         return settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional
-            ? "macOS notifications enabled" : "Enable PR Pulse notifications in System Settings to receive failure alerts."
+            ? "macOS notifications enabled" : "Enable MergeOwl notifications in System Settings to receive failure alerts."
         #endif
     }
 
@@ -159,7 +159,7 @@ actor NotificationDispatcher: CINotificationSending {
         let center = UNUserNotificationCenter.current()
 
         let content = UNMutableNotificationContent()
-        content.title = "PR Pulse Test Notification"
+        content.title = "MergeOwl Test Notification"
         content.body = "Notifications are working."
         content.categoryIdentifier = "pr_actions"
 

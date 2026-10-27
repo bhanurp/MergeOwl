@@ -11,8 +11,8 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "$TEST_DIR/bin" "$TEST_DIR/release-bin"
-printf 'stale binary\n' > "$TEST_DIR/release-bin/PRPulseApp"
-chmod +x "$TEST_DIR/release-bin/PRPulseApp"
+printf 'stale binary\n' > "$TEST_DIR/release-bin/MergeOwl"
+chmod +x "$TEST_DIR/release-bin/MergeOwl"
 
 cat > "$TEST_DIR/bin/swift" <<'SCRIPT'
 #!/usr/bin/env bash
@@ -21,10 +21,10 @@ set -euo pipefail
 printf '%s\n' "$*" >> "$TEST_SWIFT_LOG"
 
 if [[ "$*" == "build -c release" ]]; then
-  printf 'fresh binary\n' > "$TEST_RELEASE_BIN/PRPulseApp"
-  chmod +x "$TEST_RELEASE_BIN/PRPulseApp"
-  mkdir -p "$TEST_RELEASE_BIN/PRPulse_PRPulseApp.bundle"
-  printf 'flower asset\n' > "$TEST_RELEASE_BIN/PRPulse_PRPulseApp.bundle/PRPulseFlower@2x.png"
+  printf 'fresh binary\n' > "$TEST_RELEASE_BIN/MergeOwl"
+  chmod +x "$TEST_RELEASE_BIN/MergeOwl"
+  mkdir -p "$TEST_RELEASE_BIN/MergeOwl_PRPulseApp.bundle"
+  printf 'owl asset\n' > "$TEST_RELEASE_BIN/MergeOwl_PRPulseApp.bundle/MergeOwl.png"
   exit 0
 fi
 
@@ -38,13 +38,27 @@ exit 1
 SCRIPT
 chmod +x "$TEST_DIR/bin/swift"
 
-INSTALL_ROOT="$TEST_DIR/PRPulseApp.app"
+INSTALL_ROOT="$TEST_DIR/MergeOwl.app"
 TEST_SWIFT_LOG="$TEST_DIR/swift.log" \
 TEST_RELEASE_BIN="$TEST_DIR/release-bin" \
 PATH="$TEST_DIR/bin:$PATH" \
 bash "$PROJECT_DIR/scripts/install_prpulse.sh" "$INSTALL_ROOT"
 
 MINIMUM_MACOS="$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$INSTALL_ROOT/Contents/Info.plist")"
+DISPLAY_NAME="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$INSTALL_ROOT/Contents/Info.plist")"
+if [[ "$DISPLAY_NAME" != "MergeOwl" ]]; then
+  echo "expected MergeOwl app display name, got $DISPLAY_NAME" >&2
+  exit 1
+fi
+ICON_NAME="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$INSTALL_ROOT/Contents/Info.plist")"
+if [[ ! -s "$INSTALL_ROOT/Contents/Resources/$ICON_NAME" ]]; then
+  echo "expected installed app to include its Finder icon" >&2
+  exit 1
+fi
+if [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$INSTALL_ROOT/Contents/Info.plist")" != "dev.prpulse.app" ]]; then
+  echo "expected legacy local bundle identity to remain stable" >&2
+  exit 1
+fi
 if [[ "$MINIMUM_MACOS" != "14.0" ]]; then
   echo "expected installed app to require macOS 14.0, got $MINIMUM_MACOS" >&2
   exit 1
@@ -61,12 +75,12 @@ if [[ "$SWIFT_CALL_COUNT" != "2" ]] \
   exit 1
 fi
 
-if [[ "$(<"$INSTALL_ROOT/Contents/MacOS/PRPulseApp")" != "fresh binary" ]]; then
+if [[ "$(<"$INSTALL_ROOT/Contents/MacOS/MergeOwl")" != "fresh binary" ]]; then
   echo "expected installed app to contain the freshly built binary" >&2
   exit 1
 fi
 
-if [[ "$(<"$INSTALL_ROOT/Contents/Resources/PRPulse_PRPulseApp.bundle/PRPulseFlower@2x.png")" != "flower asset" ]]; then
+if [[ "$(<"$INSTALL_ROOT/Contents/Resources/MergeOwl_PRPulseApp.bundle/MergeOwl.png")" != "owl asset" ]]; then
   echo "expected installed app to include SwiftPM resource bundles" >&2
   exit 1
 fi

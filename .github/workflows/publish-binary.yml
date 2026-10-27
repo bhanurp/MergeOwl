@@ -13,7 +13,7 @@ jobs:
   build-and-publish:
     runs-on: macos-15
     env:
-      PRODUCT_NAME: PRPulseApp
+      PRODUCT_NAME: MergeOwl
       APP_BUNDLE_ID: io.bhanurp.prpulse
       MIN_MACOS_VERSION: "14.0"
     steps:
@@ -76,6 +76,7 @@ jobs:
           chmod +x "$APP_MACOS/$PRODUCT_NAME"
 
           find "$BIN_PATH" -maxdepth 1 -type d -name '*.bundle' -exec cp -R {} "$APP_RESOURCES" \;
+          cp Sources/PRPulseApp/Resources/MergeOwl.icns "$APP_RESOURCES/MergeOwl.icns"
 
           cat > "${APP_CONTENTS}/Info.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
@@ -83,13 +84,15 @@ jobs:
           <plist version="1.0">
           <dict>
             <key>CFBundleDisplayName</key>
-            <string>PR Pulse</string>
+            <string>MergeOwl</string>
             <key>CFBundleExecutable</key>
-            <string>PRPulseApp</string>
+            <string>MergeOwl</string>
             <key>CFBundleIdentifier</key>
             <string>${APP_BUNDLE_ID}</string>
             <key>CFBundleName</key>
-            <string>PRPulse</string>
+            <string>MergeOwl</string>
+            <key>CFBundleIconFile</key>
+            <string>MergeOwl.icns</string>
             <key>CFBundlePackageType</key>
             <string>APPL</string>
             <key>CFBundleShortVersionString</key>
@@ -112,6 +115,7 @@ jobs:
           ZIP_ALIAS="${PRODUCT_NAME}.zip"
           ditto -c -k --sequesterRsrc --keepParent "$APP_BUNDLE" "dist/${ZIP_VERSIONED}"
           cp "dist/${ZIP_VERSIONED}" "dist/${ZIP_ALIAS}"
+          cp "dist/${ZIP_VERSIONED}" dist/PRPulseApp.zip
 
           DMG_VERSIONED="${PRODUCT_NAME}-${VERSION}-macOS-${ARCH_LABEL}.dmg"
           DMG_ALIAS="${PRODUCT_NAME}.dmg"
@@ -120,9 +124,10 @@ jobs:
           mkdir -p "$DMG_ROOT"
           cp -R "$APP_BUNDLE" "$DMG_ROOT/"
           ln -s /Applications "$DMG_ROOT/Applications"
-          hdiutil create -volname "PR Pulse" -srcfolder "$DMG_ROOT" -ov -format UDZO "dist/${DMG_VERSIONED}"
+          hdiutil create -volname "MergeOwl" -srcfolder "$DMG_ROOT" -ov -format UDZO "dist/${DMG_VERSIONED}"
           codesign --force --sign - "dist/${DMG_VERSIONED}"
           cp "dist/${DMG_VERSIONED}" "dist/${DMG_ALIAS}"
+          cp "dist/${DMG_VERSIONED}" dist/PRPulseApp.dmg
 
           echo "ARCH_LABEL=${ARCH_LABEL}" >> "$GITHUB_ENV"
 
@@ -130,12 +135,14 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-')
         uses: softprops/action-gh-release@v2
         with:
-          name: PRPulse ${{ github.ref_name }}
+          name: MergeOwl ${{ github.ref_name }}
           prerelease: false
           make_latest: true
           overwrite_files: true
           files: |
+            dist/MergeOwl.dmg
+            dist/MergeOwl.zip
+            dist/MergeOwl-*-macOS-*.dmg
+            dist/MergeOwl-*-macOS-*.zip
             dist/PRPulseApp.dmg
             dist/PRPulseApp.zip
-            dist/PRPulseApp-*-macOS-*.dmg
-            dist/PRPulseApp-*-macOS-*.zip

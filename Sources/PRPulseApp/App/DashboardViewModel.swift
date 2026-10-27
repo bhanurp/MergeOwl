@@ -187,7 +187,7 @@ final class DashboardViewModel: ObservableObject {
     func exportDiagnostics() async {
         // Create a simple diagnostic report
         var lines: [String] = []
-        lines.append("PR Pulse Diagnostics")
+        lines.append("MergeOwl Diagnostics")
         lines.append("Generated: \(Date().formatted(date: .abbreviated, time: .standard))")
         lines.append("")
         lines.append("Viewer: \(viewerLogin.isEmpty ? "(unknown)" : viewerLogin)")
@@ -210,7 +210,7 @@ final class DashboardViewModel: ObservableObject {
         // Write to a file on Desktop
         let fm = FileManager.default
         let desktop = fm.urls(for: .desktopDirectory, in: .userDomainMask).first!
-        let filename = "PRPulse-Diagnostics-\(Int(Date().timeIntervalSince1970)).txt"
+        let filename = "MergeOwl-Diagnostics-\(Int(Date().timeIntervalSince1970)).txt"
         let url = desktop.appendingPathComponent(filename)
         do {
             try report.data(using: .utf8)?.write(to: url, options: .atomic)

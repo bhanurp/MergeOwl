@@ -68,7 +68,7 @@ final class PRPulseUITests: XCTestCase {
     private func settings() {
         app.descendants(matching: .any)["prpulse.more"].firstMatch.click()
         app.menuItems["prpulse.settings"].click()
-        XCTAssertTrue(app.windows["PR Pulse Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.windows["MergeOwl Settings"].waitForExistence(timeout: 5))
         app.activate()
         let sceneWindow = app.windows["com_apple_SwiftUI_Settings_window"]
         let sceneClose = sceneWindow.buttons[XCUIIdentifierCloseWindow]
@@ -76,11 +76,11 @@ final class PRPulseUITests: XCTestCase {
             sceneClose.click()
         }
         // Hosted runners have small desktops; zoom the native window to avoid clipped controls.
-        app.windows["PR Pulse Settings"].buttons[XCUIIdentifierZoomWindow].click()
+        app.windows["MergeOwl Settings"].buttons[XCUIIdentifierZoomWindow].click()
     }
 
     private func pane(_ name: String) {
-        app.windows["PR Pulse Settings"].staticTexts[name].firstMatch.click()
+        app.windows["MergeOwl Settings"].staticTexts[name].firstMatch.click()
     }
 
     private func toggleFilter(_ name: String) {
@@ -100,7 +100,7 @@ final class PRPulseUITests: XCTestCase {
     }
 
     private func preference(_ name: String) -> XCUIElement {
-        let window = app.windows["PR Pulse Settings"]
+        let window = app.windows["MergeOwl Settings"]
         let control = window.groups.containing(.staticText, identifier: name).switches.firstMatch
         return control.exists ? control : window.checkBoxes[name]
     }
@@ -163,7 +163,7 @@ final class PRPulseUITests: XCTestCase {
         let interval = app.popUpButtons["prpulse.ci-interval"]
         interval.click()
         app.menuItems["15 min"].click()
-        app.windows["PR Pulse Settings"].buttons[XCUIIdentifierCloseWindow].click()
+        app.windows["MergeOwl Settings"].buttons[XCUIIdentifierCloseWindow].click()
         openDashboard()
         app.descendants(matching: .any)["prpulse.pr-more.PR_1"].firstMatch.click()
         app.menuItems["Mute CI failure alerts"].click()
@@ -217,7 +217,7 @@ final class PRPulseUITests: XCTestCase {
         XCTAssertTrue(app.buttons["My PRs"].exists, "Tabbed must be the default")
         settings()
         pane("Saved Views")
-        let window = app.windows["PR Pulse Settings"]
+        let window = app.windows["MergeOwl Settings"]
         window.buttons["Create saved view"].click()
         XCTAssertTrue(app.textFields["prpulse.view-name"].waitForExistence(timeout: 5))
         enter("API work", in: app.textFields["prpulse.view-name"])
@@ -268,7 +268,7 @@ final class PRPulseUITests: XCTestCase {
         app.launchEnvironment["PRPULSE_E2E_APPEARANCE"] = "light"
         launch()
         settings()
-        let window = app.windows["PR Pulse Settings"]
+        let window = app.windows["MergeOwl Settings"]
         XCTAssertTrue(window.buttons["Manage octocat"].waitForExistence(timeout: 10))
         window.buttons["Add account"].click()
         enter("e2e-hubot", in: window.descendants(matching: .any)["prpulse.token-input"].firstMatch)
@@ -299,10 +299,10 @@ final class PRPulseUITests: XCTestCase {
         XCTAssertFalse(app.windows["com_apple_SwiftUI_Settings_window"].exists)
         app.descendants(matching: .any)["prpulse.more"].firstMatch.click()
         app.menuItems["prpulse.settings"].click()
-        let window = app.windows["PR Pulse Settings"]
+        let window = app.windows["MergeOwl Settings"]
         XCTAssertTrue(window.waitForExistence(timeout: 5))
         for _ in 0..<3 {
-            XCTAssertEqual(app.windows.matching(identifier: "PR Pulse Settings").count, 1)
+            XCTAssertEqual(app.windows.matching(identifier: "MergeOwl Settings").count, 1)
             XCTAssertFalse(app.windows["com_apple_SwiftUI_Settings_window"].exists)
             window.buttons[XCUIIdentifierCloseWindow].click()
             app.typeKey(",", modifierFlags: [.command])
@@ -316,7 +316,7 @@ final class PRPulseUITests: XCTestCase {
         reopen.waitUntilExit()
         XCTAssertEqual(reopen.terminationStatus, 0)
         XCTAssertTrue(window.waitForExistence(timeout: 5))
-        XCTAssertEqual(app.windows.matching(identifier: "PR Pulse Settings").count, 1)
+        XCTAssertEqual(app.windows.matching(identifier: "MergeOwl Settings").count, 1)
         window.buttons[XCUIIdentifierCloseWindow].click()
         XCTAssertNotEqual(app.state, .notRunning)
         openDashboard()
@@ -328,7 +328,7 @@ final class PRPulseUITests: XCTestCase {
         XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
         settings()
         pane("Saved Views")
-        let window = app.windows["PR Pulse Settings"]
+        let window = app.windows["MergeOwl Settings"]
         window.buttons["Create saved view"].click()
         XCTAssertTrue(app.textFields["prpulse.view-name"].waitForExistence(timeout: 5), app.debugDescription)
         enter("API work", in: app.textFields["prpulse.view-name"])
@@ -384,7 +384,7 @@ final class PRPulseUITests: XCTestCase {
         XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
         settings()
         pane("Saved Views")
-        app.windows["PR Pulse Settings"].buttons["Create saved view"].click()
+        app.windows["MergeOwl Settings"].buttons["Create saved view"].click()
         let name = "Release readiness and customer API work"
         XCTAssertTrue(app.textFields["prpulse.view-name"].waitForExistence(timeout: 5))
         enter(name, in: app.textFields["prpulse.view-name"])
@@ -413,7 +413,7 @@ final class PRPulseUITests: XCTestCase {
         launch()
         XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
         settings()
-        let window = app.windows["PR Pulse Settings"]
+        let window = app.windows["MergeOwl Settings"]
         XCTAssertTrue(window.buttons["Manage octocat"].waitForExistence(timeout: 10))
         window.buttons["Add account"].click()
         enter("e2e-hubot", in: window.descendants(matching: .any)["prpulse.token-input"].firstMatch)
@@ -440,21 +440,21 @@ final class PRPulseUITests: XCTestCase {
         launch()
         settings()
         pane("Refresh")
-        let window = app.windows["PR Pulse Settings"]
+        let window = app.windows["MergeOwl Settings"]
         window.buttons[XCUIIdentifierCloseWindow].click()
         openDashboard()
         app.descendants(matching: .any)["prpulse.account-selector"].firstMatch.click()
         app.menuItems["Add account…"].click()
         XCTAssertTrue(window.buttons["Connect GitHub"].waitForExistence(timeout: 5), app.debugDescription)
         XCTAssertTrue(window.descendants(matching: .any)["prpulse.token-input"].firstMatch.exists)
-        XCTAssertEqual(app.windows.matching(identifier: "PR Pulse Settings").count, 1)
+        XCTAssertEqual(app.windows.matching(identifier: "MergeOwl Settings").count, 1)
     }
 
     func testAdvancedDoesNotOfferIgnoredSettingsFile() {
         launch()
         settings()
         pane("Advanced")
-        let window = app.windows["PR Pulse Settings"]
+        let window = app.windows["MergeOwl Settings"]
         XCTAssertTrue(window.buttons["Export logs"].waitForExistence(timeout: 5))
         XCTAssertFalse(window.buttons["Open settings.json"].exists)
     }
@@ -463,7 +463,7 @@ final class PRPulseUITests: XCTestCase {
         launch()
         XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
         settings()
-        let window = app.windows["PR Pulse Settings"]
+        let window = app.windows["MergeOwl Settings"]
         XCTAssertTrue(window.buttons["Remove account"].waitForExistence(timeout: 5))
         window.buttons["Remove account"].click()
         let confirm = app.sheets.buttons["Remove account"].firstMatch
@@ -484,11 +484,16 @@ final class PRPulseUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["Connected as @octocat"].firstMatch.waitForExistence(timeout: 10))
         let item = app.descendants(matching: .statusItem)["prpulse.status-item"]
         XCTAssertTrue(item.label.contains("actionable"))
+        XCTAssertTrue(item.label.hasPrefix("MergeOwl,"))
+        let iconCapture = XCTAttachment(screenshot: item.screenshot())
+        iconCapture.name = "MergeOwl status item"
+        iconCapture.lifetime = .keepAlways
+        add(iconCapture)
         item.click()
         XCTAssertFalse(app.textFields["Search title or repo"].exists)
         openDashboard()
         settings()
-        app.windows["PR Pulse Settings"].buttons[XCUIIdentifierCloseWindow].click()
+        app.windows["MergeOwl Settings"].buttons[XCUIIdentifierCloseWindow].click()
         XCTAssertNotEqual(app.state, .notRunning)
         openDashboard()
         app.descendants(matching: .any)["prpulse.more"].firstMatch.click()
@@ -549,10 +554,10 @@ final class PRPulseUITests: XCTestCase {
     func testTokenUpdateAndKeychainPersistence() {
         launch(token: "invalid")
         settings()
-        let token = app.windows["PR Pulse Settings"].descendants(matching: .any)["prpulse.token-input"].firstMatch
+        let token = app.windows["MergeOwl Settings"].descendants(matching: .any)["prpulse.token-input"].firstMatch
         XCTAssertTrue(token.waitForExistence(timeout: 5), app.debugDescription)
         enter("e2e-valid", in: token)
-        app.windows["PR Pulse Settings"].buttons["Connect GitHub"].click()
+        app.windows["MergeOwl Settings"].buttons["Connect GitHub"].click()
         XCTAssertTrue(app.staticTexts["Connected as octocat"].waitForExistence(timeout: 10), app.debugDescription)
         app.terminate()
         app.launchEnvironment.removeValue(forKey: "PRPULSE_E2E_INITIAL_TOKEN")
@@ -560,8 +565,8 @@ final class PRPulseUITests: XCTestCase {
         openDashboard()
         XCTAssertTrue(app.descendants(matching: .any)["Connected as @octocat"].firstMatch.waitForExistence(timeout: 10))
         settings()
-        XCTAssertEqual(app.windows["PR Pulse Settings"].descendants(matching: .any)["prpulse.token-input"].firstMatch.value as? String, "")
-        app.windows["PR Pulse Settings"].buttons["Test connection"].firstMatch.click()
+        XCTAssertEqual(app.windows["MergeOwl Settings"].descendants(matching: .any)["prpulse.token-input"].firstMatch.value as? String, "")
+        app.windows["MergeOwl Settings"].buttons["Test connection"].firstMatch.click()
         XCTAssertTrue(app.staticTexts["Connected as octocat"].waitForExistence(timeout: 10))
     }
 
@@ -569,7 +574,7 @@ final class PRPulseUITests: XCTestCase {
         launch(token: "invalid")
         XCTAssertTrue(app.buttons["Connection issue"].waitForExistence(timeout: 10))
         settings()
-        app.windows["PR Pulse Settings"].buttons["Test connection"].firstMatch.click()
+        app.windows["MergeOwl Settings"].buttons["Test connection"].firstMatch.click()
         XCTAssertTrue(app.staticTexts["GitHub could not verify this token (HTTP 401). Check expiration and permissions."].waitForExistence(timeout: 10))
     }
 
@@ -604,9 +609,9 @@ final class PRPulseUITests: XCTestCase {
         XCTAssertTrue(preference("Needs re-review").waitForExistence(timeout: 5), app.debugDescription)
         preference("Needs re-review").click()
         pane("Repositories")
-        let input = app.windows["PR Pulse Settings"].textFields["prpulse.repository-input"]
+        let input = app.windows["MergeOwl Settings"].textFields["prpulse.repository-input"]
         enter("example/repo", in: input)
-        app.windows["PR Pulse Settings"].buttons["Add"].click()
+        app.windows["MergeOwl Settings"].buttons["Add"].click()
         XCTAssertTrue(preference("example/repo").waitForExistence(timeout: 5), app.debugDescription)
         pane("Advanced")
         XCTAssertTrue(app.buttons["Refresh Now"].exists)
@@ -621,7 +626,7 @@ final class PRPulseUITests: XCTestCase {
         XCTAssertEqual(String(describing: preference("Refresh on launch").value!), "0")
         pane("Notifications")
         XCTAssertEqual(String(describing: preference("Needs re-review").value!), "0")
-        app.windows["PR Pulse Settings"].buttons[XCUIIdentifierCloseWindow].click()
+        app.windows["MergeOwl Settings"].buttons[XCUIIdentifierCloseWindow].click()
         openDashboard()
         selectTab("Watched")
         app.buttons["prpulse.refresh"].click()
