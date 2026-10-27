@@ -1,9 +1,20 @@
 import AppKit
+import SwiftUI
 import XCTest
 @testable import PRPulseApp
 
 @MainActor
 final class PRPulseStatusItemControllerTests: XCTestCase {
+    func testPopoverHostDoesNotNegotiateIntrinsicListSize() throws {
+        let popover = FakePopoverHost()
+        let controller = PRPulseStatusItemController(statusBar: FakeStatusBarHost(), popover: popover)
+        controller.install(with: AppDependencies(useMockClient: true).dashboard, actions: .noop)
+        let hosting = try XCTUnwrap(popover.content as? NSHostingController<ContentView>)
+        XCTAssertTrue(hosting.sizingOptions.isEmpty, "The fixed-size popover must own its bounds instead of feeding lazy-list intrinsic size back into AppKit")
+        XCTAssertEqual(hosting.preferredContentSize, NSSize(width: 420, height: 560))
+        XCTAssertEqual(hosting.view.frame.size, NSSize(width: 420, height: 560))
+    }
+
     func testInstallRetainsExactlyOneStatusItem() {
         let statusBar = FakeStatusBarHost()
         let popover = FakePopoverHost()
@@ -53,6 +64,7 @@ private final class FakeStatusItemButton: StatusItemButtonHosting {
 
 @MainActor
 private final class FakePopoverHost: PopoverHosting {
+    var content: NSViewController?
     enum Event: Equatable {
         case show
         case close
@@ -61,7 +73,7 @@ private final class FakePopoverHost: PopoverHosting {
     private(set) var events: [Event] = []
     var isShown = false
 
-    func configure(content: NSViewController) {}
+    func configure(content: NSViewController) { self.content = content }
 
     func show(relativeTo anchorView: NSView) {
         isShown = true

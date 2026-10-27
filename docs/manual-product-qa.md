@@ -82,6 +82,13 @@ Do not run window-opening unit tests concurrently with native journeys: they can
 
 ## Limits
 
+### Intermittent scrolling hang investigation — 2026-10-27
+
+- A local preview became unresponsive at sustained 100% CPU. A process sample showed the main thread repeatedly flushing SwiftUI layout transactions through lazy-list placement. The hung process was stopped; credentials and account storage were not changed.
+- Isolated synthetic comparisons exercised scrolling, refresh, both layouts and CI details. Replacing relative timestamps with static text did not reduce the observed cycle warnings. Keeping the hosting controller at the popover's existing fixed 420×560 bounds reduced warnings in the comparison and remained responsive, including close/reopen.
+- The sizing regression failed with automatic intrinsic sizing enabled and passed after the change. All 107 unit tests and both release architecture builds passed. Independent review found no blocking correctness issue in the sizing mitigation.
+- These comparisons have not reproduced the original sustained freeze. The change is a mitigation, not proof of full resolution. Release remains blocked pending further stability verification; transient cycle warnings still occur.
+
 ### CI monitoring review follow-up — 2026-10-27
 
 - 105 unit tests passed after the review fixes. Regressions cover rejected notification retries, independent loaded-row head/test-merge identity, CI request budgeting and verification fairness across 15 failing PRs over repeated passes.
