@@ -24,7 +24,7 @@ struct PopoverMoreMenu: View {
             }
                 .accessibilityIdentifier("prpulse.settings")
                 .keyboardShortcut(",")
-            Button("Quit PR Pulse", action: actions.quit)
+            Button("Quit MergeOwl", action: actions.quit)
                 .accessibilityIdentifier("prpulse.quit")
                 .keyboardShortcut("q")
         } label: { Image(systemName: "ellipsis") }

@@ -1,4 +1,4 @@
-# CI monitoring (unreleased)
+# MergeOwl CI monitoring (unreleased)
 
 These controls are in the CI-monitoring source branch. They are not included in the v0.2.1 download. Existing README screenshots show earlier releases.
 

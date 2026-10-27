@@ -68,7 +68,7 @@ struct RefreshSettingsView: View {
                     Text("Refresh every \(viewModel.currentRefreshIntervalMinutes) min")
                 }
 
-                Text("PRPulse checks for changes at this interval while it is running.")
+                Text("MergeOwl checks for changes at this interval while it is running.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -137,7 +137,7 @@ struct NotificationSettingsView: View {
                     }
                 }
 
-                Text("Choose how often PRPulse summarizes your pull request activity.")
+                Text("Choose how often MergeOwl summarizes your pull request activity.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }

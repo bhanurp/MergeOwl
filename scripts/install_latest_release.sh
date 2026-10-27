@@ -37,7 +37,7 @@ resolve_repo() {
 REPO="$(resolve_repo "${1:-}" || true)"
 if [[ -z "$REPO" ]]; then
   echo "usage: $0 <owner/repo>" >&2
-  echo "example: $0 octocat/PRPulse" >&2
+  echo "example: $0 octocat/MergeOwl" >&2
   exit 1
 fi
 

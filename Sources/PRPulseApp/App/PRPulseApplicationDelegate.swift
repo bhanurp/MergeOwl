@@ -8,7 +8,7 @@ final class PRPulseApplicationDelegate: NSObject, NSApplicationDelegate {
     private let statusItemController = PRPulseStatusItemController()
     private var sessionObserver: AnyCancellable?
     private lazy var settingsOwner = NativeWindowOwner { [unowned self] in
-        let window = makeWindow(title: "PR Pulse Settings", content: AccountSettingsHost(accounts: dependencies.accounts).frame(minWidth: 760, minHeight: 520))
+        let window = makeWindow(title: "MergeOwl Settings", content: AccountSettingsHost(accounts: dependencies.accounts).frame(minWidth: 760, minHeight: 520))
         window.contentMinSize = NSSize(width: 760, height: 520)
         window.setContentSize(NSSize(width: 900, height: 600))
         window.center()
@@ -56,12 +56,12 @@ final class PRPulseApplicationDelegate: NSObject, NSApplicationDelegate {
     private func installApplicationMenu() {
         let menu = NSMenu()
         let applicationItem = NSMenuItem()
-        let applicationMenu = NSMenu(title: "PR Pulse")
+        let applicationMenu = NSMenu(title: "MergeOwl")
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(showSettings), keyEquivalent: ",")
         settingsItem.target = self
         applicationMenu.addItem(settingsItem)
         applicationMenu.addItem(.separator())
-        applicationMenu.addItem(withTitle: "Quit PR Pulse", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        applicationMenu.addItem(withTitle: "Quit MergeOwl", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         applicationItem.submenu = applicationMenu
         menu.addItem(applicationItem)
         let editItem = NSMenuItem()

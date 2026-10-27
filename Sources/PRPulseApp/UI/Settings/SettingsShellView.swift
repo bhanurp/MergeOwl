@@ -91,11 +91,11 @@ struct SettingsShellView: View {
         case .appearance:
             "Choose how your menu-bar popover is arranged."
         case .refresh:
-            "Choose when PRPulse checks for updates."
+            "Choose when MergeOwl checks for updates."
         case .notifications:
             "Control alerts and digest delivery."
         case .repositories:
-            "Select the repositories PRPulse watches."
+            "Select the repositories MergeOwl watches."
         case .savedViews:
             "Group this account’s loaded PRs with reusable rules."
         case .advanced:

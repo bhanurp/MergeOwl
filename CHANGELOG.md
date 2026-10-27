@@ -1,6 +1,14 @@
 # Changelog
 
-All notable changes to PR Pulse are documented in this file.
+All notable changes to MergeOwl (formerly PR Pulse) are documented in this file.
+
+## Unreleased
+
+### Changed
+
+- Rename the app to MergeOwl and use the approved transparent amber owl for the app and menu-bar icons.
+- Package future releases as MergeOwl.app while retaining existing account, Keychain and local-data identifiers, plus legacy generic download aliases.
+- Update onboarding and contributor documentation; existing PR Pulse releases and historical screenshots retain their original names.
 
 ## [0.2.1] - 2026-10-26
 
