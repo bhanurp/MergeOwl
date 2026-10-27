@@ -169,6 +169,7 @@ struct ContentView: View {
                         },
                         showAuthor: viewModel.selectedTab == .reviewRequested,
                         ciRefreshInterval: viewModel.settings.ciRefreshInterval,
+                        ciRefreshing: viewModel.isCurrentListRefreshing,
                         ciMuted: viewModel.ciMonitor.isMuted(presentation.id),
                         toggleCIMute: presentation.pullRequest.author.login.caseInsensitiveCompare(viewModel.viewerLogin) == .orderedSame ? {
                             do { try viewModel.ciMonitor.setMuted(!viewModel.ciMonitor.isMuted(presentation.id), for: presentation.id) }

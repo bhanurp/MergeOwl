@@ -32,6 +32,8 @@ final class DashboardViewModel: ObservableObject {
     @Published private(set) var listStates: [PullRequestTab: PullRequestListState]
     @Published private(set) var isRefreshing: Bool = false
     @Published private(set) var isReady = false
+    private var lastPopoverRefreshAttempt: Date?
+    var isCurrentListRefreshing: Bool { isRefreshing || listStates[selectedTab]?.isLoading == true }
     @Published private(set) var badgeCount: Int = 0
     @Published private(set) var viewerLogin: String = ""
     @Published private(set) var digestSnapshot = DigestSnapshot(openedCount: 0, reviewedCount: 0, timeframeDescription: "N/A")
@@ -178,6 +180,17 @@ final class DashboardViewModel: ObservableObject {
         guard !retired else { return }
         if selectedSavedViewID != nil { await refreshAllLoaded() }
         else { await loadPage(for: selectedTab, reset: true) }
+    }
+
+    func refreshForPopoverOpen(now: Date = Date()) async {
+        guard isReady, !retired, !isCurrentListRefreshing else { return }
+        if !currentItems.isEmpty, currentItems.allSatisfy({ item in
+            guard let ci = item.pullRequest.detail.ci, ci.isComplete, !ci.isStale else { return false }
+            return now.timeIntervalSince(ci.checkedAt) < 30
+        }) { return }
+        if let lastPopoverRefreshAttempt, now.timeIntervalSince(lastPopoverRefreshAttempt) < 30 { return }
+        lastPopoverRefreshAttempt = now
+        await refreshActiveTab()
     }
 
     func requestNotificationAuthorization() async {

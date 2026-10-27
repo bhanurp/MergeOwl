@@ -41,6 +41,7 @@ final class PRPulseStatusItemController {
     private let popover: any PopoverHosting
     private var button: (any StatusItemButtonHosting)?
     private var badgeCountObserver: AnyCancellable?
+    private weak var dashboard: DashboardViewModel?
 
     init(
         statusBar: any StatusBarHosting = AppKitStatusBarHost(),
@@ -51,6 +52,7 @@ final class PRPulseStatusItemController {
     }
 
     func install(with dashboard: DashboardViewModel, actions: DashboardHostActions, accounts: AccountSessionCoordinator? = nil) {
+        self.dashboard = dashboard
         if button == nil {
             button = statusBar.makeButton { [weak self] in self?.togglePopover() }
         }
@@ -80,10 +82,12 @@ final class PRPulseStatusItemController {
             popover.close()
         } else {
             popover.show(relativeTo: button.anchorView)
+            Task { [weak dashboard] in await dashboard?.refreshForPopoverOpen() }
         }
     }
 
     func tearDown() {
+        dashboard = nil
         badgeCountObserver = nil
         if let button {
             statusBar.removeButton(button)

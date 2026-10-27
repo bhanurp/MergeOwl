@@ -8,6 +8,8 @@ In either **Tabbed** or **Compact**, click the CI status below a PR title. The d
 
 The app distinguishes failed, running, queued, cancelled, action-required, skipped/neutral, unavailable and no-checks-reported states. A skipped check is not a successfully executed test. CI status appears in all three PR lists. Passing checks alone do not establish merge readiness: approvals, conflicts, required checks, branch rules and other GitHub requirements still apply. **No known blockers** is not a guarantee that GitHub will allow a merge.
 
+CI labels describe the last fetched snapshot, not a live stream from GitHub. Each row shows when checks were observed. Opening the popover refreshes the selected view when its visible CI snapshots are older than 30 seconds; rapid reopen attempts are coalesced. During a list refresh the row says **Checking CI…**, and the previous details remain available. Manual refresh remains available at any time. This does not change the separate failure-alert polling interval.
+
 Failures and CI states needing attention on your authored PRs remain actionable in the badge and **Actionable** filter, unless you snooze or mark the PR not relevant. A failure on someone else's PR does not by itself assign an action to you.
 
 GitHub's test-merge checks take precedence when present. Results from a PR that changes during the read are discarded; other PRs continue loading. Failed refreshes retain previous check details with a stale/unavailable indication, rather than treating a network error as a CI failure.
