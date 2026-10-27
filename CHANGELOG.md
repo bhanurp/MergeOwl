@@ -1,6 +1,30 @@
 # Changelog
 
-All notable changes to PR Pulse are documented in this file.
+All notable changes to MergeOwl (formerly PR Pulse) are documented in this file.
+
+## [Unreleased]
+
+### Added
+
+- PR CI status in both Tabbed and Compact layouts, with check details, revision information, stale-result warnings, and links to individual checks.
+- Optional CI failure alerts for accessible open PRs authored by the active account, with a separate polling interval, quiet-hours handling, and persistent per-PR mutes.
+- Bounded CI requests, failure revalidation, and incomplete-coverage reporting when GitHub access or rate limits prevent a complete refresh.
+- MergeOwl product website with app previews, download links, installation guidance, and FAQs; website source and Vercel configuration live in `website/`.
+
+### Changed
+
+- Adopted MergeOwl as the product and website name. Existing release downloads and app bundles still use PR Pulse while the rename rolls out.
+- Failed CI and CI states needing attention on authored PRs contribute to actionable status, subject to local snooze and N/A triage.
+
+### Fixed
+
+- Retain previous check details when CI refreshes fail, discard results for outdated PR revisions, and retry failure notifications that macOS did not accept.
+
+### Release status
+
+- CI monitoring is available in source but is not included in the v0.2.1 download.
+- The website is deployed on Vercel. Automatic deployments from GitHub remain pending Vercel authorization for `bhanurp/MergeOwl`.
+- Automatic app updates, Developer ID signing, and Apple notarization remain deferred.
 
 ## [0.2.1] - 2026-10-26
 
