@@ -87,7 +87,7 @@ These older captures use synthetic GitHub fixture data. The GIF cycles through c
 1. Open the [latest release](https://github.com/bhanurp/MergeOwl/releases/latest) and download **MergeOwl.dmg** for v0.2.2 or newer (**PRPulseApp.dmg** for v0.2.1 and earlier). The universal build supports Apple Silicon and Intel.
 2. Open the DMG and drag **MergeOwl.app** into **Applications** (**PRPulseApp.app** for older releases).
 3. Launch the app you copied from Applications.
-4. Look for the orange flower icon in the menu bar at the top of your screen. Click it to open the PR list. This is a menu-bar app, not a normal Dock window.
+4. Look for the owl icon in the menu bar for v0.2.2 or newer (the orange flower icon for v0.2.1 and earlier). Click it to open the PR list. This is a menu-bar app, not a normal Dock window.
 
 ### If macOS blocks the first launch
 

@@ -32,7 +32,8 @@ final class DashboardViewModel: ObservableObject {
     @Published private(set) var listStates: [PullRequestTab: PullRequestListState]
     @Published private(set) var isRefreshing: Bool = false
     @Published private(set) var isReady = false
-    private var lastPopoverRefreshAttempt: Date?
+    private enum PopoverRefreshScope: Hashable { case tab(PullRequestTab), allLoaded }
+    private var lastPopoverRefreshAttempts: [PopoverRefreshScope: Date] = [:]
     var isCurrentListRefreshing: Bool { isRefreshing || listStates[selectedTab]?.isLoading == true }
     @Published private(set) var badgeCount: Int = 0
     @Published private(set) var viewerLogin: String = ""
@@ -183,13 +184,15 @@ final class DashboardViewModel: ObservableObject {
     }
 
     func refreshForPopoverOpen(now: Date = Date()) async {
-        guard isReady, !retired, !isCurrentListRefreshing else { return }
+        guard isReady, !retired else { return }
         if !currentItems.isEmpty, currentItems.allSatisfy({ item in
             guard let ci = item.pullRequest.detail.ci, ci.isComplete, !ci.isStale else { return false }
             return now.timeIntervalSince(ci.checkedAt) < 30
         }) { return }
-        if let lastPopoverRefreshAttempt, now.timeIntervalSince(lastPopoverRefreshAttempt) < 30 { return }
-        lastPopoverRefreshAttempt = now
+        let scope: PopoverRefreshScope = selectedSavedViewID == nil ? .tab(selectedTab) : .allLoaded
+        if let lastAttempt = lastPopoverRefreshAttempts[scope], now.timeIntervalSince(lastAttempt) < 30 { return }
+        lastPopoverRefreshAttempts[scope] = now
+        // loadPage queues a reset behind an in-flight page instead of losing it.
         await refreshActiveTab()
     }
 
