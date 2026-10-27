@@ -3,6 +3,27 @@ import XCTest
 
 @MainActor
 final class CIMonitorLifecycleTests: XCTestCase {
+    func testRejectedNotificationRemainsEligibleOnNextPoll() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let client = MonitorClient()
+        let sink = CINotificationRecorder()
+        let lifetime = AccountSessionLifetime()
+        let monitor = CIMonitor(client: client, directory: directory, lifetime: lifetime, notifier: sink)
+        defer { monitor.stop(); lifetime.invalidate() }
+        var settings = AppSettings.default; settings.ciFailureAlerts = true
+        monitor.configure(settings)
+        for _ in 0..<100 where monitor.lastChecked == nil { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertNotNil(monitor.lastChecked)
+        sink.accepts = false; client.failed = true
+        await monitor.poll()
+        XCTAssertTrue(sink.deliveries.isEmpty)
+        sink.accepts = true
+        await monitor.poll()
+        XCTAssertEqual(sink.deliveries.count, 2, "Rejected requests must retry rather than advance the baseline")
+        await monitor.poll()
+        XCTAssertEqual(sink.deliveries.count, 2, "Accepted requests must not repeat")
+    }
     func testStaleMonitorResultAlsoUpdatesAlreadyVisibleDashboardRows() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -96,10 +117,13 @@ final class CIMonitorLifecycleTests: XCTestCase {
 @MainActor
 private final class CINotificationRecorder: CINotificationSending {
     var deliveries: [String] = []
+    var accepts = true
     func requestAuthorizationIfNeeded() async {}
     func ciPermissionDescription() async -> String { "Enabled" }
-    func sendCIFailure(for pr: PullRequest, checks: [CICheck]) async {
+    func sendCIFailure(for pr: PullRequest, checks: [CICheck]) async -> Bool {
+        guard accepts else { return false }
         deliveries.append("\(pr.id):\(checks.map(\.name).joined(separator: ","))")
+        return true
     }
 }
 

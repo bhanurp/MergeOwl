@@ -35,17 +35,23 @@ final class CIMonitorStore {
         next.observations = next.observations.filter { ids.contains($0.key) }
         try save(next)
     }
-    func observe(pr: PullRequest, snapshot: CIStatus) throws -> [CICheck] {
+    func observe(pr: PullRequest, snapshot: CIStatus, deferReportable: Bool = false) throws -> [CICheck] {
         guard snapshot.isComplete, !snapshot.isStale, !snapshot.headSHA.isEmpty,
               !snapshot.checks.contains(where: { $0.state == .unknown }) else { return [] }
         let failures = snapshot.checks.filter { $0.state == .failure }
         let keys = Set(failures.map(\.failureKey))
         let old = state.observations[pr.id]
+        let reportable = old.map { old in
+            failures.filter { old.revision != snapshot.revision || !old.failures.contains($0.failureKey) }
+        } ?? []
+        if deferReportable, !state.muted.contains(pr.id), !reportable.isEmpty {
+            return reportable
+        }
         var next = state
         next.observations[pr.id] = Observation(revision: snapshot.revision, failures: keys)
         try save(next)
-        guard !state.muted.contains(pr.id), let old else { return [] }
-        return failures.filter { old.revision != snapshot.revision || !old.failures.contains($0.failureKey) }
+        guard !state.muted.contains(pr.id) else { return [] }
+        return reportable
     }
     private func save(_ next: State) throws {
         guard lifetime.isActive else { throw CancellationError() }

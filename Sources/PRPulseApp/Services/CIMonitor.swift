@@ -3,7 +3,7 @@ import Foundation
 protocol CINotificationSending: Sendable {
     func requestAuthorizationIfNeeded() async
     func ciPermissionDescription() async -> String
-    func sendCIFailure(for pr: PullRequest, checks: [CICheck]) async
+    func sendCIFailure(for pr: PullRequest, checks: [CICheck]) async -> Bool
 }
 
 /// One monitor per account session. Never depends on the selected tab or visible filters.
@@ -135,11 +135,14 @@ final class CIMonitor {
                 snapshot = CIStatus.retainingPrevious(snapshots[pr.id], incoming: snapshot)
                 if !snapshot.isComplete || snapshot.isStale { warnings.append("Some CI data is unavailable.") }
                 snapshots[pr.id] = snapshot
-                let failures = try storage.observe(pr: pr, snapshot: snapshot)
+                let quiet = Self.isQuiet(hour: Calendar.current.component(.hour, from: Date()), hours: quietHours)
+                let failures = try storage.observe(pr: pr, snapshot: snapshot, deferReportable: !quiet)
                 if storage.isMuted(pr.id) { mutedIDs.insert(pr.id) } else { mutedIDs.remove(pr.id) }
-                if !failures.isEmpty && !Self.isQuiet(hour: Calendar.current.component(.hour, from: Date()), hours: quietHours) {
+                if !failures.isEmpty && !quiet {
                     guard active() else { return }
-                    await notifier.sendCIFailure(for: pr, checks: failures)
+                    let accepted = await notifier.sendCIFailure(for: pr, checks: failures)
+                    guard active() else { return }
+                    if accepted { _ = try storage.observe(pr: pr, snapshot: snapshot) }
                 }
             }
             guard active() else { return }

@@ -24,12 +24,12 @@ actor NotificationDispatcher: CINotificationSending {
         #endif
     }
 
-    func sendCIFailure(for pr: PullRequest, checks: [CICheck]) async {
-        guard notificationsSupported(), !checks.isEmpty else { return }
+    func sendCIFailure(for pr: PullRequest, checks: [CICheck]) async -> Bool {
+        guard notificationsSupported(), !checks.isEmpty else { return false }
         let center = UNUserNotificationCenter.current()
         let settings = await center.notificationSettings()
         guard !retired, store.lifetime.isActive,
-              settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else { return }
+              settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else { return false }
         let content = UNMutableNotificationContent()
         content.title = "CI failed · \(pr.repository.nameWithOwner) #\(pr.number)"
         content.subtitle = pr.title
@@ -37,13 +37,18 @@ actor NotificationDispatcher: CINotificationSending {
         content.userInfo = ["url": pr.url.appendingPathComponent("checks").absoluteString]
         let request = UNNotificationRequest(identifier: "\(namespace)-ci-\(UUID().uuidString)", content: content, trigger: nil)
         do {
-            guard !retired, store.lifetime.isActive else { return }
+            guard !retired, store.lifetime.isActive else { return false }
             try await center.add(request)
             if retired || !store.lifetime.isActive {
                 center.removePendingNotificationRequests(withIdentifiers: [request.identifier])
                 center.removeDeliveredNotifications(withIdentifiers: [request.identifier])
+                return false
             }
-        } catch { NSLog("Could not deliver CI notification") }
+            return true
+        } catch {
+            NSLog("Could not deliver CI notification")
+            return false
+        }
     }
 
     private func notificationsSupported() -> Bool {
