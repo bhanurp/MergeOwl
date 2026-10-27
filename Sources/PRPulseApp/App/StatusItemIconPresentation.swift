@@ -24,7 +24,19 @@ enum StatusItemIconRenderer {
         #if E2E_TESTING
         let url = Bundle.main.url(forResource: "MergeOwl", withExtension: "png")
         #else
-        let url = Bundle.module.url(forResource: "MergeOwl", withExtension: "png")
+        let installedBundleURL = Bundle.main.resourceURL?.appendingPathComponent("MergeOwl_PRPulseApp.bundle")
+        let installedBundle = installedBundleURL.flatMap(Bundle.init(url:))
+        let resourceBundle: Bundle?
+        if let installedBundle {
+            resourceBundle = installedBundle
+        } else if Bundle.main.bundleURL.pathExtension == "app" {
+            // SwiftPM's generated accessor can fatalError when its build directory is absent.
+            // An installed app with missing artwork must reach the visible fallback instead.
+            resourceBundle = nil
+        } else {
+            resourceBundle = Bundle.module
+        }
+        let url = resourceBundle?.url(forResource: "MergeOwl", withExtension: "png")
         #endif
         return url.flatMap(NSImage.init(contentsOf:))
     }()

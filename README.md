@@ -80,6 +80,8 @@ These older captures use synthetic GitHub fixture data. The GIF cycles through c
 
 **Early release:** the app is ad-hoc signed, not Apple-notarized. Read the first-launch instructions below before installing. GitHub.com and macOS are the supported targets; GitLab, Windows, Linux, and custom GitHub Enterprise Server hosts are not supported.
 
+<a id="install"></a>
+
 ## Install the current published release
 
 1. Open the [latest release](https://github.com/bhanurp/MergeOwl/releases/latest) and download **PRPulseApp.dmg**. The universal build supports Apple Silicon and Intel.
@@ -113,7 +115,7 @@ For a classic token, use [GitHub’s classic token settings](https://github.com/
 
 ### Save and verify the connection
 
-1. Click the flower menu-bar icon, then **More (…) → Settings**. On v0.2.0, use the **gear** button instead.
+1. Click the **owl** menu-bar icon in MergeOwl source builds (the **flower** in published PR Pulse releases), then **More (…) → Settings**. On v0.2.0, use the **gear** button instead.
 2. Select **Account** in the sidebar.
 3. Paste the token into **Personal access token**.
 4. Click **Connect GitHub** (or **Update token** if already configured).
@@ -237,6 +239,7 @@ Installer regression tests:
 ```bash
 bash Tests/InstallerTests/test_install_latest_release.sh
 bash Tests/InstallerTests/test_install_prpulse.sh
+bash Tests/InstallerTests/test_installed_owl_resources.sh
 ```
 
 Native end-to-end tests:
