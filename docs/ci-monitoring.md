@@ -19,6 +19,8 @@ GitHub's test-merge checks take precedence when present. Results from a PR that 
 3. Select **Check CI every**: 1, 5, 15 or 30 minutes. The default is 5 minutes, separate from dashboard refresh.
 4. Check the monitoring message, last/next check times and notification permission status in the same pane.
 
+The interval schedules discovery; it does not guarantee every check can be refreshed on each pass. CI reads, pagination and failure revalidation share a request allowance of 30 requests per minute and 1,800 per rolling hour, with at least 500 reported GitHub quota points reserved for other activity. Discovery enrichment can use at most 20 of those requests per minute, leaving capacity for live failure verification. When this allowance is exhausted, dashboard discovery continues, CI coverage is marked incomplete and previous results remain stale. Within each page, PRs without a recent successful CI refresh are checked first. GitHub may impose additional limits.
+
 This discovers accessible open PRs authored by the **active account**, including additional pages. It does not depend on the displayed tab, saved view, search, filters or watched repositories. Switching accounts stops the old session's monitor. It does not monitor inactive accounts.
 
 The first observation when enabling alerts or discovering a PR establishes a silent baseline. Subsequent newly observed failures produce one grouped notification per PR in that polling pass. Reruns can produce new alerts; repeated polls of the same failure do not. Observation records survive relaunch. Quiet hours suppress delivery without replaying missed alerts later. Closed/merged PRs stop being monitored after complete discovery.

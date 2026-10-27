@@ -100,6 +100,9 @@ struct PullRequestDetail: Codable, Equatable, Hashable {
     var reviews: [Review]
     var linkedReferences: [LinkedReference]
     var ci: CIStatus?
+    // Loaded PR identity is independent of retained/stale CI results.
+    var ciHeadSHA: String?
+    var ciRevision: String?
     var mergeStateStatus: String?
 
     init(
@@ -109,7 +112,9 @@ struct PullRequestDetail: Codable, Equatable, Hashable {
         reviews: [Review] = [],
         linkedReferences: [LinkedReference] = [],
         ci: CIStatus? = nil,
-        mergeStateStatus: String? = nil
+        mergeStateStatus: String? = nil,
+        ciHeadSHA: String? = nil,
+        ciRevision: String? = nil
     ) {
         self.mergeable = mergeable
         self.reviewDecision = reviewDecision
@@ -117,6 +122,8 @@ struct PullRequestDetail: Codable, Equatable, Hashable {
         self.reviews = reviews
         self.linkedReferences = linkedReferences
         self.ci = ci
+        self.ciHeadSHA = ciHeadSHA
+        self.ciRevision = ciRevision
         self.mergeStateStatus = mergeStateStatus
     }
 }

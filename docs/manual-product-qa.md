@@ -82,4 +82,10 @@ Do not run window-opening unit tests concurrently with native journeys: they can
 
 ## Limits
 
+### CI monitoring review follow-up — 2026-10-27
+
+- 105 unit tests passed after the review fixes. Regressions cover rejected notification retries, independent loaded-row head/test-merge identity, CI request budgeting and verification fairness across 15 failing PRs over repeated passes.
+- Failure verification has reserved request capacity and rotates independently from discovery; exhausted CI budgets leave dashboard discovery available and label retained results stale.
+- The targeted native CI/both-layout journey compiled but failed before executing: XCUITest timed out enabling automation mode. This attempt is not passing native evidence; latest-head hosted checks remain required.
+
 Fixtures do not establish live organization SSO, real macOS notification delivery, notarization, or trusted automatic updates. Releases remain ad-hoc signed and updates remain manual. Do not mark those capabilities as verified by fixture tests.

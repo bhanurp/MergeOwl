@@ -3,6 +3,46 @@ import XCTest
 
 @MainActor
 final class CIMonitorLifecycleTests: XCTestCase {
+    func testBudgetedPassesEventuallyVerifyEveryFailingPR() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let client = BudgetedMonitorClient()
+        let sink = CINotificationRecorder()
+        let lifetime = AccountSessionLifetime()
+        let monitor = CIMonitor(client: client, directory: directory, lifetime: lifetime, notifier: sink)
+        defer { monitor.stop(); lifetime.invalidate() }
+        var settings = AppSettings.default; settings.ciFailureAlerts = true
+        monitor.configure(settings)
+        for _ in 0..<100 where monitor.lastChecked == nil { try await Task.sleep(for: .milliseconds(10)) }
+        for _ in 0..<3 { client.now.addTimeInterval(61); await monitor.poll() }
+        client.failed = true
+        for _ in 0..<10 { client.now.addTimeInterval(61); await monitor.poll() }
+        let delivered = Set(sink.deliveries.map { String($0.split(separator: ":")[0]) })
+        XCTAssertEqual(delivered.count, 15, "Verification must rotate independently of discovery so later PRs are not starved")
+    }
+    func testMonitorCannotReplaceLoadedRowsWithAnotherHead() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let client = MonitorClient()
+        let store = PullRequestStore(directory: directory)
+        var preferences = AppSettings.default
+        preferences.ciFailureAlerts = true; preferences.refreshOnLaunch = false; preferences.refreshInterval = 0
+        try await store.save(settings: preferences)
+        let dashboard = DashboardViewModel(client: client, store: store, notifier: NotificationDispatcher(store: store),
+                                           scheduler: RefreshScheduler(), digestComputer: DigestComputer())
+        for _ in 0..<100 where dashboard.ciMonitor.lastChecked == nil { try await Task.sleep(for: .milliseconds(5)) }
+        await dashboard.refreshAllLoaded()
+        await dashboard.ciMonitor.poll()
+        XCTAssertEqual(dashboard.listStates[.mine]?.rawItems.first?.detail.ci?.headSHA, "head")
+        client.head = "new-head"
+        await dashboard.ciMonitor.poll()
+        XCTAssertEqual(dashboard.ciMonitor.snapshots["PR_1"]?.headSHA, "new-head")
+        XCTAssertEqual(dashboard.listStates[.mine]?.rawItems.first?.detail.ci?.headSHA, "head")
+        client.head = "head"; client.revision = "changed-merge"
+        await dashboard.ciMonitor.poll()
+        XCTAssertEqual(dashboard.listStates[.mine]?.rawItems.first?.detail.ci?.revision, "head", "Same head with a different test-merge revision must also be rejected")
+        await dashboard.retire()
+    }
     func testRejectedNotificationRemainsEligibleOnNextPoll() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -128,6 +168,8 @@ private final class CINotificationRecorder: CINotificationSending {
 }
 
 private final class MonitorClient: GitHubClient, @unchecked Sendable {
+    var head = "head"
+    var revision: String?
     var failed = false
     var onlyFirst = false
     var delay = false
@@ -145,13 +187,40 @@ private final class MonitorClient: GitHubClient, @unchecked Sendable {
     }
     func fetchCI(for pullRequest: PullRequest) async throws -> CIStatus {
         if unavailable { return .unavailable }
-        return .init(headSHA: "head", revision: "head", checks: [
+        return .init(headSHA: head, revision: revision ?? head, checks: [
             .init(id: "build", name: "Build", state: failed ? .failure : .running),
             .init(id: "tests", name: "Tests", state: failed ? .failure : .queued)])
     }
     private func pr(_ index: Int) -> PullRequest {
         .init(id: "PR_\(index)", number: index, title: "CI", url: URL(string: "https://github.com/example/repo/pull/\(index)")!,
               repository: .init(nameWithOwner: "example/repo"), author: .init(login: "me"),
-              createdAt: Date(), updatedAt: Date(), isDraft: false)
+              createdAt: Date(), updatedAt: Date(), isDraft: false,
+              detail: .init(ciHeadSHA: head, ciRevision: head))
+    }
+}
+
+private final class BudgetedMonitorClient: GitHubClient, @unchecked Sendable {
+    let gate = GitHubRequestGate()
+    var now = Date()
+    var failed = false
+    func fetchViewer() async throws -> String { "me" }
+    func fetchPullRequests(tab: PullRequestTab, cursor: String?) async throws -> PullRequestPage {
+        let ids = (1...15).map { String(format: "PR_%02d", $0) }
+        var items: [PullRequest] = []
+        for id in await gate.ciRefreshOrder(ids) {
+            var pr = PullRequest(id: id, number: 1, title: "CI", url: URL(string: "https://github.com/example/repo/pull/1")!,
+                                 repository: .init(nameWithOwner: "example/repo"), author: .init(login: "me"),
+                                 createdAt: now, updatedAt: now, isDraft: false)
+            pr.detail.ci = (try? await fetchCI(for: pr)) ?? .unavailable
+            items.append(pr)
+        }
+        return .init(items: items, cursor: nil, hasNextPage: false)
+    }
+    func fetchCI(for pullRequest: PullRequest) async throws -> CIStatus { try await read(pullRequest, verifying: false) }
+    func revalidateCI(for pullRequest: PullRequest) async throws -> CIStatus { try await read(pullRequest, verifying: true) }
+    private func read(_ pr: PullRequest, verifying: Bool) async throws -> CIStatus {
+        for _ in 0..<2 { try await gate.check(isCI: true, isRevalidation: verifying, now: now) }
+        await gate.recordCIRefresh(pr.id)
+        return .init(headSHA: "head", revision: "head", checks: [.init(id: "build", name: "Build", state: failed ? .failure : .running)])
     }
 }

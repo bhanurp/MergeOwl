@@ -21,6 +21,8 @@ final class CIMonitor {
     private var interval: TimeInterval = 300
     private var quietHours: QuietHours?
     private var polling = false
+    private var verificationOrder: [String: Int] = [:]
+    private var verificationSequence = 0
     private(set) var snapshots: [String: CIStatus] = [:]
     private(set) var mutedIDs = Set<String>()
     private(set) var message = "Failure alerts off"
@@ -110,7 +112,11 @@ final class CIMonitor {
                 cursor = next
             } while true
             let discoveryComplete = warnings.isEmpty
-            for pr in open.values.sorted(by: { $0.id < $1.id }) {
+            let ordered = open.values.sorted {
+                let lhs = verificationOrder[$0.id] ?? -1, rhs = verificationOrder[$1.id] ?? -1
+                return lhs == rhs ? $0.id < $1.id : lhs < rhs
+            }
+            for pr in ordered {
                 guard active() else { return }
                 var snapshot: CIStatus = .unavailable
                 do {
@@ -119,12 +125,14 @@ final class CIMonitor {
                     guard active() else { return }
                     // Before a failure can notify, revalidate against the live PR revision.
                     if snapshot.checks.contains(where: { $0.state == .failure }) {
-                        let verified = try await client.fetchCI(for: pr)
+                        let verified = try await client.revalidateCI(for: pr)
                         guard active() else { return }
                         guard verified.headSHA == snapshot.headSHA, verified.revision == snapshot.revision else {
                             throw GitHubClientError.obsoleteCI
                         }
                         snapshot = verified
+                        verificationSequence += 1
+                        verificationOrder[pr.id] = verificationSequence
                     }
                 } catch {
                     if error is CancellationError { throw error }
@@ -149,6 +157,7 @@ final class CIMonitor {
             if discoveryComplete {
                 try storage.retainOpen(Set(open.keys))
                 snapshots = snapshots.filter { open[$0.key] != nil }
+                verificationOrder = verificationOrder.filter { open[$0.key] != nil }
             }
             if warnings.isEmpty {
                 message = "Monitoring \(open.count) open My PRs"

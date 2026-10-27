@@ -3,6 +3,26 @@ import XCTest
 @testable import PRPulseApp
 
 final class GitHubCITests: XCTestCase {
+    func testDiscoveryLeavesCapacityForLiveFailureVerification() async throws {
+        let api = client("many")
+        let page = try await api.fetchPullRequests(tab: .mine, cursor: nil)
+        XCTAssertEqual(page.items.count, 15)
+        let verified = try await api.revalidateCI(for: pr)
+        XCTAssertTrue(verified.isComplete)
+        XCTAssertEqual(verified.state, .failed)
+    }
+    func testRepeatedCIReadsDeferBeforeStarvingDashboardDiscovery() async throws {
+        let api = client()
+        var deferred = false
+        for _ in 0..<12 {
+            do { _ = try await api.fetchCI(for: pr) }
+            catch { deferred = error.localizedDescription.contains("budget") }
+        }
+        XCTAssertTrue(deferred, "Initial reads and revalidation must share a bounded CI request allowance")
+        let page = try await api.fetchPullRequests(tab: .mine, cursor: nil)
+        XCTAssertEqual(page.items.count, 2, "Dashboard discovery remains usable after CI exhausts its own allowance")
+        XCTAssertTrue(page.items.allSatisfy { $0.detail.ci?.warning?.contains("budget") == true })
+    }
     func testExpectedStatusIsQueuedAndDoesNotSuppressOtherFailureObservation() async throws {
         let ci = try await client("expected").fetchCI(for: pr)
         XCTAssertEqual(ci.checks.first(where: { $0.name == "External CI" })?.state, .queued)
@@ -104,7 +124,7 @@ private final class CIProtocol: URLProtocol, @unchecked Sendable {
         }
         var result: [String: Any]
         if raw.contains("query SearchPRs") {
-            let nodes: [[String: Any]] = [1, 2].map { index in
+            let nodes: [[String: Any]] = (1...(mode.contains("many") ? 15 : 2)).map { index in
                 ["id": "PR_\(index)", "number": index, "title": "Tests", "url": "https://github.com/example/repo/pull/\(index)",
                  "createdAt": "2026-10-01T00:00:00Z", "updatedAt": "2026-10-01T00:00:00Z", "isDraft": false,
                  "author": ["login": "me"], "repository": ["nameWithOwner": "example/repo"]]

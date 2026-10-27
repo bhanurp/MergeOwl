@@ -55,7 +55,7 @@ final class DashboardViewModel: ObservableObject {
                 guard !self.retired else { return }
                 try await self.store.save(settings: snapshot)
                 guard !self.retired else { return }
-                if snapshot.ciFailureAlerts == settings.ciFailureAlerts && snapshot.ciRefreshInterval == settings.ciRefreshInterval {
+                if snapshot.ciFailureAlerts == settings.ciFailureAlerts && snapshot.ciRefreshInterval == settings.ciRefreshInterval && snapshot.quietHours == settings.quietHours {
                     self.ciMonitor.configure(snapshot)
                 }
                 await self.scheduler.start(interval: snapshot.refreshInterval) {
@@ -157,6 +157,8 @@ final class DashboardViewModel: ObservableObject {
                 guard var state = listStates[tab] else { continue }
                 for index in state.rawItems.indices {
                     if let ci = ciMonitor.snapshots[state.rawItems[index].id],
+                       ci.headSHA == state.rawItems[index].detail.ciHeadSHA,
+                       ci.revision == state.rawItems[index].detail.ciRevision,
                        ci.checkedAt >= (state.rawItems[index].detail.ci?.checkedAt ?? .distantPast) {
                         state.rawItems[index].detail.ci = ci
                     }

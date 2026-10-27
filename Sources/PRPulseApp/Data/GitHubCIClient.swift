@@ -2,16 +2,60 @@ import Foundation
 
 actor GitHubRequestGate {
     private var blockedUntil: Date?
-    func check() throws {
-        if let blockedUntil, blockedUntil > Date() { throw GitHubClientError.rateLimited(blockedUntil) }
+    private var ciRequests: [Date] = []
+    private var discoveryRequests: [Date] = []
+    private var remaining: Int?
+    private var quotaReset: Date?
+    private var refreshed: [String: Date] = [:]
+    func check(isCI: Bool = false, isRevalidation: Bool = false, now: Date = Date()) throws {
+        if let blockedUntil, blockedUntil > now { throw GitHubClientError.rateLimited(blockedUntil) }
+        if let quotaReset, quotaReset <= now { remaining = nil; self.quotaReset = nil }
+        guard isCI else { return }
+        ciRequests.removeAll { now.timeIntervalSince($0) >= 3600 }
+        discoveryRequests.removeAll { now.timeIntervalSince($0) >= 60 }
+        if !isRevalidation, discoveryRequests.count >= 20 {
+            throw GitHubClientError.ciBudgetDeferred(discoveryRequests[0].addingTimeInterval(60))
+        }
+        let recent = ciRequests.filter { now.timeIntervalSince($0) < 60 }
+        if recent.count >= 30 {
+            throw GitHubClientError.ciBudgetDeferred(recent[0].addingTimeInterval(60))
+        }
+        if ciRequests.count >= 1800 {
+            throw GitHubClientError.ciBudgetDeferred(ciRequests[0].addingTimeInterval(3600))
+        }
+        if let remaining, remaining <= 500 {
+            throw GitHubClientError.ciBudgetDeferred(quotaReset ?? now.addingTimeInterval(300))
+        }
+        ciRequests.append(now)
+        if !isRevalidation { discoveryRequests.append(now) }
+        if let remaining { self.remaining = remaining - 1 }
     }
     func deferUntil(_ date: Date) { blockedUntil = date }
+    func recordQuota(remaining: Int?, reset: Date?) {
+        guard let remaining, let reset else { return }
+        guard reset > Date(), quotaReset.map({ reset >= $0 }) ?? true else { return }
+        if quotaReset == reset { self.remaining = min(self.remaining ?? remaining, remaining) }
+        else { self.remaining = remaining; quotaReset = reset }
+    }
+    func recordCIRefresh(_ id: String) { refreshed[id] = Date() }
+    func ciRefreshOrder(_ ids: [String]) -> [String] {
+        ids.sorted {
+            let lhs = refreshed[$0] ?? .distantPast, rhs = refreshed[$1] ?? .distantPast
+            return lhs == rhs ? $0 < $1 : lhs < rhs
+        }
+    }
 }
 
 extension GitHubAPIClient {
     nonisolated(nonsending) func fetchCI(for pullRequest: PullRequest) async throws -> CIStatus {
+        try await readCI(for: pullRequest, revalidation: false)
+    }
+    nonisolated(nonsending) func revalidateCI(for pullRequest: PullRequest) async throws -> CIStatus {
+        try await readCI(for: pullRequest, revalidation: true)
+    }
+    private nonisolated(nonsending) func readCI(for pullRequest: PullRequest, revalidation: Bool) async throws -> CIStatus {
         let variables = CIIDVariables(id: pullRequest.id)
-        let (data, warnings): (CIPRData, [String]) = try await performGraphQLResult(query: Self.ciQuery, variables: variables)
+        let (data, warnings): (CIPRData, [String]) = try await performGraphQLResult(query: Self.ciQuery, variables: variables, isCI: true, isCIRevalidation: revalidation)
         guard let pr = data.node, pr.state == "OPEN", let head = pr.headRefOid,
               let headCommit = pr.commits?.nodes?.last?.commit, headCommit.oid == head else { return .unavailable }
         // Test-merge results take precedence only when GitHub reports checks there.
@@ -29,7 +73,7 @@ extension GitHubAPIClient {
                 snapshot.isComplete = false; break
             }
             let (next, issues): (CICommitData, [String]) = try await performGraphQLResult(
-                query: Self.ciContextsQuery, variables: CIPageVariables(id: applicable.id, after: cursor))
+                query: Self.ciContextsQuery, variables: CIPageVariables(id: applicable.id, after: cursor), isCI: true, isCIRevalidation: revalidation)
             guard let commit = next.node, commit.oid == applicable.oid,
                   let nextPage = commit.statusCheckRollup?.contexts else { snapshot.isComplete = false; break }
             snapshot.isComplete = snapshot.isComplete && issues.isEmpty
@@ -42,13 +86,14 @@ extension GitHubAPIClient {
             latest[context.groupKey] = context
         }
         snapshot.checks = latest.values.map(\.check).sorted { $0.name < $1.name || ($0.name == $1.name && $0.id < $1.id) }
-        let (current, issues): (CIPRData, [String]) = try await performGraphQLResult(query: Self.ciRevisionQuery, variables: variables)
+        let (current, issues): (CIPRData, [String]) = try await performGraphQLResult(query: Self.ciRevisionQuery, variables: variables, isCI: true, isCIRevalidation: revalidation)
         guard current.node?.state == "OPEN", current.node?.headRefOid == head,
               current.node?.potentialMergeCommit?.oid == pr.potentialMergeCommit?.oid else {
             throw GitHubClientError.obsoleteCI
         }
         snapshot.isComplete = snapshot.isComplete && issues.isEmpty
         if !snapshot.isComplete { snapshot.warning = "Some checks could not be read. Open GitHub to verify all requirements." }
+        await requestGate.recordCIRefresh(pullRequest.id)
         return snapshot
     }
 

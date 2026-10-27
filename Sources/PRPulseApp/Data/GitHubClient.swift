@@ -4,10 +4,12 @@ protocol GitHubClient {
     nonisolated(nonsending) func fetchViewer() async throws -> String
     nonisolated(nonsending) func fetchPullRequests(tab: PullRequestTab, cursor: String?) async throws -> PullRequestPage
     nonisolated(nonsending) func fetchCI(for pullRequest: PullRequest) async throws -> CIStatus
+    nonisolated(nonsending) func revalidateCI(for pullRequest: PullRequest) async throws -> CIStatus
 }
 
 extension GitHubClient {
     nonisolated(nonsending) func fetchCI(for pullRequest: PullRequest) async throws -> CIStatus { .unavailable }
+    nonisolated(nonsending) func revalidateCI(for pullRequest: PullRequest) async throws -> CIStatus { try await fetchCI(for: pullRequest) }
 }
 
 enum GitHubClientError: LocalizedError {
@@ -17,6 +19,7 @@ enum GitHubClientError: LocalizedError {
     case graphQLErrors([String])
     case apiFailure(String)
     case rateLimited(Date)
+    case ciBudgetDeferred(Date)
     case obsoleteCI
 
     var isAccessRestriction: Bool {
@@ -48,6 +51,8 @@ enum GitHubClientError: LocalizedError {
             return "GitHub rate limit reached. Retrying after \(until.formatted(date: .omitted, time: .shortened))."
         case .obsoleteCI:
             return "The PR changed while checking CI. Results will be refreshed."
+        case .ciBudgetDeferred:
+            return "CI refresh deferred to preserve the shared GitHub request budget. Previous results may be stale."
         }
     }
 }
@@ -56,7 +61,7 @@ struct GitHubAPIClient: GitHubClient {
     private let session: URLSession
     private let tokenProvider: @Sendable () -> String?
     private let watchedRepositoriesProvider: @Sendable () async -> [RepositorySubscription]
-    private let requestGate = GitHubRequestGate()
+    let requestGate = GitHubRequestGate()
 
     init(
         session: URLSession = .shared,
@@ -90,7 +95,10 @@ struct GitHubAPIClient: GitHubClient {
         let (detailByID, detailWarnings) = try await fetchDetails(ids: page.items.map(\.id))
         page.warnings.append(contentsOf: detailWarnings)
         var enriched: [PullRequest] = []
-        for item in page.items {
+        let byID = Dictionary(page.items.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let orderedIDs = await requestGate.ciRefreshOrder(page.items.map(\.id))
+        for id in orderedIDs {
+            guard let item = byID[id] else { continue }
             var copy = item
             if let detail = detailByID[item.id] {
                 copy.detail = detail
@@ -100,12 +108,14 @@ struct GitHubAPIClient: GitHubClient {
                 if error is CancellationError { throw error }
                 if case GitHubClientError.rateLimited = error { throw error }
                 var ci = CIStatus.unavailable
-                ci.warning = "Check access could not be verified. Open GitHub for details."
+                if case GitHubClientError.ciBudgetDeferred = error { ci.warning = error.localizedDescription }
+                else { ci.warning = "Check access could not be verified. Open GitHub for details." }
                 copy.detail.ci = ci
             }
             enriched.append(copy)
         }
-        return PullRequestPage(items: enriched, cursor: page.cursor, hasNextPage: page.hasNextPage, warnings: page.warnings, coverageWarning: page.coverageWarning)
+        let enrichedByID = Dictionary(enriched.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return PullRequestPage(items: page.items.compactMap { enrichedByID[$0.id] }, cursor: page.cursor, hasNextPage: page.hasNextPage, warnings: page.warnings, coverageWarning: page.coverageWarning)
     }
 
     private func fetchSearchPage(query: String, cursor: String?, scope: PullRequestTab) async throws -> PullRequestPage {
@@ -286,6 +296,9 @@ struct GitHubAPIClient: GitHubClient {
                 linkedReferences: sortedLinkedRefs
             )
             detailByID[id]?.mergeStateStatus = node.mergeStateStatus
+            detailByID[id]?.ciHeadSHA = node.headRefOid
+            detailByID[id]?.ciRevision = node.potentialMergeCommit?.statusCheckRollup != nil
+                ? node.potentialMergeCommit?.oid : node.headRefOid
         }
 
         return (detailByID, warnings)
@@ -301,10 +314,12 @@ struct GitHubAPIClient: GitHubClient {
 
     func performGraphQLResult<Variables: Encodable, DataType: Decodable>(
         query: String,
-        variables: Variables
+        variables: Variables,
+        isCI: Bool = false,
+        isCIRevalidation: Bool = false
     ) async throws -> (DataType, [String]) {
         try Task.checkCancellation()
-        try await requestGate.check()
+        try await requestGate.check(isCI: isCI, isRevalidation: isCIRevalidation)
         guard let token = tokenProvider(), !token.isEmpty else {
             throw GitHubClientError.missingToken
         }
@@ -320,6 +335,9 @@ struct GitHubAPIClient: GitHubClient {
         guard let http = response as? HTTPURLResponse else {
             throw GitHubClientError.invalidResponse
         }
+        await requestGate.recordQuota(
+            remaining: http.value(forHTTPHeaderField: "X-RateLimit-Remaining").flatMap(Int.init),
+            reset: http.value(forHTTPHeaderField: "X-RateLimit-Reset").flatMap(Double.init).map { Date(timeIntervalSince1970: $0) })
         if http.statusCode == 429 || (http.statusCode == 403 && (http.value(forHTTPHeaderField: "Retry-After") != nil || http.value(forHTTPHeaderField: "X-RateLimit-Remaining") == "0")) {
             let retry = http.value(forHTTPHeaderField: "Retry-After").flatMap(Double.init).map { Date().addingTimeInterval(max(60, $0)) }
             let reset = http.value(forHTTPHeaderField: "X-RateLimit-Reset").flatMap(Double.init).map { Date(timeIntervalSince1970: $0) }
@@ -440,6 +458,8 @@ struct GitHubAPIClient: GitHubClient {
       nodes(ids: $ids) {
         ... on PullRequest {
           id
+          headRefOid
+          potentialMergeCommit { oid statusCheckRollup { state } }
           mergeable
           mergeStateStatus
           reviewDecision
@@ -559,6 +579,13 @@ private struct DetailVariables: Encodable {
 
 private struct DetailData: Decodable {
     struct PullRequestNode: Decodable {
+        struct MergeCommit: Decodable {
+            struct Rollup: Decodable { let state: String? }
+            let oid: String?
+            let statusCheckRollup: Rollup?
+        }
+        let headRefOid: String?
+        let potentialMergeCommit: MergeCommit?
         let mergeStateStatus: String?
         struct Commits: Decodable {
             struct CommitNode: Decodable {

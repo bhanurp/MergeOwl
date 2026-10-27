@@ -76,7 +76,8 @@ class Handler(BaseHTTPRequestHandler):
                 reviews = []
                 if identifier == "PR_4":
                     reviews = [dict(author=dict(login="octocat"), state="APPROVED", submittedAt="2026-01-03T00:00:00Z")]
-                nodes.append(dict(id=identifier, mergeable="MERGEABLE", mergeStateStatus="CLEAN", reviewDecision="REVIEW_REQUIRED" if identifier == "PR_4" else "APPROVED",
+                nodes.append(dict(id=identifier, headRefOid=f"head-{identifier}", potentialMergeCommit=None,
+                                  mergeable="MERGEABLE", mergeStateStatus="CLEAN", reviewDecision="REVIEW_REQUIRED" if identifier == "PR_4" else "APPROVED",
                                   commits=dict(nodes=[dict(commit=dict(committedDate="2026-01-02T00:00:00Z"))]),
                                   reviews=dict(nodes=reviews), closingIssuesReferences=dict(nodes=[]), timelineItems=dict(nodes=[])))
             self.respond(dict(data=dict(nodes=nodes)))
