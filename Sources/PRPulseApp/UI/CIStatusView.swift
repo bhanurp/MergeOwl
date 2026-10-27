@@ -19,6 +19,7 @@ struct CIStatusView: View {
                         .accessibilityIdentifier("prpulse.ci-checked.\(pullRequest.id)")
                 }
             }
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("prpulse.ci.\(pullRequest.id)")

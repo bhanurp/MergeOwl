@@ -25,7 +25,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def authorized(self):
         token = self.headers.get("Authorization", "").removeprefix("Bearer ")
-        if token not in {"e2e-valid", "e2e-partial", "e2e-empty", "e2e-hubot", "e2e-cap", "e2e-linked"}:
+        if token not in {"e2e-valid", "e2e-partial", "e2e-empty", "e2e-hubot", "e2e-cap", "e2e-linked", "e2e-scroll"}:
             self.respond(dict(message="Bad credentials"), 401)
             return None
         return token
@@ -50,7 +50,12 @@ class Handler(BaseHTTPRequestHandler):
             self.respond(dict(data=dict(viewer=dict(login="hubot" if token == "e2e-hubot" else "octocat"))))
         elif "query SearchPRs" in query:
             search = variables["query"]
-            if token == "e2e-hubot":
+            if token == "e2e-scroll":
+                offset = 100 if "review-requested" in search else 0
+                nodes = [pr(f"PR_{offset + index}",
+                            f"Scrolling regression {index}: long pull request title wrapping across multiple lines in the fixed popover",
+                            "contributor" if offset else "octocat") for index in range(1, 13)]
+            elif token == "e2e-hubot":
                 nodes = [pr("PR_20", "Hubot private work", "hubot")]
             elif token == "e2e-empty":
                 nodes = []
@@ -62,7 +67,7 @@ class Handler(BaseHTTPRequestHandler):
                 nodes = [pr("PR_6", "Next page PR")]
             else:
                 nodes = [pr("PR_1", "Improve documentation"), pr("PR_2", "Fix token handling")]
-            has_next = "author:@me" in search and not variables.get("after") and bool(nodes)
+            has_next = token != "e2e-scroll" and "author:@me" in search and not variables.get("after") and bool(nodes)
             payload = dict(data=dict(search=dict(nodes=nodes, pageInfo=dict(hasNextPage=has_next, endCursor="page2" if has_next else None))))
             if token == "e2e-cap":
                 payload["data"]["search"]["issueCount"] = 1001

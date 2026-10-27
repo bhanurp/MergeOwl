@@ -53,6 +53,7 @@ final class PRPulseUITests: XCTestCase {
         XCTAssertTrue(item.waitForExistence(timeout: 10), app.debugDescription)
         item.click()
         XCTAssertTrue(app.textFields["Search title or repo"].waitForExistence(timeout: 10), app.debugDescription)
+        app.activate()
     }
 
     private func launch(token: String = "e2e-valid") {
@@ -212,6 +213,33 @@ final class PRPulseUITests: XCTestCase {
         XCTAssertEqual(app.popUpButtons["prpulse.ci-interval"].value as? String, "15 min")
     }
 
+    func testScrollingAndCIDetailsRemainResponsiveInBothLayouts() {
+        launch(token: "e2e-scroll")
+        app.typeKey("1", modifierFlags: .command)
+        let firstCI = app.buttons["prpulse.ci.PR_1"]
+        XCTAssertTrue(firstCI.waitForExistence(timeout: 15))
+        let repetitions = max(2, Int(ProcessInfo.processInfo.environment["PRPULSE_E2E_SCROLL_REPETITIONS"] ?? "") ?? 2)
+        for layout in Array(repeating: ["Tabbed", "Compact"], count: repetitions).flatMap({ $0 }) {
+            chooseLayout(layout)
+            let list = app.scrollViews.firstMatch
+            for _ in 0..<4 { list.swipeUp() }
+            XCTAssertTrue(app.buttons["prpulse.open.PR_12"].isHittable, "Must reach the last long row")
+            for _ in 0..<4 { list.swipeDown() }
+            XCTAssertTrue(firstCI.isHittable)
+            // The center falls between the status text and observation-age text.
+            firstCI.click()
+            XCTAssertTrue(app.staticTexts["CI checks"].waitForExistence(timeout: 5))
+            app.buttons["Close"].click()
+            app.buttons["prpulse.refresh"].click()
+            app.typeKey("f", modifierFlags: .command)
+            XCTAssertTrue(app.textFields["Search title or repo"].isHittable)
+            attachPopover("Responsive \(layout) after scrolling")
+        }
+        app.descendants(matching: .any)["prpulse.more"].firstMatch.click()
+        app.menuItems["prpulse.quit"].click()
+        XCTAssertTrue(app.wait(for: .notRunning, timeout: 5), "Quit must remain responsive")
+    }
+
     func testSearchCoverageIsSeparateFromTokenAccessWarnings() {
         launch(token: "e2e-cap")
         XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
@@ -322,9 +350,13 @@ final class PRPulseUITests: XCTestCase {
             XCTAssertTrue(window.waitForExistence(timeout: 5))
         }
         window.buttons[XCUIIdentifierCloseWindow].click()
+        let applicationPath = try XCTUnwrap(ProcessInfo.processInfo.environment["PRPULSE_E2E_APP_PATH"])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: applicationPath))
+        XCTAssertNotEqual(app.state, .notRunning)
         let reopen = Process()
         reopen.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-        reopen.arguments = ["-b", "dev.prpulse.e2e"]
+        // Other worktrees register the same test bundle ID. Reopen this build.
+        reopen.arguments = ["-a", applicationPath]
         try reopen.run()
         reopen.waitUntilExit()
         XCTAssertEqual(reopen.terminationStatus, 0)
