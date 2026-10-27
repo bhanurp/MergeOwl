@@ -46,6 +46,8 @@ actor GlobalPreferencesStore {
         var snoozeDefaultHour: Int
         var digestCadence: DigestCadence
         var popoverLayout: PopoverLayout?
+        var ciFailureAlerts: Bool?
+        var ciRefreshInterval: TimeInterval?
 
         init(_ settings: AppSettings) {
             refreshInterval = settings.refreshInterval
@@ -56,13 +58,17 @@ actor GlobalPreferencesStore {
             snoozeDefaultHour = settings.snoozeDefaultHour
             digestCadence = settings.digestCadence
             popoverLayout = settings.popoverLayout
+            ciFailureAlerts = settings.ciFailureAlerts
+            ciRefreshInterval = settings.ciRefreshInterval
         }
 
         var settings: AppSettings {
             AppSettings(token: "", refreshInterval: refreshInterval, refreshOnLaunch: refreshOnLaunch,
                         notifyNeedsReview: notifyNeedsReview, notifyNewReviewRequests: notifyNewReviewRequests,
                         quietHours: quietHours, snoozeDefaultHour: snoozeDefaultHour,
-                        digestCadence: digestCadence, watchedRepositories: [], popoverLayout: popoverLayout ?? .tabbed)
+                        digestCadence: digestCadence, watchedRepositories: [], popoverLayout: popoverLayout ?? .tabbed,
+                        ciFailureAlerts: ciFailureAlerts ?? false,
+                        ciRefreshInterval: [60.0, 300, 900, 1800].contains(ciRefreshInterval ?? 300) ? (ciRefreshInterval ?? 300) : 300)
         }
     }
 }

@@ -127,9 +127,89 @@ final class PRPulseUITests: XCTestCase {
     }
 
     private func chooseLayout(_ title: String) {
+        app.activate()
         app.descendants(matching: .any)["prpulse.more"].firstMatch.click()
         app.menuItems["Layout"].click()
+        XCTAssertTrue(app.menuItems[title].waitForExistence(timeout: 5))
         app.menuItems[title].click()
+    }
+
+    func testCIMonitoringInBothLayoutsAndMutePersists() {
+        launch()
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(prTitle("Improve documentation").waitForExistence(timeout: 10))
+        app.descendants(matching: .any)["prpulse.actionable"].firstMatch.click()
+        XCTAssertTrue(prTitle("Improve documentation").exists, "Own failed CI is actionable")
+        XCTAssertFalse(prTitle("Fix token handling").exists, "Running CI does not require action")
+        app.descendants(matching: .any)["prpulse.actionable"].firstMatch.click()
+        let ci = app.buttons["prpulse.ci.PR_1"]
+        XCTAssertTrue(ci.waitForExistence(timeout: 10))
+        XCTAssertTrue(ci.label.contains("CI failed"))
+        ci.click()
+        XCTAssertTrue(app.staticTexts["Unit tests"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.links["Open check"].exists)
+        app.typeKey(.escape, modifierFlags: [])
+        chooseLayout("Compact")
+        XCTAssertTrue(app.buttons["prpulse.ci.PR_1"].label.contains("CI failed"))
+        attachPopover("Compact CI status")
+        chooseLayout("Tabbed")
+        attachPopover("Tabbed CI status")
+        settings()
+        pane("Notifications")
+        let toggle = app.switches["prpulse.ci-alerts"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        toggle.click()
+        XCTAssertTrue(app.staticTexts["Monitoring 3 open My PRs"].waitForExistence(timeout: 15))
+        let interval = app.popUpButtons["prpulse.ci-interval"]
+        interval.click()
+        app.menuItems["15 min"].click()
+        app.windows["PR Pulse Settings"].buttons[XCUIIdentifierCloseWindow].click()
+        openDashboard()
+        app.descendants(matching: .any)["prpulse.pr-more.PR_1"].firstMatch.click()
+        app.menuItems["Mute CI failure alerts"].click()
+        XCTAssertTrue(app.staticTexts["CI alerts muted"].waitForExistence(timeout: 5))
+        chooseLayout("Compact")
+        let monitoredCI = app.buttons["prpulse.ci.PR_1"]
+        XCTAssertTrue(monitoredCI.exists)
+        // Enabling alerts and immediately rescheduling can consume the bounded CI allowance.
+        // A deferred refresh must keep the previous check details and explicitly mark them stale.
+        if monitoredCI.label.contains("CI unavailable") {
+            monitoredCI.click()
+            XCTAssertTrue(app.staticTexts["Unit tests"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "value CONTAINS[c] %@ OR label CONTAINS[c] %@", "request budget", "request budget")).firstMatch.exists)
+            app.typeKey(.escape, modifierFlags: [])
+        } else {
+            XCTAssertTrue(monitoredCI.label.contains("CI failed"))
+        }
+        chooseLayout("Tabbed")
+        app.terminate()
+        app.launchEnvironment.removeValue(forKey: "PRPULSE_E2E_INITIAL_TOKEN")
+        app.launch(); openDashboard()
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(app.staticTexts["CI alerts muted"].waitForExistence(timeout: 15))
+        app.descendants(matching: .any)["prpulse.pr-more.PR_1"].firstMatch.click()
+        app.menuItems["Unmute CI failure alerts"].click()
+        XCTAssertFalse(app.staticTexts["CI alerts muted"].exists)
+        app.typeKey("2", modifierFlags: .command)
+        XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
+        app.descendants(matching: .any)["prpulse.pr-more.PR_3"].firstMatch.click()
+        XCTAssertFalse(app.menuItems["Mute CI failure alerts"].exists, "Failure subscriptions are restricted to authored PRs")
+        app.typeKey(.escape, modifierFlags: [])
+        settings(); pane("Notifications")
+        XCTAssertEqual(app.popUpButtons["prpulse.ci-interval"].value as? String, "15 min")
+    }
+
+    func testSearchCoverageIsSeparateFromTokenAccessWarnings() {
+        launch(token: "e2e-cap")
+        XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
+        let coverage = app.staticTexts["prpulse.coverage-warning"]
+        XCTAssertTrue(coverage.waitForExistence(timeout: 5))
+        XCTAssertTrue((coverage.value as? String ?? coverage.label).contains("Reviews"))
+        XCTAssertFalse(app.links["Manage GitHub token access"].exists)
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(prTitle("Improve documentation").waitForExistence(timeout: 10))
+        XCTAssertTrue((coverage.value as? String ?? coverage.label).contains("My PRs"))
+        XCTAssertFalse(app.links["Manage GitHub token access"].exists)
     }
 
     func testLayoutsPreserveSavedViewSearchFiltersAndRestoreAfterRelaunch() {
@@ -289,7 +369,7 @@ final class PRPulseUITests: XCTestCase {
         let confirm = app.sheets.buttons["Delete view"].firstMatch
         XCTAssertTrue(confirm.waitForExistence(timeout: 5))
         confirm.click()
-        XCTAssertFalse(window.buttons["Edit API triage"].exists)
+        XCTAssertTrue(window.buttons["Edit API triage"].waitForNonExistence(timeout: 5), "Wait for the asynchronous saved-view deletion to finish")
         app.terminate()
         app.launchEnvironment.removeValue(forKey: "PRPULSE_E2E_INITIAL_TOKEN")
         app.launch()

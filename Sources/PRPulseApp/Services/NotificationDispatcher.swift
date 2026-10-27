@@ -1,7 +1,7 @@
 import Foundation
 import UserNotifications
 
-actor NotificationDispatcher {
+actor NotificationDispatcher: CINotificationSending {
     private let store: PullRequestStore
     private var retired = false
     private let namespace: String
@@ -12,6 +12,44 @@ actor NotificationDispatcher {
     }
 
     func retire() { retired = true }
+
+    func ciPermissionDescription() async -> String {
+        #if E2E_TESTING
+        return "Notifications are simulated in this test app."
+        #else
+        guard notificationsSupported() else { return "Notifications unavailable in this host." }
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        return settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional
+            ? "macOS notifications enabled" : "Enable PR Pulse notifications in System Settings to receive failure alerts."
+        #endif
+    }
+
+    func sendCIFailure(for pr: PullRequest, checks: [CICheck]) async -> Bool {
+        guard notificationsSupported(), !checks.isEmpty else { return false }
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+        guard !retired, store.lifetime.isActive,
+              settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else { return false }
+        let content = UNMutableNotificationContent()
+        content.title = "CI failed · \(pr.repository.nameWithOwner) #\(pr.number)"
+        content.subtitle = pr.title
+        content.body = checks.map(\.name).joined(separator: ", ")
+        content.userInfo = ["url": pr.url.appendingPathComponent("checks").absoluteString]
+        let request = UNNotificationRequest(identifier: "\(namespace)-ci-\(UUID().uuidString)", content: content, trigger: nil)
+        do {
+            guard !retired, store.lifetime.isActive else { return false }
+            try await center.add(request)
+            if retired || !store.lifetime.isActive {
+                center.removePendingNotificationRequests(withIdentifiers: [request.identifier])
+                center.removeDeliveredNotifications(withIdentifiers: [request.identifier])
+                return false
+            }
+            return true
+        } catch {
+            NSLog("Could not deliver CI notification")
+            return false
+        }
+    }
 
     private func notificationsSupported() -> Bool {
         guard !retired, store.lifetime.isActive else { return false }

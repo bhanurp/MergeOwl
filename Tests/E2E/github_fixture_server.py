@@ -25,7 +25,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def authorized(self):
         token = self.headers.get("Authorization", "").removeprefix("Bearer ")
-        if token not in {"e2e-valid", "e2e-partial", "e2e-empty", "e2e-hubot"}:
+        if token not in {"e2e-valid", "e2e-partial", "e2e-empty", "e2e-hubot", "e2e-cap"}:
             self.respond(dict(message="Bad credentials"), 401)
             return None
         return token
@@ -64,6 +64,8 @@ class Handler(BaseHTTPRequestHandler):
                 nodes = [pr("PR_1", "Improve documentation"), pr("PR_2", "Fix token handling")]
             has_next = "author:@me" in search and not variables.get("after") and bool(nodes)
             payload = dict(data=dict(search=dict(nodes=nodes, pageInfo=dict(hasNextPage=has_next, endCursor="page2" if has_next else None))))
+            if token == "e2e-cap":
+                payload["data"]["search"]["issueCount"] = 1001
             if token == "e2e-partial":
                 payload["errors"] = [dict(message="Resource protected by organization SAML enforcement. Authorize your token for SSO.")]
                 payload["data"]["search"]["nodes"].append(None)
@@ -74,10 +76,24 @@ class Handler(BaseHTTPRequestHandler):
                 reviews = []
                 if identifier == "PR_4":
                     reviews = [dict(author=dict(login="octocat"), state="APPROVED", submittedAt="2026-01-03T00:00:00Z")]
-                nodes.append(dict(id=identifier, mergeable="MERGEABLE", reviewDecision="REVIEW_REQUIRED" if identifier == "PR_4" else "APPROVED",
+                nodes.append(dict(id=identifier, headRefOid=f"head-{identifier}", potentialMergeCommit=None,
+                                  mergeable="MERGEABLE", mergeStateStatus="CLEAN", reviewDecision="REVIEW_REQUIRED" if identifier == "PR_4" else "APPROVED",
                                   commits=dict(nodes=[dict(commit=dict(committedDate="2026-01-02T00:00:00Z"))]),
                                   reviews=dict(nodes=reviews), closingIssuesReferences=dict(nodes=[]), timelineItems=dict(nodes=[])))
             self.respond(dict(data=dict(nodes=nodes)))
+        elif "query PRCI" in query:
+            identifier = variables["id"]
+            head = f"head-{identifier}"
+            node = dict(state="OPEN", headRefOid=head, potentialMergeCommit=None)
+            if "query PRCIRevision" not in query:
+                checks = [dict(__typename="CheckRun", id=f"check-{identifier}", name="Unit tests",
+                               status="IN_PROGRESS" if identifier == "PR_2" else "COMPLETED",
+                               conclusion="FAILURE" if identifier == "PR_1" else "SUCCESS",
+                               detailsUrl="https://github.com/example/repo/actions/runs/1",
+                               startedAt="2026-10-27T00:00:00Z", completedAt=None)]
+                node["commits"] = dict(nodes=[dict(commit=dict(id=f"commit-{identifier}", oid=head,
+                    statusCheckRollup=dict(contexts=dict(nodes=checks, pageInfo=dict(hasNextPage=False, endCursor=None)))))])
+            self.respond(dict(data=dict(node=node)))
         else:
             self.respond(dict(errors=[dict(message="Unexpected fixture query")]), 400)
 

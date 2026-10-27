@@ -11,6 +11,7 @@ final class DashboardViewModel: ObservableObject {
         var hasNextPage: Bool = false
         var isLoading: Bool = false
         var warnings: [String] = []
+        var coverageWarnings: [String] = []
     }
 
     enum QuickAction {
@@ -40,7 +41,12 @@ final class DashboardViewModel: ObservableObject {
     var accessWarnings: [String] {
         Array(Set(listStates.values.flatMap(\.warnings))).sorted()
     }
+    var listCoverageWarnings: [String] {
+        if selectedSavedViewID != nil { return Array(Set(listStates.values.flatMap(\.coverageWarnings))).sorted() }
+        return listStates[selectedTab]?.coverageWarnings ?? []
+    }
     private var publishingSavedLayout = false
+    let ciMonitor: CIMonitor
     @Published var settings: AppSettings = .default {
         didSet {
             guard !publishingSavedLayout else { return }
@@ -49,6 +55,9 @@ final class DashboardViewModel: ObservableObject {
                 guard !self.retired else { return }
                 try await self.store.save(settings: snapshot)
                 guard !self.retired else { return }
+                if snapshot.ciFailureAlerts == settings.ciFailureAlerts && snapshot.ciRefreshInterval == settings.ciRefreshInterval && snapshot.quietHours == settings.quietHours {
+                    self.ciMonitor.configure(snapshot)
+                }
                 await self.scheduler.start(interval: snapshot.refreshInterval) {
                     await self.refreshActiveTab()
                 }
@@ -107,6 +116,7 @@ final class DashboardViewModel: ObservableObject {
         waiters.forEach { $0.resume() }
         tasks.values.forEach { $0.cancel() }
         tasks.removeAll()
+        ciMonitor.stop()
         await scheduler.stop()
         await notifier.retire()
         await store.retire()
@@ -137,9 +147,26 @@ final class DashboardViewModel: ObservableObject {
         self.notifier = notifier
         self.scheduler = scheduler
         self.digestComputer = digestComputer
+        self.ciMonitor = CIMonitor(client: client, directory: store.directory, lifetime: store.lifetime, notifier: notifier)
         self.savedViewStore = SavedPRViewStore(directory: store.directory, lifetime: store.lifetime)
         self.restoreSavedSelection = restoreSavedSelection
         self.listStates = Dictionary(uniqueKeysWithValues: PullRequestTab.allCases.map { ($0, PullRequestListState()) })
+        ciMonitor.onChange = { [weak self] in
+            guard let self, !retired else { return }
+            for tab in PullRequestTab.allCases {
+                guard var state = listStates[tab] else { continue }
+                for index in state.rawItems.indices {
+                    if let ci = ciMonitor.snapshots[state.rawItems[index].id],
+                       ci.headSHA == state.rawItems[index].detail.ciHeadSHA,
+                       ci.revision == state.rawItems[index].detail.ciRevision,
+                       ci.checkedAt >= (state.rawItems[index].detail.ci?.checkedAt ?? .distantPast) {
+                        state.rawItems[index].detail.ci = ci
+                    }
+                }
+                listStates[tab] = state
+            }
+            recomputeDisplayedItems(); updateBadgeCount(); objectWillChange.send()
+        }
 
         launch { [self] in
             guard !self.retired else { return }
@@ -421,6 +448,7 @@ final class DashboardViewModel: ObservableObject {
         guard !retired else { return }
         if let warning { errorMessage = warning }
         settings = storedSettings
+        ciMonitor.configure(storedSettings)
         isReady = true
 
         do {
@@ -478,6 +506,10 @@ final class DashboardViewModel: ObservableObject {
             guard !retired else { return }
             var enriched: [PullRequest] = []
             for var item in page.items {
+                if let incoming = item.detail.ci {
+                    let previous = listStates.values.flatMap(\.rawItems).first(where: { $0.id == item.id })?.detail.ci
+                    item.detail.ci = CIStatus.retainingPrevious(previous, incoming: incoming)
+                }
                 let override = await store.override(for: item.id)
                 guard !retired else { return }
                 item.override = override
@@ -507,6 +539,8 @@ final class DashboardViewModel: ObservableObject {
             state.cursor = page.cursor
             state.hasNextPage = page.hasNextPage
             state.warnings = reset ? page.warnings : Array(Set(state.warnings + page.warnings)).sorted()
+            let coverage = page.coverageWarning.map { [$0] } ?? []
+            state.coverageWarnings = reset ? coverage : Array(Set(state.coverageWarnings + coverage)).sorted()
             state.isLoading = false
             listStates[tab] = state
             finishLoad(for: tab, requestID: requestID)

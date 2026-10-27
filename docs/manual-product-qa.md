@@ -2,6 +2,27 @@
 
 This is a release gate, not a claim that every check below has passed.
 
+## CI monitoring local verification (unreleased, 2026-10-27)
+
+- Initial CI implementation Swift suite: 95 tests, zero failures. New coverage includes CI aggregation, current/test-merge revision checks, check pagination, rate-limit backoff, partial responses, successful reruns, distinct workflows, silent baselines, restart deduplication, mute/unmute, discovery across pages, retirement, rescheduling and stale visible rows.
+- The full native suite passed all 20 journeys (`results-1793064505.xcresult`). After the final monitoring and actionability refinements, the CI/both-layout/relaunch journey, saved-view/layout journey and review/actionable-filter journey passed again: 3 journeys, zero failures (`results-1793065045.xcresult`).
+- The CI journey verifies failed check details and links, own-failure actionability, enabled monitoring across authored pages, 15-minute interval persistence, per-PR mute persistence, both layouts and the absence of mute actions on another author's PR.
+- Actual Tabbed and Compact popover captures were inspected locally. These are synthetic test data, not new published README media. Earlier README captures retain their release labels.
+- Both final arm64 and x86_64 release builds passed. Both installer regressions passed using temporary fixture applications. Local README and CI-guide links and diff whitespace checks passed.
+- Independent review found that revision races could discard a page and failed refreshes could erase useful previous results. Both were fixed with regression coverage. Further regressions caught interval rescheduling, stale-row propagation and own-failure actionability.
+- Initial missing-feature tests failed as expected. An early native attempt also selected the existing re-review switch instead of CI alerts; accessibility evidence identified the incorrect test ancestor selector, and the CI switch now has a dedicated identifier. These failed attempts are not passing evidence.
+- Production installation, credentials and Keychain were not modified. Native fixtures suppress actual OS notification delivery; the monitoring delivery boundary is tested with a recorder. Live GitHub/organization SSO and real OS banner delivery remain manual verification limits.
+
+See the [CI monitoring guide](ci-monitoring.md) for behavior, permissions and coverage limits.
+
+### CodeRabbit and hosted-CI follow-up
+
+- Both initial CodeRabbit findings were verified: GraphQL `EXPECTED` contexts now map to queued and do not suppress other failure observations; search caps have a separate, list-specific coverage channel, excluded from Watched and from token-access warnings.
+- Expanded Swift suite: 97 tests, zero failures. Both architecture release builds passed again. New API regressions cover expected contexts and all three list scopes; a native fixture verifies separate Reviews/My PRs coverage messages without token-access advice.
+- The initial PR native check passed, but the duplicate push run failed at an immediate post-delete assertion. The hosted screenshot already showed the view removed, and the source performs deletion asynchronously. The test now waits for disappearance and still verifies persistence after relaunch. Its local journey passed with the correction.
+- An affected local rerun lost app focus while traversing Layout. The helper now activates the test app before opening that menu and waits for the requested menu item. The CI/both-layout journey and saved-view/layout journey then both passed (`results-1793066979.xcresult`, 2 journeys). The corrected deletion and new coverage journey also passed in `results-1793066824.xcresult`; that run's layout focus failure is not passing evidence.
+- Latest-head hosted checks and CodeRabbit review remain merge gates; these local results do not waive them.
+
 ## Unreleased layout verification
 
 - Tabbed (B) is the default for fresh installs and preferences without a layout key.
@@ -60,5 +81,12 @@ Do not run window-opening unit tests concurrently with native journeys: they can
 - Early native runs exposed missing Edit-menu actions, header clipping and test accessibility-query issues. Those runs are failures, not release evidence.
 
 ## Limits
+
+### CI monitoring review follow-up — 2026-10-27
+
+- 105 unit tests passed after the review fixes. Regressions cover rejected notification retries, independent loaded-row head/test-merge identity, CI request budgeting and verification fairness across 15 failing PRs over repeated passes.
+- Failure verification has reserved request capacity and rotates independently from discovery; exhausted CI budgets leave dashboard discovery available and label retained results stale.
+- The targeted native CI/both-layout journey compiled but failed before executing: XCUITest timed out enabling automation mode. This attempt is not passing native evidence; latest-head hosted checks remain required.
+- Hosted runs at 0876608 exposed an outdated fresh-CI assertion after enabling alerts and immediately changing their interval. The journey now verifies failed checks in both layouts before those extra polls, and requires retained check details plus an explicit request-budget warning if the later refresh is deferred. The revised UI target builds; a passing hosted rerun remains required.
 
 Fixtures do not establish live organization SSO, real macOS notification delivery, notarization, or trusted automatic updates. Releases remain ad-hoc signed and updates remain manual. Do not mark those capabilities as verified by fixture tests.
