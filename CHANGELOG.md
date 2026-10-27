@@ -20,6 +20,7 @@ All notable changes to MergeOwl (formerly PR Pulse) are documented in this file.
 
 - Load installed owl resources without relying on the developer's build directory; keep a visible fallback for missing artwork.
 - Refresh older CI snapshots when reopening the menu-bar popover, show observation age and display Checking CI while refreshing.
+- Exclude merged/closed PRs from default lists and linked PR references, including PRs merged between search and detail loading.
 
 ## [0.2.1] - 2026-10-26
 

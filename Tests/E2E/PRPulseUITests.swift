@@ -65,6 +65,19 @@ final class PRPulseUITests: XCTestCase {
         app.buttons[name].click()
     }
 
+    func testMergedPRReferencesAreHiddenInBothLayouts() {
+        launch(token: "e2e-linked")
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(prTitle("Improve documentation").waitForExistence(timeout: 10))
+        for layout in ["Tabbed", "Compact"] {
+            chooseLayout(layout)
+            XCTAssertTrue(app.links["PR #99"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.links["Issue #14"].exists)
+            XCTAssertFalse(app.links["PR #12"].exists)
+            XCTAssertFalse(app.links["PR #13"].exists)
+        }
+    }
+
     private func settings() {
         app.descendants(matching: .any)["prpulse.more"].firstMatch.click()
         app.menuItems["prpulse.settings"].click()

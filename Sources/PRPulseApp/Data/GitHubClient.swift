@@ -92,7 +92,8 @@ struct GitHubAPIClient: GitHubClient {
             return page
         }
 
-        let (detailByID, detailWarnings) = try await fetchDetails(ids: page.items.map(\.id))
+        let (detailByID, detailWarnings, closedIDs) = try await fetchDetails(ids: page.items.map(\.id))
+        page.items.removeAll { closedIDs.contains($0.id) }
         page.warnings.append(contentsOf: detailWarnings)
         var enriched: [PullRequest] = []
         let byID = Dictionary(page.items.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
@@ -123,7 +124,7 @@ struct GitHubAPIClient: GitHubClient {
         let (data, warnings): (SearchData, [String]) = try await performGraphQLResult(query: Self.searchPullRequestsQuery, variables: variables)
 
         let items = data.search.nodes.compactMap { node -> PullRequest? in
-            guard let node,
+            guard let node, node.state == "OPEN",
                   let id = node.id,
                   let number = node.number,
                   let title = node.title,
@@ -204,15 +205,20 @@ struct GitHubAPIClient: GitHubClient {
         return PullRequestPage(items: Array(top), cursor: nil, hasNextPage: false, warnings: warnings)
     }
 
-    private func fetchDetails(ids: [String]) async throws -> ([String: PullRequestDetail], [String]) {
-        guard !ids.isEmpty else { return ([:], []) }
+    private func fetchDetails(ids: [String]) async throws -> ([String: PullRequestDetail], [String], Set<String>) {
+        guard !ids.isEmpty else { return ([:], [], []) }
 
         let variables = DetailVariables(ids: ids)
         let (data, warnings): (DetailData, [String]) = try await performGraphQLResult(query: Self.pullRequestDetailsQuery, variables: variables)
 
         var detailByID: [String: PullRequestDetail] = [:]
+        var closedIDs = Set<String>()
         for node in data.nodes {
             guard let node, let id = node.id else { continue }
+            if let state = node.state, state != "OPEN" {
+                closedIDs.insert(id)
+                continue
+            }
 
             let mergeable = PullRequestDetail.MergeableState(rawValue: node.mergeable ?? "UNKNOWN") ?? .unknown
             let reviewDecision: PullRequestDetail.ReviewDecision? = {
@@ -259,6 +265,7 @@ struct GitHubAPIClient: GitHubClient {
                 case "Issue":
                     type = .issue
                 case "PullRequest":
+                    guard source.state == "OPEN" else { continue }
                     type = .pullRequest
                 default:
                     continue
@@ -301,7 +308,7 @@ struct GitHubAPIClient: GitHubClient {
                 ? node.potentialMergeCommit?.oid : node.headRefOid
         }
 
-        return (detailByID, warnings)
+        return (detailByID, warnings, closedIDs)
     }
 
     private func performGraphQL<Variables: Encodable, DataType: Decodable>(
@@ -439,6 +446,7 @@ struct GitHubAPIClient: GitHubClient {
         nodes {
           ... on PullRequest {
             id
+            state
             number
             title
             url
@@ -458,6 +466,7 @@ struct GitHubAPIClient: GitHubClient {
       nodes(ids: $ids) {
         ... on PullRequest {
           id
+          state
           headRefOid
           potentialMergeCommit { oid statusCheckRollup { state } }
           mergeable
@@ -492,6 +501,7 @@ struct GitHubAPIClient: GitHubClient {
                   }
                   ... on PullRequest {
                     number
+                    state
                     url
                     repository { nameWithOwner }
                   }
@@ -547,6 +557,7 @@ private struct SearchData: Decodable {
         }
 
         struct SearchNode: Decodable {
+            let state: String?
             struct Author: Decodable {
                 let login: String?
             }
@@ -624,6 +635,7 @@ private struct DetailData: Decodable {
         struct TimelineItems: Decodable {
             struct CrossRefNode: Decodable {
                 struct Source: Decodable {
+                    let state: String?
                     struct Repository: Decodable {
                         let nameWithOwner: String?
                     }
@@ -633,6 +645,7 @@ private struct DetailData: Decodable {
                     let repository: Repository?
 
                     enum CodingKeys: String, CodingKey {
+                        case state
                         case typeName = "__typename"
                         case number
                         case url
@@ -645,6 +658,7 @@ private struct DetailData: Decodable {
         }
 
         let id: String?
+        let state: String?
         let mergeable: String?
         let reviewDecision: String?
         let commits: Commits?

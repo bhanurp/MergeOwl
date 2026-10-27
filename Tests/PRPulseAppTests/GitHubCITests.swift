@@ -3,6 +3,15 @@ import XCTest
 @testable import PRPulseApp
 
 final class GitHubCITests: XCTestCase {
+    func testOpenListsExcludeMergedRowsAndMergedPRReferences() async throws {
+        for tab in [PullRequestTab.mine, .reviewRequested, .watched] {
+            let page = try await client("lifecycle").fetchPullRequests(tab: tab, cursor: nil)
+            XCTAssertEqual(page.items.map(\.id), ["PR_1"], "Drop stale merged search results and PRs merged before detail hydration")
+            let refs = try XCTUnwrap(page.items.first).detail.linkedReferences
+            XCTAssertEqual(refs.filter { $0.type == .pullRequest }.map(\.number), [11])
+            XCTAssertEqual(refs.filter { $0.type == .issue }.map(\.number), [14], "Issue references remain intact")
+        }
+    }
     func testDiscoveryLeavesCapacityForLiveFailureVerification() async throws {
         let api = client("many")
         let page = try await api.fetchPullRequests(tab: .mine, cursor: nil)
@@ -124,14 +133,22 @@ private final class CIProtocol: URLProtocol, @unchecked Sendable {
         }
         var result: [String: Any]
         if raw.contains("query SearchPRs") {
-            let nodes: [[String: Any]] = (1...(mode.contains("many") ? 15 : 2)).map { index in
+            let nodes: [[String: Any]] = (1...(mode.contains("many") ? 15 : mode.contains("lifecycle") ? 3 : 2)).map { index in
                 ["id": "PR_\(index)", "number": index, "title": "Tests", "url": "https://github.com/example/repo/pull/\(index)",
+                 "state": mode.contains("lifecycle") && index == 2 ? "MERGED" : "OPEN",
                  "createdAt": "2026-10-01T00:00:00Z", "updatedAt": "2026-10-01T00:00:00Z", "isDraft": false,
                  "author": ["login": "me"], "repository": ["nameWithOwner": "example/repo"]]
             }
             result = ["data": ["search": ["issueCount": mode.contains("large") ? 1001 : 2, "nodes": mode.contains("large") ? [] : nodes, "pageInfo": ["hasNextPage": false, "endCursor": NSNull()]]]]
         } else if raw.contains("query PRDetails") {
-            result = ["data": ["nodes": []]]
+            if mode.contains("lifecycle") {
+                let references: [[String: Any]] = [(11, "OPEN"), (12, "MERGED"), (13, "CLOSED")].map { number, state in
+                    ["source": ["__typename": "PullRequest", "number": number, "state": state,
+                                "url": "https://github.com/example/repo/pull/\(number)", "repository": ["nameWithOwner": "example/repo"]]]
+                } + [["source": ["__typename": "Issue", "number": 14, "url": "https://github.com/example/repo/issues/14", "repository": ["nameWithOwner": "example/repo"]]]]
+                result = ["data": ["nodes": [["id": "PR_1", "state": "OPEN", "timelineItems": ["nodes": references]],
+                                              ["id": "PR_3", "state": "MERGED"]]]]
+            } else { result = ["data": ["nodes": []]] }
         } else if raw.contains("query PRCIRevision") {
             let changed = mode.contains("changed") || (mode.contains("page-race") && variables?["id"] as? String == "PR_1")
             result = ["data": ["node": ["state": "OPEN", "headRefOid": changed ? "new" : "head",

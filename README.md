@@ -156,13 +156,15 @@ Use **More (…) → Layout → Tabbed / Compact**, or open **More → Settings 
 
 **More** also contains Settings and Quit; **Filters** contains Hide reviewed, Hide snoozed and Hide N/A. Click a PR title to open GitHub, use **Snooze** directly, or use its **More PR actions** menu for **Mark to do**, **Mark not relevant** and **Clear override**. **Activity** opens the digest. The footer counts visible loaded PRs; the menu-bar badge still covers all loaded lists.
 
-These layout changes are not in v0.2.0. The captures above show that earlier interface; the installation and connection instructions describe v0.2.1 and note older controls where needed.
+These layout changes are not in v0.2.0. The captures above show that earlier interface; installation and connection instructions distinguish current and older release names and controls.
 
 ### Find the PRs that matter
 
 - **My PRs:** open PRs authored by you.
 - **Reviews / Review Requested:** open PRs requesting your review.
 - **Watched:** open PRs in repositories added under **Settings → Repositories**. Enter `owner/repo`, for example `apple/swift`, and click **Add**.
+
+Merged and closed PRs are excluded from the default lists. Linked PR references beneath a card also show open PRs only; issue references are retained. A refresh updates these references after a PR closes or merges.
 
 Search by title or repository. Use **Actionable** and **Filters → Hide reviewed / Hide snoozed / Hide N/A** to narrow the list. On v0.2.0 these filters appear directly in the popover. If PRs seem missing, clear search and turn off filters first.
 

@@ -5,7 +5,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
 def pr(identifier, title, author="octocat"):
-    return dict(id=identifier, number=int(identifier.split("_")[1]), title=title,
+    return dict(id=identifier, state="OPEN", number=int(identifier.split("_")[1]), title=title,
                 url=f"https://github.com/example/repo/pull/{identifier.split('_')[1]}",
                 createdAt="2026-01-01T00:00:00Z", updatedAt="2026-01-02T00:00:00Z",
                 isDraft=False, author=dict(login=author), repository=dict(nameWithOwner="example/repo"))
@@ -25,7 +25,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def authorized(self):
         token = self.headers.get("Authorization", "").removeprefix("Bearer ")
-        if token not in {"e2e-valid", "e2e-partial", "e2e-empty", "e2e-hubot", "e2e-cap"}:
+        if token not in {"e2e-valid", "e2e-partial", "e2e-empty", "e2e-hubot", "e2e-cap", "e2e-linked"}:
             self.respond(dict(message="Bad credentials"), 401)
             return None
         return token
@@ -74,12 +74,19 @@ class Handler(BaseHTTPRequestHandler):
             nodes = []
             for identifier in variables["ids"]:
                 reviews = []
+                references = []
+                if token == "e2e-linked" and identifier == "PR_1":
+                    references = [dict(source=dict(__typename="PullRequest", number=number, state=state,
+                        url=f"https://github.com/example/repo/pull/{number}", repository=dict(nameWithOwner="example/repo")))
+                        for number, state in [(12, "MERGED"), (13, "CLOSED"), (99, "OPEN")]]
+                    references.append(dict(source=dict(__typename="Issue", number=14,
+                        url="https://github.com/example/repo/issues/14", repository=dict(nameWithOwner="example/repo"))))
                 if identifier == "PR_4":
                     reviews = [dict(author=dict(login="octocat"), state="APPROVED", submittedAt="2026-01-03T00:00:00Z")]
-                nodes.append(dict(id=identifier, headRefOid=f"head-{identifier}", potentialMergeCommit=None,
+                nodes.append(dict(id=identifier, state="OPEN", headRefOid=f"head-{identifier}", potentialMergeCommit=None,
                                   mergeable="MERGEABLE", mergeStateStatus="CLEAN", reviewDecision="REVIEW_REQUIRED" if identifier == "PR_4" else "APPROVED",
                                   commits=dict(nodes=[dict(commit=dict(committedDate="2026-01-02T00:00:00Z"))]),
-                                  reviews=dict(nodes=reviews), closingIssuesReferences=dict(nodes=[]), timelineItems=dict(nodes=[])))
+                                  reviews=dict(nodes=reviews), closingIssuesReferences=dict(nodes=[]), timelineItems=dict(nodes=references)))
             self.respond(dict(data=dict(nodes=nodes)))
         elif "query PRCI" in query:
             identifier = variables["id"]
