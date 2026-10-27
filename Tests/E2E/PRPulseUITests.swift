@@ -149,6 +149,11 @@ final class PRPulseUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Unit tests"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.links["Open check"].exists)
         app.typeKey(.escape, modifierFlags: [])
+        chooseLayout("Compact")
+        XCTAssertTrue(app.buttons["prpulse.ci.PR_1"].label.contains("CI failed"))
+        attachPopover("Compact CI status")
+        chooseLayout("Tabbed")
+        attachPopover("Tabbed CI status")
         settings()
         pane("Notifications")
         let toggle = app.switches["prpulse.ci-alerts"]
@@ -164,10 +169,19 @@ final class PRPulseUITests: XCTestCase {
         app.menuItems["Mute CI failure alerts"].click()
         XCTAssertTrue(app.staticTexts["CI alerts muted"].waitForExistence(timeout: 5))
         chooseLayout("Compact")
-        XCTAssertTrue(app.buttons["prpulse.ci.PR_1"].label.contains("CI failed"))
-        attachPopover("Compact CI status")
+        let monitoredCI = app.buttons["prpulse.ci.PR_1"]
+        XCTAssertTrue(monitoredCI.exists)
+        // Enabling alerts and immediately rescheduling can consume the bounded CI allowance.
+        // A deferred refresh must keep the previous check details and explicitly mark them stale.
+        if monitoredCI.label.contains("CI unavailable") {
+            monitoredCI.click()
+            XCTAssertTrue(app.staticTexts["Unit tests"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "value CONTAINS[c] %@ OR label CONTAINS[c] %@", "request budget", "request budget")).firstMatch.exists)
+            app.typeKey(.escape, modifierFlags: [])
+        } else {
+            XCTAssertTrue(monitoredCI.label.contains("CI failed"))
+        }
         chooseLayout("Tabbed")
-        attachPopover("Tabbed CI status")
         app.terminate()
         app.launchEnvironment.removeValue(forKey: "PRPULSE_E2E_INITIAL_TOKEN")
         app.launch(); openDashboard()
