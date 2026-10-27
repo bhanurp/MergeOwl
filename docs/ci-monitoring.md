@@ -1,6 +1,6 @@
-# MergeOwl CI monitoring (unreleased)
+# MergeOwl CI monitoring
 
-These controls are available in the current source after CI monitoring was merged in PR #18. They are not included in the v0.2.1 download. Existing README screenshots show earlier releases.
+These controls are included from v0.2.2 onward. They are not included in v0.2.1 or earlier downloads. Existing README screenshots show earlier releases.
 
 ## See checks
 

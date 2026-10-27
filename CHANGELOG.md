@@ -2,13 +2,24 @@
 
 All notable changes to MergeOwl (formerly PR Pulse) are documented in this file.
 
-## Unreleased
+## [0.2.2]
+
+### Added
+
+- CI check status and details in both layouts, with links to individual checks and explicit incomplete/stale coverage.
+- Opt-in failure alerts for accessible open My PRs, independent polling intervals and per-PR mute controls.
+- Shared request budgeting, fair failure verification, quiet hours and retryable notification delivery.
 
 ### Changed
 
 - Rename the app to MergeOwl and use the approved transparent amber owl for the app and menu-bar icons.
 - Package future releases as MergeOwl.app while retaining existing account, Keychain and local-data identifiers, plus legacy generic download aliases.
 - Update onboarding and contributor documentation; existing PR Pulse releases and historical screenshots retain their original names.
+
+### Fixed
+
+- Load installed owl resources without relying on the developer's build directory; keep a visible fallback for missing artwork.
+- Refresh older CI snapshots when reopening the menu-bar popover, show observation age and display Checking CI while refreshing.
 
 ## [0.2.1] - 2026-10-26
 
