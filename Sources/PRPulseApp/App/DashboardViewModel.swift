@@ -9,6 +9,7 @@ final class DashboardViewModel: ObservableObject {
         var displayedItems: [PullRequestPresentation] = []
         var cursor: String?
         var hasNextPage: Bool = false
+        var loadedPageCount = 0
         var isLoading: Bool = false
         var warnings: [String] = []
         var coverageWarnings: [String] = []
@@ -194,8 +195,16 @@ final class DashboardViewModel: ObservableObject {
         let scope: PopoverRefreshScope = selectedSavedViewID == nil ? .tab(selectedTab) : .allLoaded
         if let lastAttempt = lastPopoverRefreshAttempts[scope], now.timeIntervalSince(lastAttempt) < 30 { return }
         lastPopoverRefreshAttempts[scope] = now
-        // Default-tab pagination is left intact; a later open can retry freshness.
-        await refreshActiveTab()
+        if selectedSavedViewID == nil {
+            await loadPage(for: selectedTab, reset: true, preserveLoadedPages: true)
+        } else {
+            isRefreshing = true
+            defer { isRefreshing = false }
+            for tab in PullRequestTab.allCases {
+                guard !retired else { return }
+                await loadPage(for: tab, reset: true, preserveLoadedPages: true)
+            }
+        }
     }
 
     func requestNotificationAuthorization() async {
@@ -502,10 +511,11 @@ final class DashboardViewModel: ObservableObject {
         }
     }
 
-    private func loadPage(for tab: PullRequestTab, reset: Bool) async {
+    private func loadPage(for tab: PullRequestTab, reset: Bool, preserveLoadedPages: Bool = false) async {
         guard !retired else { return }
         var state = listStates[tab] ?? PullRequestListState()
         if state.isLoading {
+            guard !preserveLoadedPages else { return }
             guard reset else { return }
             await withCheckedContinuation { resetWaiters[tab, default: []].append($0) }
             guard !retired else { return }
@@ -520,7 +530,26 @@ final class DashboardViewModel: ObservableObject {
 
         let cursor = reset ? nil : state.cursor
         do {
-            let page = try await client.fetchPullRequests(tab: tab, cursor: cursor)
+            var page = try await client.fetchPullRequests(tab: tab, cursor: cursor)
+            guard !retired else { return }
+            var pagesRead = 1
+            var seenCursors = Set<String>()
+            // Refresh the previously loaded coverage atomically. A failed later
+            // page leaves the old rows and pagination in place.
+            while preserveLoadedPages, pagesRead < state.loadedPageCount, page.hasNextPage {
+                guard !retired else { return }
+                guard let nextCursor = page.cursor, seenCursors.insert(nextCursor).inserted else {
+                    throw GitHubClientError.invalidResponse
+                }
+                let next = try await client.fetchPullRequests(tab: tab, cursor: nextCursor)
+                guard !retired else { return }
+                page.items += next.items
+                page.cursor = next.cursor
+                page.hasNextPage = next.hasNextPage
+                page.warnings = Array(Set(page.warnings + next.warnings)).sorted()
+                page.coverageWarning = next.coverageWarning ?? page.coverageWarning
+                pagesRead += 1
+            }
             guard !retired else { return }
             var enriched: [PullRequest] = []
             for var item in page.items {
@@ -556,6 +585,7 @@ final class DashboardViewModel: ObservableObject {
 
             state.cursor = page.cursor
             state.hasNextPage = page.hasNextPage
+            state.loadedPageCount = reset ? pagesRead : state.loadedPageCount + pagesRead
             state.warnings = reset ? page.warnings : Array(Set(state.warnings + page.warnings)).sorted()
             let coverage = page.coverageWarning.map { [$0] } ?? []
             state.coverageWarnings = reset ? coverage : Array(Set(state.coverageWarnings + coverage)).sorted()

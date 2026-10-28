@@ -4,6 +4,43 @@ import XCTest
 
 @MainActor
 final class CIStatusFreshnessTests: XCTestCase {
+    func testPopoverRefreshRetainsDistinctLoadedPagesAndManualRefreshResets() async throws {
+        let (dashboard, client, directory) = try await makeDashboard()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        client.hasNextPage = true
+        client.distinctPages = true
+        client.holdPagination = false
+        await dashboard.refreshActiveTab()
+        dashboard.loadMoreCurrentTab()
+        for _ in 0..<100 where client.reads < 2 { try await Task.sleep(for: .milliseconds(5)) }
+        for _ in 0..<100 where dashboard.isCurrentListRefreshing { try await Task.sleep(for: .milliseconds(5)) }
+        XCTAssertEqual(Set(dashboard.currentItems.map { $0.id }), ["PR_1", "PR_2"])
+        let badge = dashboard.badgeCount
+        await dashboard.refreshForPopoverOpen()
+        XCTAssertEqual(Set(dashboard.currentItems.map { $0.id }), ["PR_1", "PR_2"], "Automatic freshness must retain loaded page coverage")
+        XCTAssertEqual(client.reads, 4, "Both loaded pages must be refreshed")
+        XCTAssertEqual(dashboard.badgeCount, badge)
+        client.failPagination = true
+        await dashboard.refreshForPopoverOpen(now: Date().addingTimeInterval(31))
+        XCTAssertEqual(Set(dashboard.currentItems.map { $0.id }), ["PR_1", "PR_2"], "A failed later page must not commit a partial refresh")
+        XCTAssertEqual(dashboard.badgeCount, badge)
+        await dashboard.refreshActiveTab()
+        XCTAssertEqual(dashboard.currentItems.map { $0.id }, ["PR_1"], "Explicit manual refresh retains first-page reset behavior")
+        client.failPagination = false
+        let beforePage = client.reads
+        dashboard.loadMoreCurrentTab()
+        for _ in 0..<100 where client.reads == beforePage { try await Task.sleep(for: .milliseconds(5)) }
+        for _ in 0..<100 where dashboard.isCurrentListRefreshing { try await Task.sleep(for: .milliseconds(5)) }
+        client.holdNextReset = true
+        let readsBeforeRetirement = client.reads
+        let pending = Task { await dashboard.refreshForPopoverOpen(now: Date().addingTimeInterval(62)) }
+        for _ in 0..<100 where client.reset == nil { try await Task.sleep(for: .milliseconds(5)) }
+        XCTAssertNotNil(client.reset)
+        await dashboard.retire()
+        client.reset?.resume(); client.reset = nil
+        await pending.value
+        XCTAssertEqual(client.reads, readsBeforeRetirement + 1, "Retirement must prevent subsequent page requests")
+    }
     func testRestoredSavedViewDefersRefreshDuringAnIndividualLoad() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -106,7 +143,7 @@ final class CIStatusFreshnessTests: XCTestCase {
         for _ in 0..<100 where dashboard.isCurrentListRefreshing { try await Task.sleep(for: .milliseconds(5)) }
         XCTAssertEqual(client.reads, 2, "Opening during pagination must not reset the newly loaded page")
         await dashboard.refreshForPopoverOpen()
-        XCTAssertEqual(client.reads, 3, "The skipped attempt must not throttle the next open")
+        XCTAssertEqual(client.reads, 4, "The next open must refresh both loaded pages without being throttled")
         await dashboard.retire()
     }
 
@@ -176,13 +213,20 @@ private final class FreshnessClient: GitHubClient, @unchecked Sendable {
     var reads = 0
     var running = false
     var hasNextPage = false
+    var distinctPages = false
+    var holdPagination = true
+    var failPagination = false
     var holdNextReset = false
     var reset: CheckedContinuation<Void, Never>?
     var pagination: CheckedContinuation<Void, Never>?
     func fetchViewer() async throws -> String { "me" }
     func fetchPullRequests(tab: PullRequestTab, cursor: String?) async throws -> PullRequestPage {
         reads += 1
-        if cursor != nil { await withCheckedContinuation { pagination = $0 } }
+        if cursor != nil, failPagination { throw GitHubClientError.apiFailure("Synthetic later-page failure") }
+        if cursor != nil, holdPagination {
+            holdPagination = false
+            await withCheckedContinuation { pagination = $0 }
+        }
         else if holdNextReset {
             holdNextReset = false
             await withCheckedContinuation { reset = $0 }
@@ -190,9 +234,11 @@ private final class FreshnessClient: GitHubClient, @unchecked Sendable {
         let ci = CIStatus(headSHA: "head", revision: "head", checks: [
             .init(id: "build", name: "Build", state: running ? .running : .success)],
                           checkedAt: running ? Date() : Date().addingTimeInterval(-60))
-        let pr = PullRequest(id: "PR_1", number: 1, title: "Snapshot", url: URL(string: "https://github.com/example/repo/pull/1")!,
+        let number = distinctPages && cursor != nil ? 2 : 1
+        let pr = PullRequest(id: "PR_\(number)", number: number, title: "Snapshot", url: URL(string: "https://github.com/example/repo/pull/\(number)")!,
                              repository: .init(nameWithOwner: "example/repo"), author: .init(login: "me"),
                              createdAt: Date(), updatedAt: Date(), isDraft: false, detail: .init(ci: ci))
-        return .init(items: [pr], cursor: hasNextPage ? "next" : nil, hasNextPage: hasNextPage)
+        let more = hasNextPage && (!distinctPages || cursor == nil)
+        return .init(items: [pr], cursor: more ? "next" : nil, hasNextPage: more)
     }
 }
