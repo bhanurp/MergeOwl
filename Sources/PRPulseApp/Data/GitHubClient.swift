@@ -116,16 +116,18 @@ struct GitHubAPIClient: GitHubClient {
             enriched.append(copy)
         }
         let enrichedByID = Dictionary(enriched.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        return PullRequestPage(items: page.items.compactMap { enrichedByID[$0.id] }, cursor: page.cursor, hasNextPage: page.hasNextPage, warnings: page.warnings, coverageWarning: page.coverageWarning)
+        return PullRequestPage(items: page.items.compactMap { enrichedByID[$0.id] }, cursor: page.cursor, hasNextPage: page.hasNextPage, warnings: page.warnings, coverageWarning: page.coverageWarning, isSearchIncomplete: page.isSearchIncomplete)
     }
 
     private func fetchSearchPage(query: String, cursor: String?, scope: PullRequestTab) async throws -> PullRequestPage {
         let variables = SearchVariables(query: query, after: cursor)
         let (data, warnings): (SearchData, [String]) = try await performGraphQLResult(query: Self.searchPullRequestsQuery, variables: variables)
 
+        var incomplete = !warnings.isEmpty
         let items = data.search.nodes.compactMap { node -> PullRequest? in
-            guard let node, node.state == "OPEN",
-                  let id = node.id,
+            guard let node, let state = node.state else { incomplete = true; return nil }
+            guard state == "OPEN" else { return nil }
+            guard let id = node.id,
                   let number = node.number,
                   let title = node.title,
                   let urlString = node.url,
@@ -135,6 +137,7 @@ struct GitHubAPIClient: GitHubClient {
                   let createdAt = Self.parseISODate(createdAtRaw),
                   let updatedAt = Self.parseISODate(updatedAtRaw),
                   let repository = node.repository?.nameWithOwner else {
+                incomplete = true
                 return nil
             }
 
@@ -162,7 +165,8 @@ struct GitHubAPIClient: GitHubClient {
             cursor: data.search.pageInfo.endCursor,
             hasNextPage: data.search.pageInfo.hasNextPage,
             warnings: warnings,
-            coverageWarning: coverageWarning
+            coverageWarning: coverageWarning,
+            isSearchIncomplete: incomplete
         )
     }
 
@@ -182,11 +186,13 @@ struct GitHubAPIClient: GitHubClient {
 
         var merged: [PullRequest] = []
         var warnings: [String] = []
+        var incomplete = false
         for repo in Set(watchedRepos) {
             let query = "repo:\(repo) is:pr is:open sort:updated-desc"
             let page = try await fetchSearchPage(query: query, cursor: nil, scope: .watched)
             merged.append(contentsOf: page.items)
             warnings.append(contentsOf: page.warnings)
+            incomplete = incomplete || page.isSearchIncomplete
         }
 
         var deduped: [String: PullRequest] = [:]
@@ -202,7 +208,7 @@ struct GitHubAPIClient: GitHubClient {
             .sorted(by: { $0.updatedAt > $1.updatedAt })
             .prefix(20)
 
-        return PullRequestPage(items: Array(top), cursor: nil, hasNextPage: false, warnings: warnings)
+        return PullRequestPage(items: Array(top), cursor: nil, hasNextPage: false, warnings: warnings, isSearchIncomplete: incomplete)
     }
 
     private func fetchDetails(ids: [String]) async throws -> ([String: PullRequestDetail], [String], Set<String>) {

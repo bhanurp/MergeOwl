@@ -548,9 +548,20 @@ final class DashboardViewModel: ObservableObject {
                 page.hasNextPage = next.hasNextPage
                 page.warnings = Array(Set(page.warnings + next.warnings)).sorted()
                 page.coverageWarning = next.coverageWarning ?? page.coverageWarning
+                page.isSearchIncomplete = page.isSearchIncomplete || next.isSearchIncomplete
                 pagesRead += 1
             }
             guard !retired else { return }
+            if preserveLoadedPages, page.isSearchIncomplete, !state.rawItems.isEmpty {
+                state = listStates[tab] ?? state
+                state.warnings = Array(Set(state.warnings + page.warnings)).sorted()
+                state.coverageWarnings = Array(Set(state.coverageWarnings + ["Search refresh was incomplete. Previous loaded PRs are retained; refresh again to verify coverage."])).sorted()
+                state.isLoading = false
+                listStates[tab] = state
+                recomputeDisplayedItems()
+                updateBadgeCount()
+                return
+            }
             var enriched: [PullRequest] = []
             for var item in page.items {
                 if let incoming = item.detail.ci {

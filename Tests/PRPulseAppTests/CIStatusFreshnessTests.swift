@@ -4,6 +4,16 @@ import XCTest
 
 @MainActor
 final class CIStatusFreshnessTests: XCTestCase {
+    func testDetailWarningsDoNotRejectUsableFreshnessResults() async throws {
+        let (dashboard, client, directory) = try await makeDashboard()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        await dashboard.refreshActiveTab()
+        client.detailWarning = true
+        client.running = true
+        await dashboard.refreshForPopoverOpen()
+        XCTAssertEqual(dashboard.currentItems.first?.pullRequest.detail.ci?.state, .running)
+        await dashboard.retire()
+    }
     func testPopoverRefreshRetainsDistinctLoadedPagesAndManualRefreshResets() async throws {
         let (dashboard, client, directory) = try await makeDashboard()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -20,8 +30,13 @@ final class CIStatusFreshnessTests: XCTestCase {
         XCTAssertEqual(Set(dashboard.currentItems.map { $0.id }), ["PR_1", "PR_2"], "Automatic freshness must retain loaded page coverage")
         XCTAssertEqual(client.reads, 4, "Both loaded pages must be refreshed")
         XCTAssertEqual(dashboard.badgeCount, badge)
-        client.failPagination = true
+        client.partialPagination = true
         await dashboard.refreshForPopoverOpen(now: Date().addingTimeInterval(31))
+        XCTAssertEqual(Set(dashboard.currentItems.map { $0.id }), ["PR_1", "PR_2"], "An incomplete search page must not replace previously loaded coverage")
+        XCTAssertEqual(dashboard.badgeCount, badge)
+        client.partialPagination = false
+        client.failPagination = true
+        await dashboard.refreshForPopoverOpen(now: Date().addingTimeInterval(62))
         XCTAssertEqual(Set(dashboard.currentItems.map { $0.id }), ["PR_1", "PR_2"], "A failed later page must not commit a partial refresh")
         XCTAssertEqual(dashboard.badgeCount, badge)
         await dashboard.refreshActiveTab()
@@ -33,7 +48,7 @@ final class CIStatusFreshnessTests: XCTestCase {
         for _ in 0..<100 where dashboard.isCurrentListRefreshing { try await Task.sleep(for: .milliseconds(5)) }
         client.holdNextReset = true
         let readsBeforeRetirement = client.reads
-        let pending = Task { await dashboard.refreshForPopoverOpen(now: Date().addingTimeInterval(62)) }
+        let pending = Task { await dashboard.refreshForPopoverOpen(now: Date().addingTimeInterval(93)) }
         for _ in 0..<100 where client.reset == nil { try await Task.sleep(for: .milliseconds(5)) }
         XCTAssertNotNil(client.reset)
         await dashboard.retire()
@@ -216,6 +231,8 @@ private final class FreshnessClient: GitHubClient, @unchecked Sendable {
     var distinctPages = false
     var holdPagination = true
     var failPagination = false
+    var partialPagination = false
+    var detailWarning = false
     var holdNextReset = false
     var reset: CheckedContinuation<Void, Never>?
     var pagination: CheckedContinuation<Void, Never>?
@@ -223,6 +240,9 @@ private final class FreshnessClient: GitHubClient, @unchecked Sendable {
     func fetchPullRequests(tab: PullRequestTab, cursor: String?) async throws -> PullRequestPage {
         reads += 1
         if cursor != nil, failPagination { throw GitHubClientError.apiFailure("Synthetic later-page failure") }
+        if cursor != nil, partialPagination {
+            return .init(items: [], cursor: nil, hasNextPage: false, warnings: ["Synthetic partial search"], isSearchIncomplete: true)
+        }
         if cursor != nil, holdPagination {
             holdPagination = false
             await withCheckedContinuation { pagination = $0 }
@@ -239,6 +259,6 @@ private final class FreshnessClient: GitHubClient, @unchecked Sendable {
                              repository: .init(nameWithOwner: "example/repo"), author: .init(login: "me"),
                              createdAt: Date(), updatedAt: Date(), isDraft: false, detail: .init(ci: ci))
         let more = hasNextPage && (!distinctPages || cursor == nil)
-        return .init(items: [pr], cursor: more ? "next" : nil, hasNextPage: more)
+        return .init(items: [pr], cursor: more ? "next" : nil, hasNextPage: more, warnings: detailWarning ? ["Synthetic detail access warning"] : [])
     }
 }

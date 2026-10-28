@@ -14,6 +14,7 @@ final class GitHubPartialResponseTests: XCTestCase {
         let page = try await client.fetchPullRequests(tab: .mine, cursor: nil)
         XCTAssertEqual(page.items.map(\.number), [7])
         XCTAssertEqual(page.warnings, ["Organization requires SAML authorization"])
+        XCTAssertTrue(page.isSearchIncomplete)
     }
 
     func testAuthenticationFailureStillThrows() async {
