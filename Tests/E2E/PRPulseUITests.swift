@@ -146,6 +146,10 @@ final class PRPulseUITests: XCTestCase {
         app.menuItems["Layout"].click()
         XCTAssertTrue(app.menuItems[title].waitForExistence(timeout: 5))
         app.menuItems[title].click()
+        let selectedLayoutControl = title == "Compact"
+            ? app.descendants(matching: .any)["prpulse.view-picker"].firstMatch
+            : app.buttons["My PRs"]
+        XCTAssertTrue(selectedLayoutControl.waitForExistence(timeout: 5), "The selected layout must be rendered before continuing")
     }
 
     func testCIMonitoringInBothLayoutsAndMutePersists() {

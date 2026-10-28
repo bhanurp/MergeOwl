@@ -4,6 +4,66 @@ import XCTest
 
 @MainActor
 final class CIStatusFreshnessTests: XCTestCase {
+    func testRestoredSavedViewRefreshesOtherTabsDuringAnIndividualReset() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PullRequestStore(directory: directory)
+        var settings = AppSettings.default
+        settings.refreshOnLaunch = false; settings.refreshInterval = 0
+        try await store.save(settings: settings)
+        let view = SavedPRView(name: "All loaded")
+        let views = SavedPRViewStore(directory: directory)
+        try await views.save([view]); try await views.select(view.id)
+        let client = FreshnessClient()
+        client.holdNextReset = true
+        let dashboard = DashboardViewModel(client: client, store: store, notifier: NotificationDispatcher(store: store),
+                                           scheduler: RefreshScheduler(), digestComputer: DigestComputer())
+        XCTAssertNil(dashboard.selectedSavedViewID)
+        let observer = Task {
+            defer { client.reset?.resume(); client.reset = nil }
+            for _ in 0..<100 where !dashboard.isReady || client.reset == nil {
+                try await Task.sleep(for: .milliseconds(5))
+            }
+            XCTAssertEqual(dashboard.selectedSavedViewID, view.id)
+            XCTAssertNotNil(client.reset)
+            var finished = false
+            let popover = Task { await dashboard.refreshForPopoverOpen(); finished = true }
+            for _ in 0..<100 where client.reads < 2 && !finished {
+                try await Task.sleep(for: .milliseconds(5))
+            }
+            XCTAssertGreaterThan(client.reads, 1, "A saved view must also refresh its other contributing tabs")
+            client.reset?.resume(); client.reset = nil
+            await popover.value
+        }
+        // Start a default-tab reset before bootstrap restores the saved selection.
+        await dashboard.refreshActiveTab()
+        try await observer.value
+        XCTAssertEqual(client.reads, 4)
+        await dashboard.retire()
+    }
+
+    func testPopoverRefreshReusesAnExistingReset() async throws {
+        let (dashboard, client, directory) = try await makeDashboard()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        await dashboard.refreshActiveTab()
+        client.holdNextReset = true
+        let pending = Task { await dashboard.refreshActiveTab() }
+        for _ in 0..<100 where client.reset == nil { try await Task.sleep(for: .milliseconds(5)) }
+        XCTAssertNotNil(client.reset)
+        var started = false
+        let popover = Task {
+            started = true
+            await dashboard.refreshForPopoverOpen()
+        }
+        for _ in 0..<100 where !started { try await Task.sleep(for: .milliseconds(5)) }
+        XCTAssertTrue(started)
+        client.reset?.resume(); client.reset = nil
+        await pending.value
+        await popover.value
+        XCTAssertEqual(client.reads, 2, "The initial page and existing reset must satisfy popover freshness without a third read")
+        await dashboard.retire()
+    }
+
     func testPopoverThrottleDoesNotSuppressAnotherLoadedTab() async throws {
         let (dashboard, client, directory) = try await makeDashboard()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -111,11 +171,17 @@ private final class FreshnessClient: GitHubClient, @unchecked Sendable {
     var reads = 0
     var running = false
     var hasNextPage = false
+    var holdNextReset = false
+    var reset: CheckedContinuation<Void, Never>?
     var pagination: CheckedContinuation<Void, Never>?
     func fetchViewer() async throws -> String { "me" }
     func fetchPullRequests(tab: PullRequestTab, cursor: String?) async throws -> PullRequestPage {
         reads += 1
         if cursor != nil { await withCheckedContinuation { pagination = $0 } }
+        else if holdNextReset {
+            holdNextReset = false
+            await withCheckedContinuation { reset = $0 }
+        }
         let ci = CIStatus(headSHA: "head", revision: "head", checks: [
             .init(id: "build", name: "Build", state: running ? .running : .success)],
                           checkedAt: running ? Date() : Date().addingTimeInterval(-60))
