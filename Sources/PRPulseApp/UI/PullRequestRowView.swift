@@ -6,6 +6,7 @@ struct PullRequestRowView: View {
     var actionHandler: (DashboardViewModel.QuickAction) -> Void
     var showAuthor: Bool = false
     var ciRefreshInterval: TimeInterval = 300
+    var ciRefreshing = false
     var ciMuted = false
     var toggleCIMute: (() -> Void)?
 
@@ -23,7 +24,7 @@ struct PullRequestRowView: View {
             .accessibilityIdentifier("prpulse.open.\(presentation.id)")
             Text(metadataText).font(.caption).foregroundStyle(.secondary).lineLimit(2)
             HStack(spacing: 10) {
-                CIStatusView(pullRequest: presentation.pullRequest, refreshInterval: ciRefreshInterval)
+                CIStatusView(pullRequest: presentation.pullRequest, refreshInterval: ciRefreshInterval, isRefreshing: ciRefreshing)
                 if ciMuted { Label("CI alerts muted", systemImage: "bell.slash").font(.caption2).foregroundStyle(.secondary) }
             }
             if !presentation.pullRequest.detail.linkedReferences.isEmpty {

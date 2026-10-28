@@ -14,9 +14,9 @@ MergeOwl brings together PRs you authored, reviews requested from you, and repos
 
 [Download latest release](https://github.com/bhanurp/MergeOwl/releases/latest) · [Report a problem](https://github.com/bhanurp/MergeOwl/issues) · [Release notes](CHANGELOG.md) · [Contribute](CONTRIBUTING.md)
 
-**MergeOwl is the new name for PR Pulse.** The transparent amber owl and MergeOwl app name are currently unreleased source changes. The latest published v0.2.1 download is still named **PRPulseApp.app** and uses the flower icon. Historical screenshots below retain their original release labels.
+**MergeOwl is the new name for PR Pulse.** From v0.2.2 onward, the app uses the transparent amber owl and MergeOwl name. Downloads for v0.2.1 and earlier are named **PRPulseApp.app** and use the flower icon. Historical screenshots below retain their original release labels.
 
-The rename preserves existing account profiles, settings and Keychain credentials. New releases will use **MergeOwl.app**, **MergeOwl.dmg** and **MergeOwl.zip**; existing release files keep their old names. See the [rename and upgrade guide](docs/branding-and-upgrade.md).
+The rename preserves existing account profiles, settings and Keychain credentials. From v0.2.2, releases use **MergeOwl.app**, **MergeOwl.dmg** and **MergeOwl.zip**; existing release files keep their old names. See the [rename and upgrade guide](docs/branding-and-upgrade.md).
 
 ## A quick look
 
@@ -84,10 +84,10 @@ These older captures use synthetic GitHub fixture data. The GIF cycles through c
 
 ## Install the current published release
 
-1. Open the [latest release](https://github.com/bhanurp/MergeOwl/releases/latest) and download **PRPulseApp.dmg**. The universal build supports Apple Silicon and Intel.
-2. Open the DMG and drag **PRPulseApp.app** into **Applications**.
-3. Launch **PRPulseApp.app** from Applications.
-4. Look for the orange flower icon in the menu bar at the top of your screen. Click it to open the PR list. This is a menu-bar app, not a normal Dock window.
+1. Open the [latest release](https://github.com/bhanurp/MergeOwl/releases/latest) and download **MergeOwl.dmg** for v0.2.2 or newer (**PRPulseApp.dmg** for v0.2.1 and earlier). The universal build supports Apple Silicon and Intel.
+2. Open the DMG and drag **MergeOwl.app** into **Applications** (**PRPulseApp.app** for older releases).
+3. Launch the app you copied from Applications.
+4. Look for the owl icon in the menu bar for v0.2.2 or newer (the orange flower icon for v0.2.1 and earlier). Click it to open the PR list. This is a menu-bar app, not a normal Dock window.
 
 ### If macOS blocks the first launch
 
@@ -115,7 +115,7 @@ For a classic token, use [GitHub’s classic token settings](https://github.com/
 
 ### Save and verify the connection
 
-1. Click the **owl** menu-bar icon in MergeOwl source builds (the **flower** in published PR Pulse releases), then **More (…) → Settings**. On v0.2.0, use the **gear** button instead.
+1. Click the **owl** menu-bar icon in MergeOwl (the **flower** in PR Pulse v0.2.1 and earlier), then **More (…) → Settings**. On v0.2.0, use the **gear** button instead.
 2. Select **Account** in the sidebar.
 3. Paste the token into **Personal access token**.
 4. Click **Connect GitHub** (or **Update token** if already configured).
@@ -156,13 +156,15 @@ Use **More (…) → Layout → Tabbed / Compact**, or open **More → Settings 
 
 **More** also contains Settings and Quit; **Filters** contains Hide reviewed, Hide snoozed and Hide N/A. Click a PR title to open GitHub, use **Snooze** directly, or use its **More PR actions** menu for **Mark to do**, **Mark not relevant** and **Clear override**. **Activity** opens the digest. The footer counts visible loaded PRs; the menu-bar badge still covers all loaded lists.
 
-These layout changes are not in v0.2.0. The captures above show that earlier interface; the installation and connection instructions describe v0.2.1 and note older controls where needed.
+These layout changes are not in v0.2.0. The captures above show that earlier interface; installation and connection instructions distinguish current and older release names and controls.
 
 ### Find the PRs that matter
 
 - **My PRs:** open PRs authored by you.
 - **Reviews / Review Requested:** open PRs requesting your review.
 - **Watched:** open PRs in repositories added under **Settings → Repositories**. Enter `owner/repo`, for example `apple/swift`, and click **Add**.
+
+Merged and closed PRs are excluded from the default lists. Linked PR references beneath a card also show open PRs only; issue references are retained. A refresh updates these references after a PR closes or merges.
 
 Search by title or repository. Use **Actionable** and **Filters → Hide reviewed / Hide snoozed / Hide N/A** to narrow the list. On v0.2.0 these filters appear directly in the popover. If PRs seem missing, clear search and turn off filters first.
 
@@ -184,7 +186,7 @@ Click a PR title to open it on GitHub, use its **More PR actions** menu to **Mar
 
 ### Tune refresh and notifications
 
-**Available in source, unreleased:** CI monitoring adds check status in both layouts, optional failure alerts for all accessible open My PRs, and persistent per-PR mutes. It was merged in PR #18 and is not in the v0.2.1 download. See the [CI monitoring guide](docs/ci-monitoring.md) for controls and limits.
+**From v0.2.2:** CI monitoring adds check status in both layouts, optional failure alerts for all accessible open My PRs, and persistent per-PR mutes. These controls are absent from v0.2.1 and earlier downloads. See the [CI monitoring guide](docs/ci-monitoring.md) for controls and limits.
 
 - **Settings → Refresh:** choose the refresh interval and whether to refresh on launch.
 - **Settings → Notifications:** configure re-review and new-review-request alerts, digest cadence, and default reminder time. Allow notifications in macOS System Settings if prompted.
@@ -195,7 +197,7 @@ Click a PR title to open it on GitHub, use its **More PR actions** menu to **Mar
 
 | What you see | What to do |
 | --- | --- |
-| No icon or app window | Launch `PRPulseApp.app` from Applications and check the first-launch warning. Look in the menu bar, including any hidden-items area managed by a menu-bar utility. |
+| No icon or app window | Launch `MergeOwl.app` from Applications (`PRPulseApp.app` on older releases) and check the first-launch warning. Look in the menu bar, including any hidden-items area managed by a menu-bar utility. |
 | **Couldn’t connect to GitHub** or a 401 error | Check token expiration/revocation, paste a replacement under **Account**, and click **Update token**. |
 | Connected, with an orange access warning | Authentication succeeded, but some PR data is inaccessible. Accessible PRs remain visible. Check repository selection, organization approval, and SSO authorization; see details under **Account**. |
 | No pull requests | Clear search/filters, refresh, and check the selected tab. **Watched** requires configured repositories. Compare with open PRs visible to your account on GitHub. |
@@ -208,11 +210,11 @@ Still stuck? [Open an issue](https://github.com/bhanurp/MergeOwl/issues) with yo
 
 ## Update or uninstall
 
-To update, quit PR Pulse using **More → Quit PR Pulse** (the power button on v0.2.0), download the latest DMG, replace the app in Applications, and launch it again. App replacement does not intentionally remove your Keychain token or local preferences.
+To update, use **More → Quit MergeOwl** (**Quit PR Pulse** on older releases; the power button on v0.2.0), download the latest DMG, replace the app in Applications, and launch it again. App replacement does not intentionally remove your Keychain token or local preferences.
 
-Once a MergeOwl-branded release is published, quit the old app first and install **MergeOwl.app**. Verify your saved accounts in MergeOwl, then remove the old PRPulseApp application copy to avoid launching two menu-bar apps. Do not delete account data or Keychain entries during the rename.
+When moving from PR Pulse to MergeOwl, quit the old app first and install **MergeOwl.app**. Verify your saved accounts in MergeOwl, then remove the old PRPulseApp application copy to avoid launching two menu-bar apps. Do not delete account data or Keychain entries during the rename.
 
-To uninstall, remove each saved account in **Settings → Account** first, then quit and move **PRPulseApp.app** to Trash. On v0.1.5 and earlier, use **Remove token** instead. Revoke tokens on GitHub if no longer needed, including any retained legacy migration token. Removing the app alone does not remove Keychain credentials, migration backups or local preferences.
+To uninstall, remove each saved account in **Settings → Account** first, then quit and move **MergeOwl.app** to Trash (**PRPulseApp.app** on older releases). On v0.1.5 and earlier, use **Remove token** instead. Revoke tokens on GitHub if no longer needed, including any retained legacy migration token. Removing the app alone does not remove Keychain credentials, migration backups or local preferences.
 
 ## Current scope and roadmap
 

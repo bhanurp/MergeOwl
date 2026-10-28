@@ -1,12 +1,14 @@
-# MergeOwl CI monitoring (unreleased)
+# MergeOwl CI monitoring
 
-These controls are available in the current source after CI monitoring was merged in PR #18. They are not included in the v0.2.1 download. Existing README screenshots show earlier releases.
+These controls are included from v0.2.2 onward. They are not included in v0.2.1 or earlier downloads. Existing README screenshots show earlier releases.
 
 ## See checks
 
 In either **Tabbed** or **Compact**, click the CI status below a PR title. The detail popover lists check names and outcomes, running time when supplied by GitHub, the applicable revision, last successful observation, and links to the checks. You can copy an individual check link.
 
 The app distinguishes failed, running, queued, cancelled, action-required, skipped/neutral, unavailable and no-checks-reported states. A skipped check is not a successfully executed test. CI status appears in all three PR lists. Passing checks alone do not establish merge readiness: approvals, conflicts, required checks, branch rules and other GitHub requirements still apply. **No known blockers** is not a guarantee that GitHub will allow a merge.
+
+CI labels describe the last fetched snapshot, not a live stream from GitHub. Each row shows when checks were observed. Opening the popover refreshes the selected view when its visible CI snapshots are older than 30 seconds; rapid reopen attempts are coalesced. Automatic refresh re-fetches the previously loaded pages, preserving loaded coverage and pagination; a failed later page keeps the previous list. It defers while a contributing list is loading. Manual refresh still resets to the first page. During a list refresh the row says **Checking CI…**, and the previous details remain available. This does not change the separate failure-alert polling interval or GitHub request limits.
 
 Failures and CI states needing attention on your authored PRs remain actionable in the badge and **Actionable** filter, unless you snooze or mark the PR not relevant. A failure on someone else's PR does not by itself assign an action to you.
 

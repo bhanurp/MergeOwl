@@ -14,6 +14,7 @@ final class GitHubPartialResponseTests: XCTestCase {
         let page = try await client.fetchPullRequests(tab: .mine, cursor: nil)
         XCTAssertEqual(page.items.map(\.number), [7])
         XCTAssertEqual(page.warnings, ["Organization requires SAML authorization"])
+        XCTAssertTrue(page.isSearchIncomplete)
     }
 
     func testAuthenticationFailureStillThrows() async {
@@ -55,7 +56,7 @@ private final class PartialResponseProtocol: URLProtocol, @unchecked Sendable {
         if invalid {
             json = #"{"message":"Bad credentials"}"#
         } else if query.contains("SearchPRs") {
-            json = #"{"data":{"search":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[null,{"id":"PR_7","number":7,"title":"Accessible PR","url":"https://github.com/example/repo/pull/7","createdAt":"2026-10-01T00:00:00Z","updatedAt":"2026-10-01T00:00:00Z","isDraft":false,"author":{"login":"test"},"repository":{"nameWithOwner":"example/repo"}}]}},"errors":[{"message":"Organization requires SAML authorization"},{"message":"Organization requires SAML authorization"}]}"#
+            json = #"{"data":{"search":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[null,{"id":"PR_7","state":"OPEN","number":7,"title":"Accessible PR","url":"https://github.com/example/repo/pull/7","createdAt":"2026-10-01T00:00:00Z","updatedAt":"2026-10-01T00:00:00Z","isDraft":false,"author":{"login":"test"},"repository":{"nameWithOwner":"example/repo"}}]}},"errors":[{"message":"Organization requires SAML authorization"},{"message":"Organization requires SAML authorization"}]}"#
         } else {
             json = #"{"data":{"nodes":[]}}"#
         }

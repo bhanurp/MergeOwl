@@ -4,13 +4,22 @@ import SwiftUI
 struct CIStatusView: View {
     let pullRequest: PullRequest
     let refreshInterval: TimeInterval
+    var isRefreshing = false
     @State private var showingChecks = false
     private var ci: CIStatus { pullRequest.detail.ci ?? .unavailable }
 
     var body: some View {
         Button { showingChecks.toggle() } label: {
-            Label(ci.label, systemImage: symbol)
-                .font(.caption).foregroundStyle(color)
+            VStack(alignment: .leading, spacing: 2) {
+                Label(isRefreshing ? "Checking CI…" : ci.label, systemImage: isRefreshing ? "arrow.triangle.2.circlepath" : symbol)
+                    .font(.caption).foregroundStyle(isRefreshing ? Color.secondary : color)
+                if !ci.headSHA.isEmpty {
+                    Text("Checked \(ci.checkedAt, style: .relative) ago")
+                        .font(.caption2).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("prpulse.ci-checked.\(pullRequest.id)")
+                }
+            }
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("prpulse.ci.\(pullRequest.id)")

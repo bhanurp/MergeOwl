@@ -2,6 +2,8 @@ import AppKit
 import Combine
 import SwiftUI
 
+private let dashboardPopoverSize = NSSize(width: 420, height: 560)
+
 @MainActor
 struct DashboardHostActions {
     var showSettings: @MainActor () -> Void
@@ -41,6 +43,7 @@ final class PRPulseStatusItemController {
     private let popover: any PopoverHosting
     private var button: (any StatusItemButtonHosting)?
     private var badgeCountObserver: AnyCancellable?
+    private weak var dashboard: DashboardViewModel?
 
     init(
         statusBar: any StatusBarHosting = AppKitStatusBarHost(),
@@ -51,12 +54,17 @@ final class PRPulseStatusItemController {
     }
 
     func install(with dashboard: DashboardViewModel, actions: DashboardHostActions, accounts: AccountSessionCoordinator? = nil) {
+        self.dashboard = dashboard
         if button == nil {
             button = statusBar.makeButton { [weak self] in self?.togglePopover() }
         }
-        popover.configure(
-            content: NSHostingController(rootView: ContentView(viewModel: dashboard, hostActions: actions, accounts: accounts))
-        )
+        let hosting = NSHostingController(rootView: ContentView(viewModel: dashboard, hostActions: actions, accounts: accounts))
+        // AppKit owns these fixed bounds. Lazy rows must not feed their changing
+        // intrinsic size back into the popover during scrolling/layout.
+        hosting.sizingOptions = []
+        hosting.preferredContentSize = dashboardPopoverSize
+        hosting.view.frame = NSRect(origin: .zero, size: dashboardPopoverSize)
+        popover.configure(content: hosting)
         update(actionableCount: dashboard.badgeCount)
 
         badgeCountObserver = dashboard.$badgeCount
@@ -80,10 +88,12 @@ final class PRPulseStatusItemController {
             popover.close()
         } else {
             popover.show(relativeTo: button.anchorView)
+            Task { [weak dashboard] in await dashboard?.refreshForPopoverOpen() }
         }
     }
 
     func tearDown() {
+        dashboard = nil
         badgeCountObserver = nil
         if let button {
             statusBar.removeButton(button)
@@ -148,7 +158,7 @@ private final class AppKitPopoverHost: PopoverHosting {
 
     func configure(content: NSViewController) {
         popover.contentViewController = content
-        popover.contentSize = NSSize(width: 420, height: 560)
+        popover.contentSize = dashboardPopoverSize
     }
 
     func show(relativeTo anchorView: NSView) {

@@ -4,9 +4,9 @@ MergeOwl is the new product name for PR Pulse. The name and amber owl artwork we
 
 ## Release availability
 
-The rebrand is currently an unreleased source change. v0.2.1 and earlier GitHub releases remain named PR Pulse/PRPulseApp and contain the original flower icon. Existing screenshots and GIFs are labelled with their original versions; they are not previews of the owl release. The README logo uses the approved new owl.
+The MergeOwl name and owl are introduced in v0.2.2. v0.2.1 and earlier GitHub releases remain named PR Pulse/PRPulseApp and contain the original flower icon. Existing screenshots and GIFs are labelled with their original versions; they are not previews of the owl release. The README logo uses the approved new owl.
 
-Future release packaging produces `MergeOwl.app`, generic `MergeOwl.dmg`/`MergeOwl.zip` downloads and versioned MergeOwl archives. The release workflow also emits the legacy generic `PRPulseApp.dmg`/`PRPulseApp.zip` aliases so existing download paths can continue to work. Existing published release assets are not renamed.
+Release packaging from v0.2.2 produces `MergeOwl.app`, generic `MergeOwl.dmg`/`MergeOwl.zip` downloads and versioned MergeOwl archives. The release workflow also emits the legacy generic `PRPulseApp.dmg`/`PRPulseApp.zip` aliases so existing download paths can continue to work. Existing published release assets are not renamed.
 
 ## Upgrade when the renamed release is available
 

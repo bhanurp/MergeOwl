@@ -53,6 +53,7 @@ final class PRPulseUITests: XCTestCase {
         XCTAssertTrue(item.waitForExistence(timeout: 10), app.debugDescription)
         item.click()
         XCTAssertTrue(app.textFields["Search title or repo"].waitForExistence(timeout: 10), app.debugDescription)
+        app.activate()
     }
 
     private func launch(token: String = "e2e-valid") {
@@ -63,6 +64,19 @@ final class PRPulseUITests: XCTestCase {
 
     private func selectTab(_ name: String) {
         app.buttons[name].click()
+    }
+
+    func testMergedPRReferencesAreHiddenInBothLayouts() {
+        launch(token: "e2e-linked")
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(prTitle("Improve documentation").waitForExistence(timeout: 10))
+        for layout in ["Tabbed", "Compact"] {
+            chooseLayout(layout)
+            XCTAssertTrue(app.links["PR #99"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.links["Issue #14"].exists)
+            XCTAssertFalse(app.links["PR #12"].exists)
+            XCTAssertFalse(app.links["PR #13"].exists)
+        }
     }
 
     private func settings() {
@@ -132,6 +146,12 @@ final class PRPulseUITests: XCTestCase {
         app.menuItems["Layout"].click()
         XCTAssertTrue(app.menuItems[title].waitForExistence(timeout: 5))
         app.menuItems[title].click()
+        app.activate()
+        if !app.descendants(matching: .popover).firstMatch.exists { openDashboard() }
+        let selectedLayoutControl = title == "Compact"
+            ? app.descendants(matching: .any)["prpulse.view-picker"].firstMatch
+            : app.buttons["My PRs"]
+        XCTAssertTrue(selectedLayoutControl.waitForExistence(timeout: 5), "The selected layout must be rendered before continuing")
     }
 
     func testCIMonitoringInBothLayoutsAndMutePersists() {
@@ -197,6 +217,33 @@ final class PRPulseUITests: XCTestCase {
         app.typeKey(.escape, modifierFlags: [])
         settings(); pane("Notifications")
         XCTAssertEqual(app.popUpButtons["prpulse.ci-interval"].value as? String, "15 min")
+    }
+
+    func testScrollingAndCIDetailsRemainResponsiveInBothLayouts() {
+        launch(token: "e2e-scroll")
+        app.typeKey("1", modifierFlags: .command)
+        let firstCI = app.buttons["prpulse.ci.PR_1"]
+        XCTAssertTrue(firstCI.waitForExistence(timeout: 15))
+        let repetitions = max(2, Int(ProcessInfo.processInfo.environment["PRPULSE_E2E_SCROLL_REPETITIONS"] ?? "") ?? 2)
+        for layout in Array(repeating: ["Tabbed", "Compact"], count: repetitions).flatMap({ $0 }) {
+            chooseLayout(layout)
+            let list = app.scrollViews.firstMatch
+            for _ in 0..<4 { list.swipeUp() }
+            XCTAssertTrue(app.buttons["prpulse.open.PR_12"].isHittable, "Must reach the last long row")
+            for _ in 0..<4 { list.swipeDown() }
+            XCTAssertTrue(firstCI.isHittable)
+            // The center falls between the status text and observation-age text.
+            firstCI.click()
+            XCTAssertTrue(app.staticTexts["CI checks"].waitForExistence(timeout: 5))
+            app.buttons["Close"].click()
+            app.buttons["prpulse.refresh"].click()
+            app.typeKey("f", modifierFlags: .command)
+            XCTAssertTrue(app.textFields["Search title or repo"].isHittable)
+            attachPopover("Responsive \(layout) after scrolling")
+        }
+        app.descendants(matching: .any)["prpulse.more"].firstMatch.click()
+        app.menuItems["prpulse.quit"].click()
+        XCTAssertTrue(app.wait(for: .notRunning, timeout: 5), "Quit must remain responsive")
     }
 
     func testSearchCoverageIsSeparateFromTokenAccessWarnings() {
@@ -309,9 +356,13 @@ final class PRPulseUITests: XCTestCase {
             XCTAssertTrue(window.waitForExistence(timeout: 5))
         }
         window.buttons[XCUIIdentifierCloseWindow].click()
+        let applicationPath = try XCTUnwrap(ProcessInfo.processInfo.environment["PRPULSE_E2E_APP_PATH"])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: applicationPath))
+        XCTAssertNotEqual(app.state, .notRunning)
         let reopen = Process()
         reopen.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-        reopen.arguments = ["-b", "dev.prpulse.e2e"]
+        // Other worktrees register the same test bundle ID. Reopen this build.
+        reopen.arguments = ["-a", applicationPath]
         try reopen.run()
         reopen.waitUntilExit()
         XCTAssertEqual(reopen.terminationStatus, 0)
