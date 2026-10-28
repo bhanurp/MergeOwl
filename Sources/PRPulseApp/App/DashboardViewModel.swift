@@ -96,11 +96,7 @@ final class DashboardViewModel: ObservableObject {
     private var retired = false
     private var tasks: [UUID: Task<Void, Never>] = [:]
     private var resetWaiters: [PullRequestTab: [CheckedContinuation<Void, Never>]] = [:]
-    private struct ActiveLoad {
-        let id: UUID
-        let isReset: Bool
-    }
-    private var activeLoads: [PullRequestTab: ActiveLoad] = [:]
+    private var activeLoads: [PullRequestTab: UUID] = [:]
     private var latestOverrides: [String: PullRequestOverride] = [:]
 
     private func launch(_ operation: @escaping @MainActor () async throws -> Void) {
@@ -189,7 +185,8 @@ final class DashboardViewModel: ObservableObject {
 
     func refreshForPopoverOpen(now: Date = Date()) async {
         guard isReady, !retired, !isRefreshing else { return }
-        if selectedSavedViewID == nil, activeLoads[selectedTab]?.isReset == true { return }
+        if selectedSavedViewID == nil, activeLoads[selectedTab] != nil { return }
+        if selectedSavedViewID != nil, !activeLoads.isEmpty { return }
         if !currentItems.isEmpty, currentItems.allSatisfy({ item in
             guard let ci = item.pullRequest.detail.ci, ci.isComplete, !ci.isStale else { return false }
             return now.timeIntervalSince(ci.checkedAt) < 30
@@ -197,7 +194,7 @@ final class DashboardViewModel: ObservableObject {
         let scope: PopoverRefreshScope = selectedSavedViewID == nil ? .tab(selectedTab) : .allLoaded
         if let lastAttempt = lastPopoverRefreshAttempts[scope], now.timeIntervalSince(lastAttempt) < 30 { return }
         lastPopoverRefreshAttempts[scope] = now
-        // loadPage queues a reset behind an in-flight page instead of losing it.
+        // Default-tab pagination is left intact; a later open can retry freshness.
         await refreshActiveTab()
     }
 
@@ -518,7 +515,7 @@ final class DashboardViewModel: ObservableObject {
         state.isLoading = true
         listStates[tab] = state
         let requestID = UUID()
-        activeLoads[tab] = ActiveLoad(id: requestID, isReset: reset)
+        activeLoads[tab] = requestID
         defer { finishLoad(for: tab, requestID: requestID) }
 
         let cursor = reset ? nil : state.cursor
@@ -591,7 +588,7 @@ final class DashboardViewModel: ObservableObject {
     }
 
     private func finishLoad(for tab: PullRequestTab, requestID: UUID) {
-        guard activeLoads[tab]?.id == requestID else { return }
+        guard activeLoads[tab] == requestID else { return }
         activeLoads.removeValue(forKey: tab)
         let waiters = resetWaiters.removeValue(forKey: tab) ?? []
         waiters.forEach { $0.resume() }

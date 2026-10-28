@@ -4,7 +4,7 @@ import XCTest
 
 @MainActor
 final class CIStatusFreshnessTests: XCTestCase {
-    func testRestoredSavedViewRefreshesOtherTabsDuringAnIndividualReset() async throws {
+    func testRestoredSavedViewDefersRefreshDuringAnIndividualLoad() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let store = PullRequestStore(directory: directory)
@@ -31,13 +31,15 @@ final class CIStatusFreshnessTests: XCTestCase {
             for _ in 0..<100 where client.reads < 2 && !finished {
                 try await Task.sleep(for: .milliseconds(5))
             }
-            XCTAssertGreaterThan(client.reads, 1, "A saved view must also refresh its other contributing tabs")
+            XCTAssertTrue(finished, "Automatic saved-view refresh must defer while any contributing tab loads")
+            XCTAssertEqual(client.reads, 1)
             client.reset?.resume(); client.reset = nil
             await popover.value
         }
         // Start a default-tab reset before bootstrap restores the saved selection.
         await dashboard.refreshActiveTab()
         try await observer.value
+        await dashboard.refreshForPopoverOpen()
         XCTAssertEqual(client.reads, 4)
         await dashboard.retire()
     }
@@ -80,7 +82,7 @@ final class CIStatusFreshnessTests: XCTestCase {
         await dashboard.retire()
     }
 
-    func testPopoverRefreshWaitsForPaginationInsteadOfDroppingRequest() async throws {
+    func testPopoverRefreshSkipsPaginationAndRetriesOnNextOpen() async throws {
         let (dashboard, client, directory) = try await makeDashboard()
         defer { try? FileManager.default.removeItem(at: directory) }
         client.hasNextPage = true
@@ -97,11 +99,14 @@ final class CIStatusFreshnessTests: XCTestCase {
         }
         for _ in 0..<100 where !refreshStarted { try await Task.sleep(for: .milliseconds(5)) }
         XCTAssertTrue(refreshStarted)
-        XCTAssertFalse(refreshFinished, "Freshness must wait while pagination remains suspended")
+        for _ in 0..<100 where !refreshFinished { try await Task.sleep(for: .milliseconds(5)) }
+        XCTAssertTrue(refreshFinished, "Popover freshness must leave in-flight pagination intact")
         client.pagination?.resume(); client.pagination = nil
         await refresh.value
         for _ in 0..<100 where dashboard.isCurrentListRefreshing { try await Task.sleep(for: .milliseconds(5)) }
-        XCTAssertEqual(client.reads, 3, "Initial page, pagination, then queued freshness reset")
+        XCTAssertEqual(client.reads, 2, "Opening during pagination must not reset the newly loaded page")
+        await dashboard.refreshForPopoverOpen()
+        XCTAssertEqual(client.reads, 3, "The skipped attempt must not throttle the next open")
         await dashboard.retire()
     }
 

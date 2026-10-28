@@ -146,6 +146,8 @@ final class PRPulseUITests: XCTestCase {
         app.menuItems["Layout"].click()
         XCTAssertTrue(app.menuItems[title].waitForExistence(timeout: 5))
         app.menuItems[title].click()
+        app.activate()
+        if !app.descendants(matching: .popover).firstMatch.exists { openDashboard() }
         let selectedLayoutControl = title == "Compact"
             ? app.descendants(matching: .any)["prpulse.view-picker"].firstMatch
             : app.buttons["My PRs"]
