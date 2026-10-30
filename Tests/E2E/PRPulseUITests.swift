@@ -219,6 +219,27 @@ final class PRPulseUITests: XCTestCase {
         XCTAssertEqual(app.popUpButtons["prpulse.ci-interval"].value as? String, "15 min")
     }
 
+    func testNativeLayoutsRecoverSpaceAndKeepActionsAccessible() {
+        launch(token: "e2e-scroll")
+        app.typeKey("1", modifierFlags: .command)
+        let title = app.buttons["prpulse.open.PR_1"]
+        XCTAssertTrue(title.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["My PRs"].exists, "Tabbed remains the default")
+        let tabbedTop = title.frame.minY
+        attachPopover("Native Tabbed")
+        chooseLayout("Compact")
+        XCTAssertTrue(title.isHittable)
+        let picker = app.descendants(matching: .any)["prpulse.view-picker"].firstMatch
+        XCTAssertTrue((picker.value as? String ?? "").contains("actionable loaded PRs"))
+        XCTAssertLessThan(title.frame.minY, tabbedTop - 12, "Compact must recover a toolbar row for the PR list")
+        XCTAssertTrue(app.buttons["prpulse.ci.PR_1"].isHittable)
+        app.descendants(matching: .any)["Snooze"].firstMatch.click()
+        XCTAssertTrue(app.menuItems["1 hour"].waitForExistence(timeout: 5))
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(app.descendants(matching: .any)["prpulse.pr-more.PR_1"].firstMatch.isHittable)
+        attachPopover("Native Compact")
+    }
+
     func testScrollingAndCIDetailsRemainResponsiveInBothLayouts() {
         launch(token: "e2e-scroll")
         app.typeKey("1", modifierFlags: .command)
