@@ -564,10 +564,6 @@ final class DashboardViewModel: ObservableObject {
             }
             var enriched: [PullRequest] = []
             for var item in page.items {
-                if let incoming = item.detail.ci {
-                    let previous = listStates.values.flatMap(\.rawItems).first(where: { $0.id == item.id })?.detail.ci
-                    item.detail.ci = CIStatus.retainingPrevious(previous, incoming: incoming)
-                }
                 let override = await store.override(for: item.id)
                 guard !retired else { return }
                 item.override = override
@@ -579,8 +575,19 @@ final class DashboardViewModel: ObservableObject {
 
             // A quick action may have changed loaded rows while the page was in flight.
             state = listStates[tab] ?? state
+            // Index once after suspension, rather than flattening every loaded
+            // list for each incoming row. Keep the original first-match policy.
+            var previousByID: [String: PullRequest] = [:]
+            for list in listStates.values {
+                for item in list.rawItems where previousByID[item.id] == nil {
+                    previousByID[item.id] = item
+                }
+            }
             enriched = enriched.map { item in
                 var item = item
+                if let incoming = item.detail.ci {
+                    item.detail.ci = CIStatus.retainingPrevious(previousByID[item.id]?.detail.ci, incoming: incoming)
+                }
                 if let override = latestOverrides[item.id] { item.override = override }
                 return item
             }

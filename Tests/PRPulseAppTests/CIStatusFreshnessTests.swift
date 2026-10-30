@@ -4,6 +4,19 @@ import XCTest
 
 @MainActor
 final class CIStatusFreshnessTests: XCTestCase {
+    func testLargePageRefreshRetainsAllRows() async throws {
+        let (dashboard, client, directory) = try await makeDashboard()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        client.itemCount = 2500
+        await dashboard.refreshActiveTab()
+        let started = ContinuousClock.now
+        for _ in 0..<3 { await dashboard.refreshActiveTab() }
+        let elapsed = started.duration(to: .now)
+        print("PERFORMANCE: three 2500-row refreshes: \(elapsed)")
+        XCTAssertEqual(dashboard.currentItems.count, 2500)
+        XCTAssertEqual(Set(dashboard.currentItems.map(\.id)).count, 2500)
+        await dashboard.retire()
+    }
     func testDetailWarningsDoNotRejectUsableFreshnessResults() async throws {
         let (dashboard, client, directory) = try await makeDashboard()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -233,6 +246,7 @@ private final class FreshnessClient: GitHubClient, @unchecked Sendable {
     var failPagination = false
     var partialPagination = false
     var detailWarning = false
+    var itemCount = 1
     var holdNextReset = false
     var reset: CheckedContinuation<Void, Never>?
     var pagination: CheckedContinuation<Void, Never>?
@@ -259,6 +273,9 @@ private final class FreshnessClient: GitHubClient, @unchecked Sendable {
                              repository: .init(nameWithOwner: "example/repo"), author: .init(login: "me"),
                              createdAt: Date(), updatedAt: Date(), isDraft: false, detail: .init(ci: ci))
         let more = hasNextPage && (!distinctPages || cursor == nil)
-        return .init(items: [pr], cursor: more ? "next" : nil, hasNextPage: more, warnings: detailWarning ? ["Synthetic detail access warning"] : [])
+        let items = itemCount == 1 ? [pr] : (1...itemCount).map { index in
+            var row = pr; row.id = "PR_\(index)"; row.number = index; return row
+        }
+        return .init(items: items, cursor: more ? "next" : nil, hasNextPage: more, warnings: detailWarning ? ["Synthetic detail access warning"] : [])
     }
 }

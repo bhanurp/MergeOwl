@@ -3,6 +3,36 @@ import XCTest
 @testable import PRPulseApp
 
 final class GitHubCITests: XCTestCase {
+    func testOverlappingCIReadsShareRequestsButLaterReadsStayFresh() async throws {
+        let mode = "perf-\(UUID().uuidString)"
+        let api = client(mode)
+        let request = pr
+        async let a = api.fetchCI(for: request)
+        async let b = api.fetchCI(for: request)
+        async let c = api.fetchCI(for: request)
+        async let d = api.fetchCI(for: request)
+        let values = try await [a, b, c, d]
+        XCTAssertTrue(values.allSatisfy { $0.state == .failed })
+        XCTAssertEqual(CIProtocol.counts.count("Bearer \(mode)"), 3, "Overlapping reads should share one snapshot/context/revision sequence")
+        _ = try await api.fetchCI(for: request)
+        XCTAssertEqual(CIProtocol.counts.count("Bearer \(mode)"), 6, "Completed results must not become a stale cache")
+        _ = try await api.revalidateCI(for: request)
+        XCTAssertEqual(CIProtocol.counts.count("Bearer \(mode)"), 9, "Notification verification must always read live state")
+        let otherAccount = client(mode)
+        async let firstAccount = api.fetchCI(for: request)
+        async let secondAccount = otherAccount.fetchCI(for: request)
+        _ = try await [firstAccount, secondAccount]
+        XCTAssertEqual(CIProtocol.counts.count("Bearer \(mode)"), 15, "Client/account instances must never share in-flight reads")
+    }
+    func testFailedCIReadIsRemovedBeforeRetry() async {
+        let mode = "perf-changed-\(UUID().uuidString)"
+        let api = client(mode)
+        for _ in 0..<2 {
+            do { _ = try await api.fetchCI(for: pr); XCTFail("Changed revision must fail") }
+            catch { guard case GitHubClientError.obsoleteCI = error else { return XCTFail("Unexpected \(error)") } }
+        }
+        XCTAssertEqual(CIProtocol.counts.count("Bearer \(mode)"), 6, "A failed operation must not poison subsequent attempts")
+    }
     func testOpenListsExcludeMergedRowsAndMergedPRReferences() async throws {
         for tab in [PullRequestTab.mine, .reviewRequested, .watched] {
             let page = try await client("lifecycle").fetchPullRequests(tab: tab, cursor: nil)
@@ -107,6 +137,7 @@ final class GitHubCITests: XCTestCase {
 }
 
 private final class CIProtocol: URLProtocol, @unchecked Sendable {
+    static let counts = RequestCounts()
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
@@ -121,6 +152,10 @@ private final class CIProtocol: URLProtocol, @unchecked Sendable {
         }
         let raw = String(decoding: body, as: UTF8.self)
         let mode = request.value(forHTTPHeaderField: "Authorization") ?? ""
+        if mode.contains("perf-") {
+            Self.counts.record(mode)
+            Thread.sleep(forTimeInterval: 0.02)
+        }
         let variables = ((try? JSONSerialization.jsonObject(with: body)) as? [String: Any])?["variables"] as? [String: Any]
         func suite(_ name: String) -> [String: Any] {
             ["createdAt": "2026-10-01T00:00:00Z", "app": ["id": "APP"], "workflowRun": ["event": "pull_request", "workflow": ["name": name]]]
@@ -175,4 +210,11 @@ private final class CIProtocol: URLProtocol, @unchecked Sendable {
         client?.urlProtocolDidFinishLoading(self)
     }
     override func stopLoading() {}
+}
+
+private final class RequestCounts: @unchecked Sendable {
+    private let lock = NSLock()
+    private var values: [String: Int] = [:]
+    func record(_ key: String) { lock.lock(); defer { lock.unlock() }; values[key, default: 0] += 1 }
+    func count(_ key: String) -> Int { lock.lock(); defer { lock.unlock() }; return values[key, default: 0] }
 }
