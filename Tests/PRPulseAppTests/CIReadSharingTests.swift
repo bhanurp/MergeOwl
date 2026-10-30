@@ -2,6 +2,28 @@ import XCTest
 @testable import PRPulseApp
 
 final class CIReadSharingTests: XCTestCase {
+    func testCancellationWinsAgainstConcurrentSuccessAndError() async {
+        var incorrectResults = 0
+        for throwsError in [false, true] {
+            for _ in 0..<100 {
+                let gate = GitHubRequestGate()
+                let handle = ConsumerHandle()
+                let consumer = Task {
+                    try await gate.sharedCIRead(for: "PR") {
+                        while !handle.cancelIfReady() { await Task.yield() }
+                        if throwsError { throw SyntheticReadFailure() }
+                        return .unavailable
+                    }
+                }
+                handle.set(consumer)
+                switch await consumer.result {
+                case .success: incorrectResults += 1
+                case .failure(let error): if !(error is CancellationError) { incorrectResults += 1 }
+                }
+            }
+        }
+        XCTAssertEqual(incorrectResults, 0, "Cancellation must win over both late results and unrelated errors")
+    }
     func testCancellingOneConsumerKeepsOtherConsumerAlive() async throws {
         let gate = GitHubRequestGate()
         let probe = CancelledReadProbe()
@@ -34,6 +56,19 @@ final class CIReadSharingTests: XCTestCase {
         XCTAssertTrue(cancelled, "Last consumer cancellation must stop underlying network work")
         let retry = try await gate.sharedCIRead(for: "PR") { .unavailable }
         XCTAssertEqual(retry.state, .unavailable)
+    }
+}
+
+private struct SyntheticReadFailure: Error {}
+private final class ConsumerHandle: @unchecked Sendable {
+    private let lock = NSLock()
+    private var task: Task<CIStatus, Error>?
+    func set(_ task: Task<CIStatus, Error>) { lock.lock(); self.task = task; lock.unlock() }
+    func cancelIfReady() -> Bool {
+        lock.lock(); let task = task; lock.unlock()
+        guard let task else { return false }
+        task.cancel()
+        return true
     }
 }
 

@@ -23,3 +23,9 @@ Preserve both layouts, account isolation, freshness semantics, manual refresh, a
 - Final delivered-code Release native rerun passed both journeys in 175.887 seconds: CI monitoring/mutes in both layouts (56.822 seconds) and scrolling/layout/CI/refresh/Quit (119.064 seconds). Results: `.build/e2e/results-1793326085.xcresult`; log: `/tmp/mergeowl-performance-final-native.log`.
 - Independent review approved the indexing change and cancellation-aware request sharing. Cancellation uses an explicit test latch rather than assuming completion within a fixed delay.
 - All data/transport fixtures are synthetic. Production credentials, installed application and Keychain were not inspected or changed. Changes are local on `codex/performance-audit`; no release or remote publication is part of this task.
+
+## PR review follow-up
+
+- Publishing and merging were subsequently authorized in PR #22. CodeRabbit identified a cancellation/result race: the cancelled consumer could receive a successful result or an unrelated error before waiter removal ran. A 200-case regression reproduced 103 incorrect outcomes before the fix. Post-await cancellation checking and error normalization now preserve cancellation in both paths.
+- The large-page test now assigns a unique check ID to every row and then refreshes with unavailable CI, verifying that all 2,500 PRs retain their own check rather than a neighboring row's data.
+- Both debug and release suites passed all 118 tests after these fixes; independent review approved. The original PR head's hosted Swift and native checks passed. Final pushed-head review/checks remain required before merge. No release or installation is requested.

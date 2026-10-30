@@ -10,24 +10,31 @@ actor GitHubRequestGate {
     var waitingCIReadCount: Int { pendingCI.values.reduce(0) { $0 + $1.waiters.count } }
     func sharedCIRead(for id: String, operation: @escaping @Sendable () async throws -> CIStatus) async throws -> CIStatus {
         let waiter = UUID()
-        return try await withTaskCancellationHandler {
-            try Task.checkCancellation()
-            return try await withCheckedThrowingContinuation { continuation in
-                if pendingCI[id] != nil {
-                    pendingCI[id]?.waiters[waiter] = continuation
-                    return
+        do {
+            let result: CIStatus = try await withTaskCancellationHandler {
+                try Task.checkCancellation()
+                return try await withCheckedThrowingContinuation { continuation in
+                    if pendingCI[id] != nil {
+                        pendingCI[id]?.waiters[waiter] = continuation
+                        return
+                    }
+                    let generation = UUID()
+                    let task = Task {
+                        let result: Result<CIStatus, Error>
+                        do { result = .success(try await operation()) }
+                        catch { result = .failure(error) }
+                        finishCIRead(id, generation: generation, result: result)
+                    }
+                    pendingCI[id] = PendingCI(generation: generation, task: task, waiters: [waiter: continuation])
                 }
-                let generation = UUID()
-                let task = Task {
-                    let result: Result<CIStatus, Error>
-                    do { result = .success(try await operation()) }
-                    catch { result = .failure(error) }
-                    finishCIRead(id, generation: generation, result: result)
-                }
-                pendingCI[id] = PendingCI(generation: generation, task: task, waiters: [waiter: continuation])
+            } onCancel: {
+                Task { await self.cancelCIRead(id, waiter: waiter) }
             }
-        } onCancel: {
-            Task { await self.cancelCIRead(id, waiter: waiter) }
+            try Task.checkCancellation()
+            return result
+        } catch {
+            if Task.isCancelled { throw CancellationError() }
+            throw error
         }
     }
     private func finishCIRead(_ id: String, generation: UUID, result: Result<CIStatus, Error>) {

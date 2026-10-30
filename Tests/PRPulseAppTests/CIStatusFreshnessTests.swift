@@ -15,6 +15,11 @@ final class CIStatusFreshnessTests: XCTestCase {
         print("PERFORMANCE: three 2500-row refreshes: \(elapsed)")
         XCTAssertEqual(dashboard.currentItems.count, 2500)
         XCTAssertEqual(Set(dashboard.currentItems.map(\.id)).count, 2500)
+        client.ciUnavailable = true
+        await dashboard.refreshActiveTab()
+        for row in dashboard.currentItems {
+            XCTAssertEqual(row.pullRequest.detail.ci?.checks.first?.id, "build-\(row.pullRequest.number)", "Each row must retain its own previous checks")
+        }
         await dashboard.retire()
     }
     func testDetailWarningsDoNotRejectUsableFreshnessResults() async throws {
@@ -247,6 +252,7 @@ private final class FreshnessClient: GitHubClient, @unchecked Sendable {
     var partialPagination = false
     var detailWarning = false
     var itemCount = 1
+    var ciUnavailable = false
     var holdNextReset = false
     var reset: CheckedContinuation<Void, Never>?
     var pagination: CheckedContinuation<Void, Never>?
@@ -265,7 +271,7 @@ private final class FreshnessClient: GitHubClient, @unchecked Sendable {
             holdNextReset = false
             await withCheckedContinuation { reset = $0 }
         }
-        let ci = CIStatus(headSHA: "head", revision: "head", checks: [
+        let ci = ciUnavailable ? CIStatus.unavailable : CIStatus(headSHA: "head", revision: "head", checks: [
             .init(id: "build", name: "Build", state: running ? .running : .success)],
                           checkedAt: running ? Date() : Date().addingTimeInterval(-60))
         let number = distinctPages && cursor != nil ? 2 : 1
@@ -274,7 +280,9 @@ private final class FreshnessClient: GitHubClient, @unchecked Sendable {
                              createdAt: Date(), updatedAt: Date(), isDraft: false, detail: .init(ci: ci))
         let more = hasNextPage && (!distinctPages || cursor == nil)
         let items = itemCount == 1 ? [pr] : (1...itemCount).map { index in
-            var row = pr; row.id = "PR_\(index)"; row.number = index; return row
+            var row = pr; row.id = "PR_\(index)"; row.number = index
+            if row.detail.ci?.checks.isEmpty == false { row.detail.ci?.checks[0].id = "build-\(index)" }
+            return row
         }
         return .init(items: items, cursor: more ? "next" : nil, hasNextPage: more, warnings: detailWarning ? ["Synthetic detail access warning"] : [])
     }
