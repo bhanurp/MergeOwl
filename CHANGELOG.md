@@ -2,6 +2,14 @@
 
 All notable changes to MergeOwl (formerly PR Pulse) are documented in this file.
 
+## Unreleased
+
+### Changed
+
+- Refine Tabbed and Compact with native system typography, tighter headers, flat PR rows and a solid system background. Tabbed remains the default and the existing saved preference is preserved.
+- Combine Compact's view picker, search and filters on one row. Keep Snooze and More as accessible icon controls, and expose the Actionable filter in the toolbar.
+- Reuse the visible PR list within each render and keep observation timestamps in the CI inspector/tooltips, without adding decorative animations or continuous row timers.
+
 ## [0.2.2]
 
 ### Added

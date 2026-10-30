@@ -11,8 +11,11 @@ struct PopoverMoreMenu: View {
                     Button {
                         Task { await viewModel.changePopoverLayout(to: layout) }
                     } label: {
-                        if viewModel.settings.popoverLayout == layout { Label(layout.title, systemImage: "checkmark") }
-                        else { Text(layout.title) }
+                        if viewModel.settings.popoverLayout == layout {
+                            Label(layout.title, systemImage: "checkmark")
+                        } else {
+                            Text(layout.title)
+                        }
                     }
                     .disabled(!viewModel.isReady || viewModel.isChangingLayout)
                 }
@@ -22,15 +25,17 @@ struct PopoverMoreMenu: View {
                 // Present after the native menu finishes tracking its selection.
                 DispatchQueue.main.async { actions.showSettings() }
             }
-                .accessibilityIdentifier("prpulse.settings")
-                .keyboardShortcut(",")
+            .accessibilityIdentifier("prpulse.settings")
+            .keyboardShortcut(",")
             Button("Quit MergeOwl", action: actions.quit)
                 .accessibilityIdentifier("prpulse.quit")
                 .keyboardShortcut("q")
-        } label: { Image(systemName: "ellipsis") }
+        } label: {
+            Image(systemName: "ellipsis").frame(width: 24, height: 24).contentShape(Rectangle())
+        }
         .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
         .fixedSize()
-        .padding(6)
         .accessibilityLabel("More")
         .accessibilityIdentifier("prpulse.more")
         .help("Layout, Settings, and Quit")
@@ -41,39 +46,54 @@ struct CompactPRViewPicker: View {
     @ObservedObject var viewModel: DashboardViewModel
 
     private var selectedTitle: String {
-        viewModel.savedViews.first { $0.id == viewModel.selectedSavedViewID }?.name ?? viewModel.selectedTab.rawValue
+        viewModel.savedViews.first { $0.id == viewModel.selectedSavedViewID }?.name
+            ?? (viewModel.selectedTab == .reviewRequested ? "Reviews" : viewModel.selectedTab.rawValue)
     }
 
     var body: some View {
-        Menu {
-            if !viewModel.savedViews.filter(\.enabled).isEmpty {
-                Section("Saved views") {
-                    ForEach(viewModel.savedViews.filter(\.enabled)) { view in
-                        Button(view.name) { viewModel.selectSavedView(id: view.id) }
-                            .accessibilityIdentifier("prpulse.saved-view.\(view.name)")
+        let view = viewModel.savedViews.first { $0.id == viewModel.selectedSavedViewID && $0.enabled }
+        let count =
+            view.map { viewModel.actionableCount(for: $0) }
+            ?? viewModel.actionableCount(for: viewModel.selectedTab)
+        return HStack(spacing: 4) {
+            Menu {
+                if !viewModel.savedViews.filter(\.enabled).isEmpty {
+                    Section("Saved views") {
+                        ForEach(viewModel.savedViews.filter(\.enabled)) { view in
+                            Button(view.name) { viewModel.selectSavedView(id: view.id) }
+                                .accessibilityIdentifier("prpulse.saved-view.\(view.name)")
+                        }
                     }
                 }
-            }
-            Section("PR lists") {
-                ForEach(PullRequestTab.allCases) { tab in
-                    Button(tab.rawValue) { viewModel.selectDefaultTab(tab) }
+                Section("PR lists") {
+                    ForEach(PullRequestTab.allCases) { tab in
+                        Button(tab.rawValue) { viewModel.selectDefaultTab(tab) }
+                    }
                 }
+            } label: {
+                Text(selectedTitle)
+                    .font(.system(size: 12, weight: .semibold)).monospacedDigit().lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-        } label: {
-            Label(selectedTitle, systemImage: "list.bullet")
-                .lineLimit(1)
-                .font(.headline)
+            .help("Choose a PR list or saved view. Current view: \(selectedTitle)")
+            .accessibilityLabel("View: \(selectedTitle)")
+            .accessibilityValue("\(count) actionable loaded PRs")
+            .accessibilityIdentifier("prpulse.view-picker")
+            Text("\(count)")
+                .font(.system(size: 12, weight: .semibold)).monospacedDigit()
+                .lineLimit(1).fixedSize(horizontal: true, vertical: false)
+                .accessibilityIdentifier("prpulse.view-picker-count")
         }
-        .help("Choose a PR list or saved view. Current view: \(selectedTitle)")
-        .accessibilityLabel("View: \(selectedTitle)")
-        .accessibilityIdentifier("prpulse.view-picker")
     }
 }
 
 struct PRFilterMenu: View {
     @ObservedObject var viewModel: DashboardViewModel
     private var count: Int {
-        [viewModel.filterState.hideReviewed, viewModel.filterState.hideSnoozed, viewModel.filterState.hideNotApplicable].filter { $0 }.count
+        [
+            viewModel.filterState.hideReviewed, viewModel.filterState.hideSnoozed,
+            viewModel.filterState.hideNotApplicable,
+        ].filter { $0 }.count
     }
 
     var body: some View {
@@ -89,9 +109,13 @@ struct PRFilterMenu: View {
                 viewModel.filterState.actionableOnly = false
             }
         } label: {
-            Label(count == 0 ? "Filters" : "Filters \(count)", systemImage: "line.3.horizontal.decrease")
-                .labelStyle(.titleAndIcon)
+            HStack(spacing: 2) {
+                Image(systemName: "line.3.horizontal.decrease")
+                if count > 0 { Text("\(count)").font(.system(size: 10, weight: .semibold)).monospacedDigit() }
+            }.frame(minWidth: 24, minHeight: 24).contentShape(Rectangle())
         }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
         .fixedSize()
         .accessibilityLabel("Filters, \(count) active")
         .accessibilityIdentifier("prpulse.filters")
@@ -112,8 +136,12 @@ struct AppearanceSettingsView: View {
                         Task { await viewModel.changePopoverLayout(to: layout) }
                     } label: {
                         HStack(alignment: .top, spacing: 14) {
-                            Image(systemName: viewModel.settings.popoverLayout == layout ? "largecircle.fill.circle" : "circle")
-                                .foregroundStyle(viewModel.settings.popoverLayout == layout ? Color.accentColor : .secondary)
+                            Image(
+                                systemName: viewModel.settings.popoverLayout == layout
+                                    ? "largecircle.fill.circle" : "circle"
+                            )
+                            .foregroundStyle(
+                                viewModel.settings.popoverLayout == layout ? Color.accentColor : .secondary)
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(layout == .tabbed ? "Tabbed — Default" : "Compact").font(.headline)
                                 Text(layout.summary).foregroundStyle(.secondary)
@@ -122,16 +150,25 @@ struct AppearanceSettingsView: View {
                                         previewLabel("My PRs")
                                         previewLabel("Reviews", selected: true)
                                         previewLabel("Watched")
-                                    } else { previewLabel("Review Requested ▾", selected: true) }
+                                    } else {
+                                        previewLabel("Review Requested ▾", selected: true)
+                                    }
                                 }
-                                if layout == .tabbed { HStack { previewLabel("API work"); previewLabel("Saved views…") } }
+                                if layout == .tabbed {
+                                    HStack {
+                                        previewLabel("API work")
+                                        previewLabel("Saved views…")
+                                    }
+                                }
                                 RoundedRectangle(cornerRadius: 4).fill(.secondary.opacity(0.1)).frame(height: 22)
                             }
                         }
                         .padding(16)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(viewModel.settings.popoverLayout == layout ? Color.accentColor : .clear, lineWidth: 2))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10).stroke(
+                                viewModel.settings.popoverLayout == layout ? Color.accentColor : .clear, lineWidth: 2))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(layout.title)
@@ -146,6 +183,8 @@ struct AppearanceSettingsView: View {
 
     private func previewLabel(_ title: String, selected: Bool = false) -> some View {
         Text(title).font(.caption).padding(6)
-            .background(selected ? Color.accentColor.opacity(0.2) : Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
+            .background(
+                selected ? Color.accentColor.opacity(0.2) : Color.secondary.opacity(0.1),
+                in: RoundedRectangle(cornerRadius: 4))
     }
 }

@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct PullRequestRowView: View {
     var presentation: PullRequestPresentation
@@ -11,76 +11,89 @@ struct PullRequestRowView: View {
     var toggleCIMute: (() -> Void)?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Button {
-                NSWorkspace.shared.open(presentation.pullRequest.url)
-            } label: {
-                Text(presentation.pullRequest.title)
-                    .font(.headline).multilineTextAlignment(.leading).lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .buttonStyle(.plain)
-            .help("Open on GitHub")
-            .accessibilityIdentifier("prpulse.open.\(presentation.id)")
-            Text(metadataText).font(.caption).foregroundStyle(.secondary).lineLimit(2)
-            HStack(spacing: 10) {
-                CIStatusView(pullRequest: presentation.pullRequest, refreshInterval: ciRefreshInterval, isRefreshing: ciRefreshing)
-                if ciMuted { Label("CI alerts muted", systemImage: "bell.slash").font(.caption2).foregroundStyle(.secondary) }
-            }
-            if !presentation.pullRequest.detail.linkedReferences.isEmpty {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "arrow.triangle.pull")
+                .font(.system(size: 14)).foregroundStyle(.secondary)
+                .frame(width: 18).padding(.top, 2).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .top, spacing: 4) {
+                    Button {
+                        NSWorkspace.shared.open(presentation.pullRequest.url)
+                    } label: {
+                        Text(presentation.pullRequest.title)
+                            .font(.system(size: 13, weight: .semibold)).multilineTextAlignment(.leading).lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Open on GitHub")
+                    .accessibilityIdentifier("prpulse.open.\(presentation.id)")
+                    rowActions
+                }
+                Text(metadataText).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
+                    .help(metadataText)
                 HStack(spacing: 8) {
-                    ForEach(Array(presentation.pullRequest.detail.linkedReferences.prefix(3))) { ref in
-                        if let url = linkedReferenceURL(ref) {
-                            Link(linkedReferenceLabel(ref), destination: url).font(.caption2)
+                    CIStatusView(
+                        pullRequest: presentation.pullRequest, refreshInterval: ciRefreshInterval,
+                        isRefreshing: ciRefreshing, condensed: true)
+                    if presentation.status.changesRequested > 0 {
+                        Label(
+                            "\(presentation.status.changesRequested) changes requested",
+                            systemImage: "exclamationmark.bubble"
+                        )
+                        .foregroundStyle(.orange)
+                    } else if presentation.status.approvals > 0 {
+                        Label(
+                            "\(presentation.status.approvals) \(presentation.status.approvals == 1 ? "approval" : "approvals")",
+                            systemImage: "person.2"
+                        )
+                        .foregroundStyle(.secondary)
+                    }
+                }
+                .font(.system(size: 11)).lineLimit(1)
+                if ciMuted {
+                    Label("CI alerts muted", systemImage: "bell.slash").font(.system(size: 11)).foregroundStyle(
+                        .secondary)
+                }
+                if !presentation.pullRequest.detail.linkedReferences.isEmpty {
+                    HStack(spacing: 8) {
+                        ForEach(Array(presentation.pullRequest.detail.linkedReferences.prefix(3))) { ref in
+                            if let url = linkedReferenceURL(ref) {
+                                Link(linkedReferenceLabel(ref), destination: url).font(.caption2)
+                            }
+                        }
+                        if presentation.pullRequest.detail.linkedReferences.count > 3 {
+                            Text("+\(presentation.pullRequest.detail.linkedReferences.count - 3) more")
+                                .font(.caption2).foregroundStyle(.secondary)
                         }
                     }
-                    if presentation.pullRequest.detail.linkedReferences.count > 3 {
-                        Text("+\(presentation.pullRequest.detail.linkedReferences.count - 3) more")
-                            .font(.caption2).foregroundStyle(.secondary)
-                    }
                 }
-            }
-            HStack(spacing: 8) {
-                VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
                     readinessBadge
                     if !presentation.actionableBadgeText.isEmpty {
-                        Label(presentation.actionableBadgeText, systemImage: presentation.status.badge == .reviewed ? "checkmark.circle" : "arrow.clockwise")
-                            .font(.caption).foregroundStyle(presentation.status.badge == .reviewed ? .green : .orange)
+                        Label(
+                            presentation.actionableBadgeText,
+                            systemImage: presentation.status.badge == .reviewed ? "checkmark.circle" : "arrow.clockwise"
+                        )
+                        .font(.caption).foregroundStyle(presentation.status.badge == .reviewed ? .green : .orange)
                     }
-                    if presentation.status.changesRequested > 0 {
-                        Text("\(presentation.status.changesRequested) changes requested").font(.caption2).foregroundStyle(.orange)
-                    } else if presentation.status.approvals > 0 {
-                        Text("\(presentation.status.approvals) approvals").font(.caption2).foregroundStyle(.secondary)
+                    if presentation.pullRequest.override.state == .todo {
+                        Text("To do").foregroundStyle(Color.accentColor)
                     }
-                    if presentation.pullRequest.override.state == .todo { Text("To do").font(.caption2).foregroundStyle(Color.accentColor) }
-                    if presentation.pullRequest.override.state == .notApplicable { Text("Not relevant").font(.caption2).foregroundStyle(.secondary) }
+                    if presentation.pullRequest.override.state == .notApplicable {
+                        Text("Not relevant").foregroundStyle(.secondary)
+                    }
                 }
-                Spacer(minLength: 4)
-                Menu {
-                    Button("Tomorrow morning") { actionHandler(.snoozeTomorrow) }
-                    Button("1 hour") { actionHandler(.snooze(Date().addingTimeInterval(3600))) }
-                    Button("Clear") { actionHandler(.clearOverride) }
-                } label: { Label("Snooze", systemImage: "zzz") }
-                .fixedSize()
-                Menu {
-                    Button("Mark to do") { actionHandler(.markTodo) }
-                    Button("Mark not relevant") { actionHandler(.markNotApplicable) }
-                    Button("Clear override") { actionHandler(.clearOverride) }
-                    if let toggleCIMute {
-                        Divider()
-                        Button(ciMuted ? "Unmute CI failure alerts" : "Mute CI failure alerts", action: toggleCIMute)
-                    }
-                } label: { Image(systemName: "ellipsis") }
-                .menuStyle(.borderlessButton).fixedSize()
-                .accessibilityLabel("More PR actions")
-                .accessibilityIdentifier("prpulse.pr-more.\(presentation.id)")
-            }
-            .controlSize(.small)
-            if let date = presentation.pullRequest.override.snoozedUntil, presentation.pullRequest.override.isSnoozed {
-                Text("Snoozed until \(date, formatter: dateFormatter)").font(.caption2).foregroundStyle(.secondary)
+                .font(.system(size: 11))
+                if let date = presentation.pullRequest.override.snoozedUntil,
+                    presentation.pullRequest.override.isSnoozed
+                {
+                    Text("Snoozed until \(date, formatter: dateFormatter)").font(.system(size: 11)).foregroundStyle(
+                        .secondary)
+                }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 9)
         .padding(.horizontal, 2)
         .contextMenu {
             Button("Mark to do") { actionHandler(.markTodo) }
@@ -90,6 +103,33 @@ struct PullRequestRowView: View {
             Button("Snooze 1 hour") { actionHandler(.snooze(Date().addingTimeInterval(3600))) }
             Button("Snooze tomorrow") { actionHandler(.snoozeTomorrow) }
         }
+    }
+
+    private var rowActions: some View {
+        HStack(spacing: 2) {
+            Menu {
+                Button("Tomorrow morning") { actionHandler(.snoozeTomorrow) }
+                Button("1 hour") { actionHandler(.snooze(Date().addingTimeInterval(3600))) }
+                Button("Clear") { actionHandler(.clearOverride) }
+            } label: {
+                Image(systemName: "clock").frame(width: 24, height: 24).contentShape(Rectangle())
+            }
+            .accessibilityLabel("Snooze").help("Snooze this PR")
+            .accessibilityIdentifier("prpulse.snooze.\(presentation.id)")
+            Menu {
+                Button("Mark to do") { actionHandler(.markTodo) }
+                Button("Mark not relevant") { actionHandler(.markNotApplicable) }
+                Button("Clear override") { actionHandler(.clearOverride) }
+                if let toggleCIMute {
+                    Divider()
+                    Button(ciMuted ? "Unmute CI failure alerts" : "Mute CI failure alerts", action: toggleCIMute)
+                }
+            } label: {
+                Image(systemName: "ellipsis").frame(width: 24, height: 24).contentShape(Rectangle())
+            }
+            .accessibilityLabel("More PR actions").help("More PR actions")
+            .accessibilityIdentifier("prpulse.pr-more.\(presentation.id)")
+        }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().controlSize(.small)
     }
 
     private var metadataText: String {

@@ -152,6 +152,8 @@ Existing single-account data is copied only after GitHub verifies the legacy tok
 
 MergeOwl supports two popover layouts. **Tabbed (B)** is the default: PR tabs and saved-view shortcuts remain visible. **Compact (A)** puts default lists and saved views in one view picker, leaving more room for PRs.
 
+**Unreleased visual refresh:** current source uses tighter native controls and flat PR rows. Compact combines its view picker, search and filters in one row. The toolbar's **Actionable** bolt button filters work needing attention; the **clock** on each PR opens Snooze, and **…** opens more PR actions. Hover for control names. CI observation time is available in the check-status tooltip and inspector; the footer shows the last list-refresh time. These visual changes are not in the v0.2.2 download or historical captures above.
+
 Use **More (…) → Layout → Tabbed / Compact**, or open **More → Settings → Appearance** for layout previews. The choice is saved automatically across restarts and applies to every account. Changing layout keeps the active account, selected view, search, filters and local triage unchanged. Search, tab and refresh keyboard shortcuts work in both layouts.
 
 **More** also contains Settings and Quit; **Filters** contains Hide reviewed, Hide snoozed and Hide N/A. Click a PR title to open GitHub, use **Snooze** directly, or use its **More PR actions** menu for **Mark to do**, **Mark not relevant** and **Clear override**. **Activity** opens the digest. The footer counts visible loaded PRs; the menu-bar badge still covers all loaded lists.

@@ -219,6 +219,45 @@ final class PRPulseUITests: XCTestCase {
         XCTAssertEqual(app.popUpButtons["prpulse.ci-interval"].value as? String, "15 min")
     }
 
+    func testNativeLayoutsRecoverSpaceAndKeepActionsAccessible() {
+        launch(token: "e2e-scroll")
+        app.typeKey("1", modifierFlags: .command)
+        let title = app.buttons["prpulse.open.PR_1"]
+        XCTAssertTrue(title.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["My PRs"].exists, "Tabbed remains the default")
+        let tabbedTop = title.frame.minY
+        attachPopover("Native Tabbed")
+        chooseLayout("Compact")
+        XCTAssertTrue(title.isHittable)
+        let picker = app.descendants(matching: .any)["prpulse.view-picker"].firstMatch
+        XCTAssertTrue((picker.value as? String ?? "").contains("actionable loaded PRs"))
+        let count = app.staticTexts["prpulse.view-picker-count"]
+        XCTAssertTrue(count.exists, "Compact count must render independently of the truncated name")
+        XCTAssertGreaterThan(count.frame.width, 0)
+        XCTAssertLessThan(title.frame.minY, tabbedTop - 12, "Compact must recover a toolbar row for the PR list")
+        XCTAssertTrue(app.buttons["prpulse.ci.PR_1"].isHittable)
+        app.descendants(matching: .any)["Snooze"].firstMatch.click()
+        XCTAssertTrue(app.menuItems["1 hour"].waitForExistence(timeout: 5))
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(app.descendants(matching: .any)["prpulse.pr-more.PR_1"].firstMatch.isHittable)
+        attachPopover("Native Compact")
+        settings()
+        pane("Saved Views")
+        let window = app.windows["MergeOwl Settings"]
+        window.buttons["Create saved view"].click()
+        let longName = String(repeating: "W", count: 40)
+        enter(longName, in: app.textFields["prpulse.view-name"])
+        app.buttons["Save view"].click()
+        XCTAssertTrue(window.buttons["Edit \(longName)"].waitForExistence(timeout: 5))
+        window.buttons[XCUIIdentifierCloseWindow].click()
+        openDashboard()
+        picker.click()
+        app.menuItems[longName].click()
+        XCTAssertTrue(count.isHittable, "A maximum-length saved-view name must not hide the count")
+        XCTAssertLessThanOrEqual(count.frame.maxX, app.descendants(matching: .any)["prpulse.pr-list"].firstMatch.frame.maxX)
+        attachPopover("Compact long saved-view name")
+    }
+
     func testScrollingAndCIDetailsRemainResponsiveInBothLayouts() {
         launch(token: "e2e-scroll")
         app.typeKey("1", modifierFlags: .command)
