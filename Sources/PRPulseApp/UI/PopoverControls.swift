@@ -53,30 +53,37 @@ struct CompactPRViewPicker: View {
     var body: some View {
         let view = viewModel.savedViews.first { $0.id == viewModel.selectedSavedViewID && $0.enabled }
         let count =
-            view.map { viewModel.actionableCount(for: $0) } ?? viewModel.actionableCount(for: viewModel.selectedTab)
-        return Menu {
-            if !viewModel.savedViews.filter(\.enabled).isEmpty {
-                Section("Saved views") {
-                    ForEach(viewModel.savedViews.filter(\.enabled)) { view in
-                        Button(view.name) { viewModel.selectSavedView(id: view.id) }
-                            .accessibilityIdentifier("prpulse.saved-view.\(view.name)")
+            view.map { viewModel.actionableCount(for: $0) }
+            ?? viewModel.actionableCount(for: viewModel.selectedTab)
+        return HStack(spacing: 4) {
+            Menu {
+                if !viewModel.savedViews.filter(\.enabled).isEmpty {
+                    Section("Saved views") {
+                        ForEach(viewModel.savedViews.filter(\.enabled)) { view in
+                            Button(view.name) { viewModel.selectSavedView(id: view.id) }
+                                .accessibilityIdentifier("prpulse.saved-view.\(view.name)")
+                        }
                     }
                 }
-            }
-            Section("PR lists") {
-                ForEach(PullRequestTab.allCases) { tab in
-                    Button(tab.rawValue) { viewModel.selectDefaultTab(tab) }
+                Section("PR lists") {
+                    ForEach(PullRequestTab.allCases) { tab in
+                        Button(tab.rawValue) { viewModel.selectDefaultTab(tab) }
+                    }
                 }
+            } label: {
+                Text(selectedTitle)
+                    .font(.system(size: 12, weight: .semibold)).monospacedDigit().lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-        } label: {
-            Text("\(selectedTitle)  \(count)")
-                .font(.system(size: 12, weight: .semibold)).monospacedDigit().lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            .help("Choose a PR list or saved view. Current view: \(selectedTitle)")
+            .accessibilityLabel("View: \(selectedTitle)")
+            .accessibilityValue("\(count) actionable loaded PRs")
+            .accessibilityIdentifier("prpulse.view-picker")
+            Text("\(count)")
+                .font(.system(size: 12, weight: .semibold)).monospacedDigit()
+                .lineLimit(1).fixedSize(horizontal: true, vertical: false)
+                .accessibilityIdentifier("prpulse.view-picker-count")
         }
-        .help("Choose a PR list or saved view. Current view: \(selectedTitle)")
-        .accessibilityLabel("View: \(selectedTitle)")
-        .accessibilityValue("\(count) actionable loaded PRs")
-        .accessibilityIdentifier("prpulse.view-picker")
     }
 }
 

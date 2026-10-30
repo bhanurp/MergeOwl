@@ -20,3 +20,8 @@ Approved reference: side-by-side Tabbed and Compact mockup, October 30. Implemen
 - Independent review found no blocking issues. Accessibility review led to adding the Actionable selected trait and Compact's explicit count value.
 - Apple Silicon and Intel release builds passed (`/tmp/mergeowl-native-arm64.log`, `/tmp/mergeowl-native-x86.log`).
 - Existing hosting bounds, layout storage, account identities, API behavior and production installation are unchanged. CI observation timestamps remain available in tooltips and the inspector; footer time is a fixed observation rather than a continuously ticking row label.
+
+## CodeRabbit follow-up
+
+- Compact's actionable count is a fixed-size sibling of the native picker. This keeps the count visible when a 40-character saved-view name truncates and avoids the native popup dropping secondary label text. The accessible picker count value remains available.
+- Added native coverage for the independent count and a maximum-length saved-view selection. All 113 unit tests pass (`/tmp/mergeowl-pr23-count-units.log`). The updated Release native target compiled, but two sequential local attempts timed out enabling macOS automation before any journey executed (`/tmp/mergeowl-pr23-count-red.log`, `/tmp/mergeowl-pr23-count-green.log`). These attempts are not passing UI evidence or a reproduced regression. Final hosted checks must validate the updated journey.
