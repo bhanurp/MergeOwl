@@ -1,6 +1,55 @@
 import Foundation
 
 actor GitHubRequestGate {
+    private struct PendingCI {
+        let generation: UUID
+        let task: Task<Void, Never>
+        var waiters: [UUID: CheckedContinuation<CIStatus, Error>]
+    }
+    private var pendingCI: [String: PendingCI] = [:]
+    var waitingCIReadCount: Int { pendingCI.values.reduce(0) { $0 + $1.waiters.count } }
+    func sharedCIRead(for id: String, operation: @escaping @Sendable () async throws -> CIStatus) async throws -> CIStatus {
+        let waiter = UUID()
+        do {
+            let result: CIStatus = try await withTaskCancellationHandler {
+                try Task.checkCancellation()
+                return try await withCheckedThrowingContinuation { continuation in
+                    if pendingCI[id] != nil {
+                        pendingCI[id]?.waiters[waiter] = continuation
+                        return
+                    }
+                    let generation = UUID()
+                    let task = Task {
+                        let result: Result<CIStatus, Error>
+                        do { result = .success(try await operation()) }
+                        catch { result = .failure(error) }
+                        finishCIRead(id, generation: generation, result: result)
+                    }
+                    pendingCI[id] = PendingCI(generation: generation, task: task, waiters: [waiter: continuation])
+                }
+            } onCancel: {
+                Task { await self.cancelCIRead(id, waiter: waiter) }
+            }
+            try Task.checkCancellation()
+            return result
+        } catch {
+            if Task.isCancelled { throw CancellationError() }
+            throw error
+        }
+    }
+    private func finishCIRead(_ id: String, generation: UUID, result: Result<CIStatus, Error>) {
+        guard let pending = pendingCI[id], pending.generation == generation else { return }
+        pendingCI.removeValue(forKey: id)
+        for waiter in pending.waiters.values { waiter.resume(with: result) }
+    }
+    private func cancelCIRead(_ id: String, waiter: UUID) {
+        guard let continuation = pendingCI[id]?.waiters.removeValue(forKey: waiter) else { return }
+        continuation.resume(throwing: CancellationError())
+        if let pending = pendingCI[id], pending.waiters.isEmpty {
+            pendingCI.removeValue(forKey: id)
+            pending.task.cancel()
+        }
+    }
     private var blockedUntil: Date?
     private var ciRequests: [Date] = []
     private var discoveryRequests: [Date] = []
@@ -48,7 +97,9 @@ actor GitHubRequestGate {
 
 extension GitHubAPIClient {
     nonisolated(nonsending) func fetchCI(for pullRequest: PullRequest) async throws -> CIStatus {
-        try await readCI(for: pullRequest, revalidation: false)
+        try await requestGate.sharedCIRead(for: pullRequest.id) {
+            try await readCI(for: pullRequest, revalidation: false)
+        }
     }
     nonisolated(nonsending) func revalidateCI(for pullRequest: PullRequest) async throws -> CIStatus {
         try await readCI(for: pullRequest, revalidation: true)
