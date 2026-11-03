@@ -2,10 +2,12 @@
 
 All notable changes to MergeOwl (formerly PR Pulse) are documented in this file.
 
-## Unreleased
+## [0.2.3] - 2026-11-03
 
 ### Changed
 
+- Share overlapping in-flight CI discovery reads within each account client while keeping completed results uncached and failure revalidation live. Independent cancellation preserves other consumers.
+- Index previously loaded PRs once during page enrichment to reduce work on large lists. Synthetic overlapping reads fell from 12 to 3 requests; three 2,500-row refreshes fell from 3.339 to 0.170 seconds. These isolated measurements are not network or frame-rate guarantees.
 - Refine Tabbed and Compact with native system typography, tighter headers, flat PR rows and a solid system background. Tabbed remains the default and the existing saved preference is preserved.
 - Combine Compact's view picker, search and filters on one row. Keep Snooze and More as accessible icon controls, and expose the Actionable filter in the toolbar.
 - Reuse the visible PR list within each render and keep observation timestamps in the CI inspector/tooltips, without adding decorative animations or continuous row timers.
