@@ -120,7 +120,7 @@ For a classic token, use [GitHub’s classic token settings](https://github.com/
 3. Paste the token into **Personal access token**.
 4. Click **Connect GitHub** (or **Update token** if already configured).
 5. Wait for **Connected as `<your username>`**. Return to the popover and click the **refresh** button.
-6. Choose **My PRs** or **Reviews** (called **Review Requested** in the Compact picker and v0.2.0). An empty list can be correct if you have no matching open PRs.
+6. Choose **My PRs** or **Reviews** (called **Review Requested** in the Compact picker through v0.2.2 and in v0.2.0). An empty list can be correct if you have no matching open PRs.
 
 **Test connection** checks a token but does not save a newly entered token. If the status says **Token verified — save to connect**, click **Connect GitHub** or **Update token** to persist it.
 
@@ -152,7 +152,7 @@ Existing single-account data is copied only after GitHub verifies the legacy tok
 
 MergeOwl supports two popover layouts. **Tabbed (B)** is the default: PR tabs and saved-view shortcuts remain visible. **Compact (A)** puts default lists and saved views in one view picker, leaving more room for PRs.
 
-**Unreleased visual refresh:** current source uses tighter native controls and flat PR rows. Compact combines its view picker, search and filters in one row. The toolbar's **Actionable** bolt button filters work needing attention; the **clock** on each PR opens Snooze, and **…** opens more PR actions. Hover for control names. CI observation time is available in the check-status tooltip and inspector; the footer shows the last list-refresh time. These visual changes are not in the v0.2.2 download or historical captures above.
+**From v0.2.3:** the app uses tighter native controls and flat PR rows. Compact combines its view picker, search and filters in one row. The toolbar's **Actionable** bolt button filters work needing attention; the **clock** on each PR opens Snooze, and **…** opens more PR actions. Hover for control names. CI observation time is available in the check-status tooltip and inspector; the footer shows the last list-refresh time. These visual changes are not in v0.2.2 or the historical captures above.
 
 Use **More (…) → Layout → Tabbed / Compact**, or open **More → Settings → Appearance** for layout previews. The choice is saved automatically across restarts and applies to every account. Changing layout keeps the active account, selected view, search, filters and local triage unchanged. Search, tab and refresh keyboard shortcuts work in both layouts.
 
