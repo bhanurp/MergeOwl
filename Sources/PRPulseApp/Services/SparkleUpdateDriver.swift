@@ -15,7 +15,8 @@ enum UpdateConfiguration {
         }
         guard let key = info["SUPublicEDKey"] as? String,
               Data(base64Encoded: key)?.count == 32,
-              info["SUVerifyUpdateBeforeExtraction"] as? Bool == true else {
+              info["SUVerifyUpdateBeforeExtraction"] as? Bool == true,
+              info["SURequireSignedFeed"] as? Bool == true else {
             return "Update signature verification has not been configured."
         }
         return nil
@@ -24,7 +25,7 @@ enum UpdateConfiguration {
 
 #if canImport(Sparkle)
 @MainActor
-final class SparkleUpdateDriver: NSObject, UpdateDriver, SPUUpdaterDelegate {
+final class SparkleUpdateDriver: NSObject, UpdateDriver, SPUUpdaterDelegate, @MainActor SPUStandardUserDriverDelegate {
     let configurationError: String?
     var onStateChange: ((UpdateState) -> Void)?
     private var controller: SPUStandardUpdaterController!
@@ -37,7 +38,7 @@ final class SparkleUpdateDriver: NSObject, UpdateDriver, SPUUpdaterDelegate {
         super.init()
         // Do not even instantiate Sparkle until the embedded trust configuration is valid.
         guard configurationError == nil else { return }
-        controller = SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: self, userDriverDelegate: nil)
+        controller = SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: self, userDriverDelegate: self)
     }
 
     var canCheckForUpdates: Bool { controller?.updater.canCheckForUpdates ?? false }
@@ -65,11 +66,24 @@ final class SparkleUpdateDriver: NSObject, UpdateDriver, SPUUpdaterDelegate {
         ]
     }
 
-    func checkForUpdates() { controller?.checkForUpdates(nil) }
+    func checkForUpdates() {
+        guard controller != nil else { return }
+        publish(.checking)
+        controller.checkForUpdates(nil)
+    }
 
     func setAutomaticUpdatesEnabled(_ enabled: Bool) {
-        controller?.updater.automaticallyDownloadsUpdates = enabled
-        controller?.updater.automaticallyChecksForUpdates = enabled
+        guard let updater = controller?.updater else { return }
+        Self.setAutomaticUpdatesEnabled(enabled, updater: updater)
+    }
+
+    static func setAutomaticUpdatesEnabled(_ enabled: Bool, updater: SPUUpdater) {
+        // Sparkle ignores the download setter while checks are disabled unless
+        // SUAllowsAutomaticUpdates is explicitly enabled. Enable checks first;
+        // when opting out, persist the download opt-out before disabling checks.
+        if enabled { updater.automaticallyChecksForUpdates = true }
+        updater.automaticallyDownloadsUpdates = enabled
+        if !enabled { updater.automaticallyChecksForUpdates = false }
     }
 
     func installAndRelaunch() { installHandler?() }
@@ -80,6 +94,20 @@ final class SparkleUpdateDriver: NSObject, UpdateDriver, SPUUpdaterDelegate {
     }
 
     private func publishCurrentState() { onStateChange?(state) }
+
+    var supportsGentleScheduledUpdateReminders: Bool { true }
+
+    func standardUserDriverShouldHandleShowingScheduledUpdate(_ update: SUAppcastItem, andInImmediateFocus immediateFocus: Bool) -> Bool {
+        // Background checks never take focus. The native prompt remains
+        // available through the user's explicit Check for Updates action.
+        false
+    }
+
+    func standardUserDriverWillHandleShowingUpdate(_ handleShowingUpdate: Bool, forUpdate update: SUAppcastItem, state: SPUUserUpdateState) {
+        // Manual checks may bring the native alert back into focus while it
+        // awaits a choice; this is no longer an in-flight network check.
+        publish(.available(version: update.displayVersionString))
+    }
 
     func updater(_ updater: SPUUpdater, willDownloadUpdate item: SUAppcastItem, with request: NSMutableURLRequest) {
         publish(.downloading(progress: nil))
@@ -95,6 +123,7 @@ final class SparkleUpdateDriver: NSObject, UpdateDriver, SPUUpdaterDelegate {
     }
 
     func updater(_ updater: SPUUpdater, didAbortWithError error: Error) {
+        installHandler = nil
         if (error as NSError).domain == SUSparkleErrorDomain,
            (error as NSError).code == SUError.noUpdateError.rawValue { publish(.upToDate) }
         else { publish(.failed(error.localizedDescription)) }
@@ -102,7 +131,14 @@ final class SparkleUpdateDriver: NSObject, UpdateDriver, SPUUpdaterDelegate {
 
     func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck, error: Error?) {
         if let error { self.updater(updater, didAbortWithError: error) }
-        else if installHandler == nil { publish(.idle) }
+        else if installHandler == nil {
+            // No-update is a terminal result, not an unfinished check. Sparkle
+            // can report it before finishing the cycle without an error.
+            if case .upToDate = state { return }
+            if case .available = state { return }
+            if case .failed = state { return }
+            publish(.idle)
+        }
     }
 
     func updaterDidNotFindUpdate(_ updater: SPUUpdater, error: Error) { publish(.upToDate) }

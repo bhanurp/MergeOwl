@@ -2,7 +2,13 @@ name: Test macOS App
 
 on:
   pull_request:
+    paths-ignore:
+      - 'README.md'
+      - 'docs/screenshots/**'
   push:
+    paths-ignore:
+      - 'README.md'
+      - 'docs/screenshots/**'
     branches:
       - master
 
@@ -24,4 +30,6 @@ jobs:
         run: |
           bash Tests/InstallerTests/test_install_latest_release.sh
           bash Tests/InstallerTests/test_install_prpulse.sh
-          python3 -m unittest discover -s Tests/InstallerTests -p 'test_*.py'
+          bash Tests/InstallerTests/test_installed_owl_resources.sh
+          python3 -m unittest discover -s Tests/InstallerTests -p 'test_package_sparkle.py'
+          python3 -m unittest discover -s Tests/UpdaterTests

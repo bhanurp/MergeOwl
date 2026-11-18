@@ -7,6 +7,7 @@ enum UpdateState: Equatable {
     case checking
     case downloading(progress: Double?)
     case ready(version: String)
+    case available(version: String)
     case upToDate
     case failed(String)
 

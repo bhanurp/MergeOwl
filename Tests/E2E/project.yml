@@ -7,6 +7,8 @@ settings:
     SWIFT_VERSION: "6.0"
     CODE_SIGN_IDENTITY: "-"
     CODE_SIGNING_ALLOWED: YES
+    PRPULSE_E2E_HOSTED_CI: "false"
+    PRPULSE_E2E_SCROLL_REPETITIONS: "2"
 targets:
   PRPulseE2EApp:
     type: application
@@ -14,6 +16,12 @@ targets:
     sources:
       - path: ../../Sources/PRPulseApp
         excludes: ["**/README.md", "Resources"]
+      - path: ../../Sources/PRPulseApp/Resources/MergeOwl.png
+        buildPhase: resources
+      - path: ../../Sources/PRPulseApp/Resources/MergeOwl.icns
+        buildPhase: resources
+      - path: ../../Sources/PRPulseApp/Resources/Octicons/git-pull-request-16.svg
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.prpulse.e2e
@@ -21,7 +29,9 @@ targets:
     info:
       path: Generated/AppInfo.plist
       properties:
-        CFBundleDisplayName: PR Pulse E2E
+        CFBundleDisplayName: MergeOwl
+        CFBundleName: MergeOwl
+        CFBundleIconFile: MergeOwl.icns
         LSUIElement: true
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
@@ -29,7 +39,7 @@ targets:
   PRPulseUITests:
     type: bundle.ui-testing
     platform: macOS
-    sources: [PRPulseUITests.swift]
+    sources: [PRPulseUITests.swift, ../PRPulseAppTests/HostedNoticeSelectors.swift]
     dependencies:
       - target: PRPulseE2EApp
     settings:
@@ -44,6 +54,10 @@ schemes:
         PRPulseE2EApp: all
         PRPulseUITests: [test]
     test:
+      environmentVariables:
+        PRPULSE_E2E_HOSTED_CI: $(PRPULSE_E2E_HOSTED_CI)
+        PRPULSE_E2E_APP_PATH: $(BUILT_PRODUCTS_DIR)/PRPulseE2EApp.app
+        PRPULSE_E2E_SCROLL_REPETITIONS: $(PRPULSE_E2E_SCROLL_REPETITIONS)
       targets:
         - name: PRPulseUITests
           parallelizable: false

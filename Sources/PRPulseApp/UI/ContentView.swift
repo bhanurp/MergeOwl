@@ -1,30 +1,43 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 @available(macOS 14.0, *)
 struct ContentView: View {
     @ObservedObject var viewModel: DashboardViewModel
-    var hostActions: DashboardHostActions? = nil
+    var hostActions: DashboardHostActions = .noop
+    var accounts: AccountSessionCoordinator? = nil
+    var updates: AppUpdateService? = nil
     @State private var showDigest = false
-    @Environment(\.openSettings) private var openSettings
-    @Environment(\.openWindow) private var openWindow
+    @FocusState private var searchFocused: Bool
 
     var body: some View {
-        VStack(spacing: 12) {
+        let items = viewModel.currentItems
+        return VStack(spacing: 8) {
             header
-            filters
+            if let message = viewModel.errorMessage {
+                Label(message, systemImage: "exclamationmark.triangle")
+                    .font(.caption).foregroundStyle(.orange).textSelection(.enabled)
+            }
             if !viewModel.accessWarnings.isEmpty {
-                Label("Some PR data is unavailable. Showing accessible PRs.", systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-                    .help(viewModel.accessWarnings.joined(separator: "\n"))
-                Link("Manage GitHub token access", destination: URL(string: "https://github.com/settings/tokens")!)
+                Label(
+                    "Some PR data is unavailable. Showing accessible PRs.", systemImage: "exclamationmark.triangle.fill"
+                )
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .help(viewModel.accessWarnings.joined(separator: "\n"))
+                Link("Manage GitHub token access", destination: (accounts?.profiles.first { $0.id == accounts?.activeProfileID }?.server ?? .dotCom).tokenURL)
                     .font(.caption)
             }
-            listContent
-            footer
+            listContent(items)
+            ForEach(viewModel.listCoverageWarnings, id: \.self) { warning in
+                Text(warning).font(.caption).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("prpulse.coverage-warning")
+            }
+            footer(items)
         }
-        .padding()
+        .font(.system(size: 13))
+        .padding(12)
+        .background(Color(nsColor: .windowBackgroundColor))
         .sheet(isPresented: $showDigest) {
             DigestView(snapshot: viewModel.digestSnapshot)
                 .frame(width: 360, height: 240)
@@ -46,9 +59,13 @@ struct ContentView: View {
                 }
         }
         .onAppear {
-            if viewModel.settings.refreshOnLaunch {
+            viewModel.presentationDidAppear()
+            if viewModel.isReady && viewModel.settings.refreshOnLaunch {
                 viewModel.refreshAll()
             }
+        }
+        .onChange(of: viewModel.isReady) {
+            if viewModel.isReady && viewModel.settings.refreshOnLaunch { viewModel.refreshAll() }
         }
         .onChange(of: viewModel.selectedTab) { _ in
             Task { @MainActor in
@@ -84,144 +101,189 @@ struct ContentView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Picker("", selection: $viewModel.selectedTab) {
-                    ForEach(PullRequestTab.allCases) { tab in
-                        Text(tab.rawValue).tag(tab)
-                    }
+            HStack(spacing: 8) {
+                if let accounts {
+                    AccountSelectorView(accounts: accounts, showSettings: hostActions.showSettings)
+                        .disabled(viewModel.isChangingLayout)
+                } else {
+                    Text("MergeOwl").font(.headline)
+                    Spacer()
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .accessibilityLabel("Tab")
-
+                actionableToggle
                 Button {
                     viewModel.refreshAll()
                 } label: {
-                    Image(systemName: "arrow.clockwise")
+                    Image(systemName: "arrow.clockwise").frame(width: 24, height: 24).contentShape(Rectangle())
                 }
-                .help("Refresh now")
-                .accessibilityIdentifier("prpulse.refresh")
-                .keyboardShortcut("r")
-
-                Button {
-                    if let hostActions {
-                        hostActions.showSettings()
-                    } else {
-                        SettingsPresenter.showNativeSettings {
-                            openSettings()
+                .buttonStyle(.plain)
+                .help("Refresh now").accessibilityLabel("Refresh")
+                .accessibilityIdentifier("prpulse.refresh").keyboardShortcut("r")
+                .disabled(viewModel.isRefreshing)
+                PopoverMoreMenu(viewModel: viewModel, actions: hostActions, updates: updates)
+            }
+            if viewModel.selectedTab == .team && viewModel.selectedSavedViewID == nil {
+                TeamPickerView(viewModel: viewModel)
+            }
+            if viewModel.settings.popoverLayout == .tabbed {
+                DefaultPRTabs(viewModel: viewModel)
+                    .onMoveCommand { direction in
+                        if direction == .left || direction == .right {
+                            viewModel.moveViewSelection(forward: direction == .right)
                         }
                     }
-                } label: {
-                    Image(systemName: "gearshape")
+                if viewModel.savedViews.contains(where: \.enabled) {
+                    PRViewTabStrip(viewModel: viewModel)
                 }
-                .help("Settings")
-                .accessibilityIdentifier("prpulse.settings")
-                .keyboardShortcut(",", modifiers: [.command])
-
-                Button {
-                    if let hostActions {
-                        hostActions.quit()
-                    } else {
-                        NSApplication.shared.terminate(nil)
-                    }
-                } label: {
-                    Image(systemName: "power")
+                HStack(spacing: 8) {
+                    searchField
+                    PRFilterMenu(viewModel: viewModel)
                 }
-                .help("Quit PR Pulse")
-                .accessibilityIdentifier("prpulse.quit")
-                .keyboardShortcut("q", modifiers: [.command])
+            } else {
+                HStack(spacing: 8) {
+                    CompactPRViewPicker(viewModel: viewModel)
+                        .frame(width: 116, alignment: .leading)
+                    searchField
+                    PRFilterMenu(viewModel: viewModel)
+                }
             }
-
-            TextField("Search title or repo", text: Binding(
+        }
+    }
+    private var searchField: some View {
+        TextField(
+            "Search PRs or repos",
+            text: Binding(
                 get: { viewModel.filterState.searchText },
                 set: { viewModel.filterState.searchText = $0 }
-            ))
-            .textFieldStyle(.roundedBorder)
-        }
-    }
-
-    private var filters: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+            )
+        )
+        .textFieldStyle(.roundedBorder)
+        .accessibilityLabel("Search title or repo")
+        .focused($searchFocused)
+        .background {
             HStack {
-                FilterToggle(title: "Actionable", systemImage: "bolt.badge.a", isOn: Binding(
-                    get: { viewModel.filterState.actionableOnly },
-                    set: { viewModel.filterState.actionableOnly = $0 }
-                ))
-
-                FilterToggle(title: "Hide reviewed", systemImage: "eye.slash", isOn: Binding(
-                    get: { viewModel.filterState.hideReviewed },
-                    set: { viewModel.filterState.hideReviewed = $0 }
-                ))
-
-                FilterToggle(title: "Hide snoozed", systemImage: "zzz", isOn: Binding(
-                    get: { viewModel.filterState.hideSnoozed },
-                    set: { viewModel.filterState.hideSnoozed = $0 }
-                ))
-
-                FilterToggle(title: "Hide N/A", systemImage: "nosign", isOn: Binding(
-                    get: { viewModel.filterState.hideNotApplicable },
-                    set: { viewModel.filterState.hideNotApplicable = $0 }
-                ))
-            }
+                Button("") { searchFocused = true }.keyboardShortcut("f")
+                ForEach(Array(PullRequestTab.allCases.enumerated()), id: \.element) { index, tab in
+                    Button("") { viewModel.selectDefaultTab(tab) }
+                        .keyboardShortcut(KeyEquivalent(Character(String(index + 1))))
+                }
+            }.hidden()
         }
     }
 
-    private var listContent: some View {
+    private var actionableToggle: some View {
+        Button {
+            viewModel.filterState.actionableOnly.toggle()
+        } label: {
+            Image(systemName: "bolt.badge.clock")
+                .frame(width: 24, height: 24).contentShape(Rectangle())
+                .foregroundStyle(viewModel.filterState.actionableOnly ? Color.accentColor : .secondary)
+                .background(
+                    viewModel.filterState.actionableOnly ? Color.accentColor.opacity(0.12) : .clear,
+                    in: RoundedRectangle(cornerRadius: 5))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Actionable")
+        .accessibilityValue(viewModel.filterState.actionableOnly ? "On" : "Off")
+        .accessibilityAddTraits(viewModel.filterState.actionableOnly ? [.isSelected] : [])
+        .help("Show only actionable PRs")
+        .accessibilityIdentifier("prpulse.actionable")
+    }
+
+    private func listContent(_ items: [PullRequestPresentation]) -> some View {
         ScrollView {
-            LazyVStack(spacing: 10) {
-                ForEach(viewModel.listStates[viewModel.selectedTab]?.displayedItems ?? []) { presentation in
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(items) { presentation in
                     PullRequestRowView(
                         presentation: presentation,
                         actionHandler: { action in
                             viewModel.perform(action: action, on: presentation)
                         },
-                        showAuthor: viewModel.selectedTab == .reviewRequested
+                        showAuthor: viewModel.selectedTab != .mine || viewModel.selectedSavedViewID != nil,
+                        ciRefreshInterval: viewModel.settings.ciRefreshInterval,
+                        ciRefreshing: viewModel.isCurrentListRefreshing,
+                        ciMuted: viewModel.ciMonitor.isMuted(presentation.id),
+                        toggleCIMute: presentation.pullRequest.author.login.caseInsensitiveCompare(
+                            viewModel.viewerLogin) == .orderedSame
+                            ? {
+                                do {
+                                    try viewModel.ciMonitor.setMuted(
+                                        !viewModel.ciMonitor.isMuted(presentation.id), for: presentation.id)
+                                } catch { viewModel.errorMessage = "Could not save CI mute. Please try again." }
+                            } : nil,
+                        retryCI: { Task { await viewModel.retryCIForCurrentView() } }
                     )
+                    Divider().padding(.leading, 26)
                 }
 
-                if viewModel.listStates[viewModel.selectedTab]?.hasNextPage == true {
+                if viewModel.hasMoreCurrentItems {
                     Button("Load more") {
                         viewModel.loadMoreCurrentTab()
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.bordered)
                     .frame(maxWidth: .infinity)
-                } else if (viewModel.listStates[viewModel.selectedTab]?.displayedItems.isEmpty ?? true) {
-                    EmptyStateView()
-                        .padding(.top, 40)
+                } else if items.isEmpty {
+                    if let accounts, accounts.profiles.isEmpty, !accounts.isWorking, accounts.errorMessage == nil {
+                        ContentUnavailableView {
+                            Label("Connect GitHub", systemImage: "person.crop.circle")
+                        } description: {
+                            Text("Add an account in Settings to start tracking your pull requests.")
+                        } actions: {
+                            Button("Open account settings", action: hostActions.showSettings)
+                        }
+                    } else {
+                        EmptyStateView().padding(.top, 40)
+                    }
                 }
             }
+            if viewModel.isRefreshing { ProgressView("Refreshing PRs…").controlSize(.small) }
+            if viewModel.selectedSavedViewID != nil {
+                Text("Showing loaded PRs • counts may grow as more pages load").font(.caption).foregroundStyle(
+                    .secondary)
+            }
         }
+        .accessibilityIdentifier("prpulse.pr-list")
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    private var footer: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Digest")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Text("\(viewModel.digestSnapshot.openedCount) opened • \(viewModel.digestSnapshot.reviewedCount) reviewed")
-                    .font(.footnote)
-            }
-            Spacer()
+    private func footer(_ items: [PullRequestPresentation]) -> some View {
+        HStack(spacing: 8) {
             connectionIndicator
-            Button("View digest") {
+            Spacer(minLength: 4)
+            Text("\(items.count) shown")
+                .monospacedDigit().foregroundStyle(.secondary)
+                .help(
+                    "\(items.filter { $0.status.isActionable }.count) actionable in this view. Counts cover loaded PRs only; the menu-bar badge covers all loaded lists."
+                )
+            if let date = viewModel.lastRefreshAt {
+                Text(date, format: .dateTime.hour().minute())
+                    .monospacedDigit().foregroundStyle(.secondary)
+                    .help("Last list refresh: \(date.formatted())")
+            }
+            Button("Activity") {
                 showDigest = true
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.plain)
+            .foregroundStyle(Color.accentColor)
         }
+        .font(.system(size: 11))
+        .lineLimit(1)
     }
 
     private var connectionIndicator: some View {
         Group {
-            if viewModel.connectionPresentation.isConnected {
+            if let accounts, accounts.profiles.isEmpty, !accounts.isWorking, accounts.errorMessage == nil {
+                Button("Connect GitHub", action: hostActions.showSettings)
+            } else if viewModel.connectionPresentation.isConnected {
                 HStack(spacing: 6) {
                     Circle()
                         .fill(Color.green)
                         .frame(width: 8, height: 8)
-                    Text(viewModel.connectionPresentation.statusText)
-                        .font(.footnote)
+                    Text("Connected")
+                        .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
+                .help(viewModel.connectionPresentation.statusText)
+                .accessibilityLabel(viewModel.connectionPresentation.statusText)
             } else if viewModel.connectionPresentation == .checking {
                 HStack(spacing: 6) {
                     ProgressView()
@@ -232,11 +294,7 @@ struct ContentView: View {
                 }
             } else {
                 Button {
-                    if let hostActions {
-                        hostActions.showConnectionErrors()
-                    } else {
-                        openWindow(id: "connection-errors-window")
-                    }
+                    hostActions.showConnectionErrors()
                 } label: {
                     HStack(spacing: 6) {
                         Circle()
@@ -251,25 +309,6 @@ struct ContentView: View {
                 .help("Show connection errors")
             }
         }
-    }
-}
-
-private struct FilterToggle: View {
-    var title: String
-    var systemImage: String
-    @Binding var isOn: Bool
-
-    var body: some View {
-        Button {
-            isOn.toggle()
-        } label: {
-            Label(title, systemImage: systemImage)
-                .padding(.vertical, 6)
-                .padding(.horizontal, 10)
-                .background(isOn ? Color.accentColor.opacity(0.15) : Color.gray.opacity(0.15))
-                .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
     }
 }
 

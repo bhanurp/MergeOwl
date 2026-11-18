@@ -1,6 +1,6 @@
 # Complete MergeOwl Auto-Updates Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. No delegation unless separately authorized.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking. No delegation unless separately authorized.
 
 **Goal:** Finish the existing approved Sparkle updater for the current MergeOwl app, including secure publication tooling and a verified isolated upgrade, without touching the installed production app.
 
@@ -22,34 +22,42 @@
 
 ## Task 1 — Integrate the existing draft with current master
 
-- [ ] Merge origin/master into feature/secure-auto-updates without rewriting published history. Resolve conflicts by keeping current account/native-host/Team/CI behavior and inserting updater integration deliberately.
-- [ ] Pin Sparkle 2.10.1 and retain framework/helper license/permissions/symlinks and executable-relative rpath packaging.
-- [ ] Own one AppUpdateService in AppDependencies; use a disabled driver for mocks and native fixture builds. Share it across account switches and both Settings entry points.
-- [ ] Add Updates Settings and a manual Check for Updates action in the native app/menu-bar controls. Keep update controls independent of account readiness.
-- [ ] Run full units, framework/installer fixtures and both architecture builds sequentially. Fix regressions without production credentials or app installation.
+- [x] Merge origin/master into feature/secure-auto-updates without rewriting published history. Resolve conflicts by keeping current account/native-host/Team/CI behavior and inserting updater integration deliberately.
+- [x] Pin Sparkle 2.10.1 and retain framework/helper license/permissions/symlinks and executable-relative rpath packaging.
+- [x] Own one AppUpdateService in AppDependencies; use a disabled driver for mocks and native fixture builds. Share it across account switches and both Settings entry points.
+- [x] Add Updates Settings and a manual Check for Updates action in the native app/menu-bar controls. Keep update controls independent of account readiness.
+- [x] Run full units, framework/installer fixtures and both architecture builds sequentially. Fix regressions without production credentials or app installation.
 
 ## Task 2 — Verify driver lifecycle, preference and trust behavior
 
-- [ ] Read the pinned Sparkle delegate/header behavior for background download, natural-quit install, explicit relaunch and error handling. Use supported APIs only.
-- [ ] Add meaningful failing regressions before fixes for missing trust configuration, duplicate checks, background errors, terminal states, staged opt-out wording, account-independent ownership and unsigned/tampered updates.
-- [ ] Require HTTPS, embedded Ed25519 public key and verification before extraction; use signed feed validation when activating the stable framework's supported configuration. Development/test builds remain fail-closed unless explicitly isolated with test configuration.
-- [ ] Verify the actual packaged framework/helper slices and linkage, not only Swift imports. Preserve minimum macOS 14 and both architectures.
+- [x] Read the pinned Sparkle delegate/header behavior for background download, natural-quit install, explicit relaunch and error handling. Use supported APIs only.
+- [x] Add meaningful failing regressions before fixes for missing trust configuration, duplicate checks, background errors, terminal states, staged opt-out wording, account-independent ownership and unsigned/tampered updates.
+- [x] Require HTTPS, embedded Ed25519 public key and verification before extraction; use signed feed validation when activating the stable framework's supported configuration. Development/test builds remain fail-closed unless explicitly isolated with test configuration.
+- [x] Verify the actual packaged framework/helper slices and linkage, not only Swift imports. Preserve minimum macOS 14 and both architectures.
 
 ## Task 3 — Implement reviewable publication tooling
 
-- [ ] Build a testable appcast generator/validator around Sparkle's signing tools, with stable releases only, immutable archive URLs, length/signature, minimum OS/architectures and compatible historical entries.
-- [ ] Reject existing version replacement, duplicate/decreasing build numbers, missing artifacts, mismatched versions and invalid signatures before publishing a feed. Serialize publication and keep private key values out of source, output and archives.
-- [ ] Prepare a protected signing-environment workflow and maintainer instructions. Read only configuration names during preparation; no remote environment/secret changes or key generation without approval.
-- [ ] Add fixture tests for publication reruns/failures and signing configuration. Keep manual downloads available and do not use GitHub account PATs in updater requests.
+- [x] Build a testable appcast generator/validator around Sparkle's signing tools, with stable releases only, immutable archive URLs, length/signature, minimum OS/architectures and compatible historical entries.
+- [x] Reject existing version replacement, duplicate/decreasing build numbers, missing artifacts, mismatched versions and invalid signatures before publishing a feed. Serialize publication and keep private key values out of source, output and archives.
+- [x] Prepare a protected signing-environment workflow and maintainer instructions. Read only configuration names during preparation; no remote environment/secret changes or key generation without approval.
+- [x] Add fixture tests for publication reruns/failures and signing configuration. Keep manual downloads available and do not use GitHub account PATs in updater requests.
 
 ## Task 4 — Demonstrate an isolated signed upgrade
 
-- [ ] Generate throwaway test keys outside production Keychain and create distinct old/new test apps, bundle IDs, installation paths and data roots.
-- [ ] Demonstrate discovery → authenticated download → staged state → natural quit → new executable, then verify stored settings and isolated test credential continuity.
-- [ ] Reject tampered/wrong-key archives and downgrades without changing the old executable/data; verify offline/unwritable failure presentation.
+- [x] Generate throwaway test keys outside production Keychain and create distinct old/new test apps, bundle IDs, installation paths and data roots.
+- [ ] Demonstrate discovery → authenticated download → staged state → natural quit → new executable, then verify stored settings and isolated test credential continuity. **Settings/framework upgrade passed; real Keychain continuity remains a production Developer ID acceptance gate.**
+- [x] Reject tampered/wrong-key archives and downgrades without changing the old executable/data; verify offline/unwritable failure presentation.
 - [ ] Inspect updater UI in both layouts where desktop automation permits; keep runtime failures explicit, not counted as passing evidence.
 
 ## Task 5 — Review and activation handoff
 
 - [ ] Review the complete diff, run relevant verification and update PR11's scope/status accurately if publication is authorized. Keep production installation disabled until trust and upgrade gates are genuinely met.
 - [ ] Present concrete signing/feed configuration and test evidence for the maintainer's activation decision. Explain any required key/credential approval using the exact existing spec instruction. Do not claim a live automatic updater while signing/hosting is unconfigured.
+
+## November 18 evidence checkpoint
+
+- Final 156 Debug units and 156 Release units pass; release arm64/x86_64 builds pass.
+- Native E2E target builds for testing; no current full product UI journey is claimed.
+- Three framework packaging tests, five publication policy/path tests, installer fixtures and actual signing-tool feed/history pipeline pass.
+- Disposable framework upgrade passes staged → natural quit → replacement → new launch, preserving test preferences. Tampered archive, wrong key, signed-content feed tampering, missing archive signature, equal/older versions, offline/interrupted downloads and unwritable passive deferral are checked separately. No production app, Keychain, private signing key, remote secrets/environment/feed or release was changed.
+- Production activation and full product UI/Developer ID/Keychain acceptance remain explicitly pending, not test passes inferred from fixtures.

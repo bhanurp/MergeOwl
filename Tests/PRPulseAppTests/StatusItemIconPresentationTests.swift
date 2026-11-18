@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 @testable import PRPulseApp
 
@@ -14,27 +15,22 @@ final class StatusItemIconPresentationTests: XCTestCase {
     func testAccessibilityLabelDescribesNormalizedActionableCount() {
         XCTAssertEqual(
             StatusItemIconPresentation.accessibilityLabel(for: -2),
-            "PR Pulse, 0 actionable"
+            "MergeOwl, 0 actionable"
         )
     }
 
     @MainActor
-    func testFlowerUsesMostOfTheMenuBarIconCanvas() {
-        XCTAssertEqual(StatusItemIconRenderer.flowerRect.size, NSSize(width: 21, height: 21))
-    }
-
-    func testFlowerIsDrawnAsANativeVectorMark() throws {
-        let source = try source(named: "Sources/PRPulseApp/App/StatusItemIconPresentation.swift")
-
-        XCTAssertTrue(source.contains("private static func drawFlower()"))
-        XCTAssertFalse(source.contains("Bundle.module.url"))
-    }
-
-    private func source(named path: String) throws -> String {
-        let repositoryRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        return try String(contentsOf: repositoryRoot.appendingPathComponent(path))
+    func testApprovedOwlIsVisibleOnTransparentCanvasAndBadgeChangesPixels() throws {
+        let plain = StatusItemIconRenderer.makeImage(actionableCount: 0)
+        let badged = StatusItemIconRenderer.makeImage(actionableCount: 3)
+        XCTAssertEqual(plain.size, NSSize(width: 24, height: 24))
+        XCTAssertFalse(plain.isTemplate)
+        let data = try XCTUnwrap(plain.tiffRepresentation)
+        let bitmap = try XCTUnwrap(NSBitmapImageRep(data: data))
+        XCTAssertTrue(bitmap.hasAlpha)
+        XCTAssertLessThan(try XCTUnwrap(bitmap.colorAt(x: 0, y: 0)).alphaComponent, 0.05)
+        XCTAssertGreaterThan(try XCTUnwrap(bitmap.colorAt(x: bitmap.pixelsWide / 2, y: bitmap.pixelsHigh / 2)).alphaComponent, 0.8)
+        XCTAssertNotEqual(data, badged.tiffRepresentation)
+        XCTAssertNotNil(StatusItemIconRenderer.owlImage, "Approved owl must be present in the packaged resource bundle")
     }
 }

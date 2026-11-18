@@ -2,11 +2,15 @@ import XCTest
 @testable import PRPulseApp
 
 final class SettingsPaneTests: XCTestCase {
+    func testUpdatesPaneRemainsAvailableWithAccountPanes() {
+        XCTAssertTrue(SettingsPane.allCases.contains { $0.rawValue == "Updates" })
+        XCTAssertTrue(SettingsPane.allCases.contains { $0.rawValue == "Team" })
+    }
     func testDefaultPaneAndCaseOrder() {
         XCTAssertEqual(SettingsPane.defaultPane, .account)
         XCTAssertEqual(
             SettingsPane.allCases,
-            [.account, .refresh, .notifications, .repositories, .updates, .advanced]
+            [.account, .appearance, .refresh, .notifications, .repositories, .team, .savedViews, .updates, .advanced]
         )
     }
 

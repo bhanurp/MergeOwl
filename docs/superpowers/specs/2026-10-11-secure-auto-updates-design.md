@@ -36,7 +36,7 @@ Updater preferences are app-wide and do not switch with GitHub accounts. Preserv
 
 ## Rollout
 
-v0.1.4 contains no updater or embedded signing key and cannot bootstrap itself. Ship one manually installed updater-enabled release first. Only announce automatic updates after an older updater-enabled build successfully discovers, verifies, stages, and installs a newer build. Keep manual DMG downloads available.
+The currently released v0.2.4 contains no updater or embedded signing key and cannot bootstrap itself. Ship one manually installed updater-enabled release first. Only announce automatic updates after an older updater-enabled build successfully discovers, verifies, stages, and installs a newer build. Keep manual DMG downloads available.
 
 Do not enable production auto-install until the signing key, protected release signing, feed hosting, bundle packaging, and upgrade validation are ready. Test feeds and throwaway apps use separate test keys, bundle identities, installation directories, Keychain services, and data roots. Never run upgrade tests against /Applications/PRPulseApp.app or user credentials.
 

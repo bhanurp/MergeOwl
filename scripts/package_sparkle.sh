@@ -37,3 +37,6 @@ if ! mv "$PRPULSE_STAGE/Sparkle.framework" "$PRPULSE_DESTINATION"; then
   exit 1
 fi
 PRPULSE_REPLACED=true
+PRPULSE_SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+mkdir -p "$PRPULSE_APP/Contents/Resources/ThirdPartyNotices"
+cp "$PRPULSE_SCRIPT_ROOT/ThirdPartyNotices/Sparkle-LICENSE" "$PRPULSE_APP/Contents/Resources/ThirdPartyNotices/Sparkle-LICENSE"

@@ -1,0 +1,129 @@
+name: Publish signed updater feed (activation required)
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Stable, non-latest release containing an approved signed universal ZIP
+        required: true
+        type: string
+      previous_tag:
+        description: Release carrying the current signed appcast; empty only for first feed
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mergeowl-updater-publication
+  cancel-in-progress: false
+
+jobs:
+  sign-and-publish:
+    # No environment/secret is created or used until a maintainer activates this
+    # reviewed workflow and configures required reviewers/tag protection.
+    if: startsWith(github.ref, 'refs/tags/v') && vars.UPDATER_PUBLICATION_APPROVED == 'true'
+    environment: mergeowl-updater-signing
+    runs-on: macos-15
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      PREVIOUS_TAG: ${{ inputs.previous_tag }}
+      SPARKLE_PUBLIC_KEY: ${{ vars.SPARKLE_PUBLIC_KEY }}
+      DEVELOPER_TEAM_ID: ${{ vars.DEVELOPER_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Resolve reviewed Sparkle tools
+        run: swift package resolve
+      - name: Verify publication order and download immutable archive/history
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, re, subprocess, json
+          from pathlib import Path
+          tag, previous = os.environ['RELEASE_TAG'], os.environ['PREVIOUS_TAG']
+          stable = re.compile(r'v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)')
+          if tag != os.environ['GITHUB_REF_NAME'] or not stable.fullmatch(tag) or (previous and not stable.fullmatch(previous)):
+              raise SystemExit('Only stable release tags are allowed')
+          def gh(*args):
+              return subprocess.check_output(['gh', *args], text=True)
+          releases = json.loads(gh('api', '--paginate', '--slurp', 'repos/{owner}/{repo}/releases?per_page=100'))
+          releases = [r for page in releases for r in page]
+          carrying_feed = [r['tag_name'] for r in releases if stable.fullmatch(r['tag_name']) and any(a['name'] == 'appcast.xml' for a in r['assets'])]
+          key = lambda value: tuple(map(int, value[1:].split('.')))
+          expected_previous = max(carrying_feed, key=key) if carrying_feed else ''
+          if previous != expected_previous:
+              raise SystemExit('Previous tag must carry the newest published appcast')
+          current = json.loads(gh('api', f'repos/{{owner}}/{{repo}}/releases/tags/{tag}'))
+          latest = json.loads(gh('api', 'repos/{owner}/{repo}/releases/latest'))
+          if current['draft'] or current['prerelease'] or latest['tag_name'] == tag or tag in carrying_feed:
+              raise SystemExit('Publish artifacts as a stable non-latest release first; never replace a feed')
+          stage = Path(os.environ['RUNNER_TEMP']) / 'updater-publication'
+          stage.mkdir()
+          (stage / 'release.json').write_text(json.dumps(current))
+          archive = f'MergeOwl-{tag[1:]}-macOS-universal.zip'
+          subprocess.run(['gh', 'release', 'download', tag, '--pattern', archive, '--dir', str(stage)], check=True)
+          if previous:
+              subprocess.run(['gh', 'release', 'download', previous, '--pattern', 'appcast.xml', '--dir', str(stage / 'previous')], check=True)
+          PY
+      - name: Verify Developer ID, notarization and universal package
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import importlib.util, os, re, subprocess
+          from pathlib import Path
+          spec = importlib.util.spec_from_file_location('feed', 'scripts/prepare_appcast.py')
+          feed = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(feed)
+          stage = Path(os.environ['RUNNER_TEMP']) / 'updater-publication'
+          archive = stage / ('MergeOwl-' + os.environ['RELEASE_TAG'][1:] + '-macOS-universal.zip')
+          feed.archive_info(archive) # reject path/symlink escapes before extraction
+          subprocess.run(['ditto', '-x', '-k', str(archive), str(stage / 'unpacked')], check=True)
+          app = stage / 'unpacked/MergeOwl.app'
+          subprocess.run(['codesign', '--verify', '--deep', '--strict', str(app)], check=True)
+          signature = subprocess.run(['codesign', '-dvv', str(app)], capture_output=True, text=True, check=True).stderr
+          team = os.environ['DEVELOPER_TEAM_ID']
+          if not team or ('TeamIdentifier=' + team + '\n') not in signature or 'Authority=Developer ID Application:' not in signature:
+              raise SystemExit('Archive must use the approved Developer ID team')
+          build_info = subprocess.check_output(['vtool', '-show-build', str(app / 'Contents/MacOS/MergeOwl')], text=True)
+          minimums = re.findall(r'\bminos\s+(\S+)', build_info)
+          if len(minimums) != 2 or any(v not in ['14.0', '14.0.0'] for v in minimums):
+              raise SystemExit('Both binary slices must declare macOS 14 deployment')
+          subprocess.run(['spctl', '--assess', '--type', 'execute', str(app)], check=True)
+          subprocess.run(['xcrun', 'stapler', 'validate', str(app)], check=True)
+          arches = subprocess.check_output(['lipo', '-archs', str(app / 'Contents/MacOS/MergeOwl')], text=True).split()
+          if set(arches) != {'arm64', 'x86_64'}:
+              raise SystemExit('Both supported architectures are required')
+          PY
+      - name: Sign and verify archive/feed with protected seed
+        shell: bash
+        env:
+          SPARKLE_ED25519_SEED: ${{ secrets.SPARKLE_ED25519_SEED }}
+        run: |
+          set -euo pipefail
+          umask 077
+          KEY_FILE="$(mktemp "$RUNNER_TEMP/update-seed.XXXXXX")"
+          trap 'rm -f "$KEY_FILE"' EXIT
+          printf '%s' "$SPARKLE_ED25519_SEED" > "$KEY_FILE"
+          STAGE="$RUNNER_TEMP/updater-publication"
+          APPCAST_ARGS=(
+            --archive "$STAGE/MergeOwl-${RELEASE_TAG#v}-macOS-universal.zip"
+            --release-json "$STAGE/release.json"
+            --sparkle-bin .build/artifacts/sparkle/Sparkle/bin
+            --ed-key-file "$KEY_FILE" --public-key "$SPARKLE_PUBLIC_KEY"
+            --output "$STAGE/prepared/appcast.xml"
+          )
+          if [[ -n "$PREVIOUS_TAG" ]]; then APPCAST_ARGS+=(--previous-feed "$STAGE/previous/appcast.xml"); fi
+          python3 scripts/prepare_appcast.py "${APPCAST_ARGS[@]}"
+      - name: Publish feed before promoting release
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release upload "$RELEASE_TAG" "$RUNNER_TEMP/updater-publication/prepared/appcast.xml"
+          gh release edit "$RELEASE_TAG" --latest

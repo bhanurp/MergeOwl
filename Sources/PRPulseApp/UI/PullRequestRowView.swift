@@ -1,115 +1,135 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct PullRequestRowView: View {
     var presentation: PullRequestPresentation
     var actionHandler: (DashboardViewModel.QuickAction) -> Void
     var showAuthor: Bool = false
+    var ciRefreshInterval: TimeInterval = 300
+    var ciRefreshing = false
+    var ciMuted = false
+    var toggleCIMute: (() -> Void)?
+    var retryCI: (() -> Void)? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(presentation.pullRequest.title)
-                        .font(.headline)
-                        .lineLimit(2)
-                    Text(metadataText)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+        HStack(alignment: .top, spacing: 8) {
+            GitHubPullRequestIcon()
+                .frame(width: 18).padding(.top, 2)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .top, spacing: 4) {
+                    Button {
+                        NSWorkspace.shared.open(presentation.pullRequest.url)
+                    } label: {
+                        Text(presentation.pullRequest.title)
+                            .font(.system(size: 13, weight: .semibold)).multilineTextAlignment(.leading).lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Open on GitHub")
+                    .accessibilityIdentifier("prpulse.open.\(presentation.id)")
+                    rowActions
                 }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 4) {
-                    readinessBadge
-                    if !presentation.pullRequest.detail.linkedReferences.isEmpty {
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text("Linked")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                            ForEach(Array(presentation.pullRequest.detail.linkedReferences.prefix(3))) { ref in
-                                if let url = linkedReferenceURL(ref) {
-                                    Link(linkedReferenceLabel(ref), destination: url)
-                                        .font(.caption2)
-                                        .lineLimit(1)
-                                } else {
-                                    Text(linkedReferenceLabel(ref))
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                        .lineLimit(1)
-                                }
+                Text(metadataText).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
+                    .help(metadataText)
+                HStack(spacing: 8) {
+                    CIStatusView(
+                        pullRequest: presentation.pullRequest, refreshInterval: ciRefreshInterval,
+                        isRefreshing: ciRefreshing, condensed: true, retry: retryCI)
+                    if presentation.status.changesRequested > 0 {
+                        Label(
+                            "\(presentation.status.changesRequested) changes requested",
+                            systemImage: "exclamationmark.bubble"
+                        )
+                        .foregroundStyle(.orange)
+                    } else if presentation.status.approvals > 0 {
+                        Label(
+                            "\(presentation.status.approvals) \(presentation.status.approvals == 1 ? "approval" : "approvals")",
+                            systemImage: "person.2"
+                        )
+                        .foregroundStyle(.secondary)
+                    }
+                }
+                .font(.system(size: 11)).lineLimit(1)
+                if ciMuted {
+                    Label("CI alerts muted", systemImage: "bell.slash").font(.system(size: 11)).foregroundStyle(
+                        .secondary)
+                }
+                if !presentation.pullRequest.detail.linkedReferences.isEmpty {
+                    HStack(spacing: 8) {
+                        ForEach(Array(presentation.pullRequest.detail.linkedReferences.prefix(3))) { ref in
+                            if let url = linkedReferenceURL(ref) {
+                                Link(linkedReferenceLabel(ref), destination: url).font(.caption2)
                             }
-                            if presentation.pullRequest.detail.linkedReferences.count > 3 {
-                                Text("+\(presentation.pullRequest.detail.linkedReferences.count - 3) more")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                            }
+                        }
+                        if presentation.pullRequest.detail.linkedReferences.count > 3 {
+                            Text("+\(presentation.pullRequest.detail.linkedReferences.count - 3) more")
+                                .font(.caption2).foregroundStyle(.secondary)
                         }
                     }
                 }
-            }
-
-            HStack(spacing: 12) {
-                if !presentation.actionableBadgeText.isEmpty {
-                    Label(presentation.actionableBadgeText, systemImage: presentation.status.badge == .reviewed ? "checkmark.circle" : "arrow.clockwise")
-                        .font(.caption)
-                        .foregroundColor(presentation.status.badge == .reviewed ? .green : .orange)
-                }
-
-                Label("\(presentation.status.approvals) approvals", systemImage: "hand.thumbsup")
-                    .font(.caption)
-                Label("\(presentation.status.changesRequested) changes", systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundColor(presentation.status.changesRequested > 0 ? .orange : .secondary)
-            }
-
-            HStack {
-                Button("Open") {
-                    NSWorkspace.shared.open(presentation.pullRequest.url)
-                }
-                .buttonStyle(.borderedProminent)
-
-                Button("TODO") {
-                    actionHandler(.markTodo)
-                }
-
-                Button("N/A") {
-                    actionHandler(.markNotApplicable)
-                }
-
-                Menu("Snooze") {
-                    Button("Tomorrow morning") {
-                        actionHandler(.snoozeTomorrow)
+                HStack(spacing: 6) {
+                    readinessBadge
+                    if !presentation.actionableBadgeText.isEmpty {
+                        Label(
+                            presentation.actionableBadgeText,
+                            systemImage: presentation.status.badge == .reviewed ? "checkmark.circle" : "arrow.clockwise"
+                        )
+                        .font(.caption).foregroundStyle(presentation.status.badge == .reviewed ? .green : .orange)
                     }
-                    Button("1 hour") {
-                        let date = Date().addingTimeInterval(3600)
-                        actionHandler(.snooze(date))
+                    if presentation.pullRequest.override.state == .todo {
+                        Text("To do").foregroundStyle(Color.accentColor)
                     }
-                    Button("Clear") {
-                        actionHandler(.clearOverride)
+                    if presentation.pullRequest.override.state == .notApplicable {
+                        Text("Not relevant").foregroundStyle(.secondary)
                     }
                 }
-                Spacer()
-                if presentation.pullRequest.override.isSnoozed {
-                    Text("Snoozed until \(presentation.pullRequest.override.snoozedUntil!, formatter: dateFormatter)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                .font(.system(size: 11))
+                if let date = presentation.pullRequest.override.snoozedUntil,
+                    presentation.pullRequest.override.isSnoozed
+                {
+                    Text("Snoozed until \(date, formatter: dateFormatter)").font(.system(size: 11)).foregroundStyle(
+                        .secondary)
                 }
             }
-            .font(.caption)
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(NSColor.windowBackgroundColor))
-                .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
-        )
+        .padding(.vertical, 9)
+        .padding(.horizontal, 2)
         .contextMenu {
-            Button("Mark TODO") { actionHandler(.markTodo) }
-            Button("Mark N/A") { actionHandler(.markNotApplicable) }
+            Button("Mark to do") { actionHandler(.markTodo) }
+            Button("Mark not relevant") { actionHandler(.markNotApplicable) }
             Button("Clear override") { actionHandler(.clearOverride) }
             Divider()
             Button("Snooze 1 hour") { actionHandler(.snooze(Date().addingTimeInterval(3600))) }
             Button("Snooze tomorrow") { actionHandler(.snoozeTomorrow) }
         }
+    }
+
+    private var rowActions: some View {
+        HStack(spacing: 2) {
+            Menu {
+                Button("Tomorrow morning") { actionHandler(.snoozeTomorrow) }
+                Button("1 hour") { actionHandler(.snooze(Date().addingTimeInterval(3600))) }
+                Button("Clear") { actionHandler(.clearOverride) }
+            } label: {
+                Image(systemName: "clock").frame(width: 24, height: 24).contentShape(Rectangle())
+            }
+            .accessibilityLabel("Snooze").help("Snooze this PR")
+            .accessibilityIdentifier("prpulse.snooze.\(presentation.id)")
+            Menu {
+                Button("Mark to do") { actionHandler(.markTodo) }
+                Button("Mark not relevant") { actionHandler(.markNotApplicable) }
+                Button("Clear override") { actionHandler(.clearOverride) }
+                if let toggleCIMute {
+                    Divider()
+                    Button(ciMuted ? "Unmute CI failure alerts" : "Mute CI failure alerts", action: toggleCIMute)
+                }
+            } label: {
+                Image(systemName: "ellipsis").frame(width: 24, height: 24).contentShape(Rectangle())
+            }
+            .accessibilityLabel("More PR actions").help("More PR actions")
+            .accessibilityIdentifier("prpulse.pr-more.\(presentation.id)")
+        }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().controlSize(.small)
     }
 
     private var metadataText: String {
@@ -122,25 +142,21 @@ struct PullRequestRowView: View {
     private var readinessBadge: some View {
         switch presentation.status.readiness {
         case .ready:
-            return Text("Ready to merge")
+            return Text("No known blockers")
                 .font(.caption)
-                .padding(6)
-                .background(Capsule().fill(Color.green.opacity(0.2)))
+                .foregroundStyle(.green)
         case .pending:
             return Text("Pending")
                 .font(.caption)
-                .padding(6)
-                .background(Capsule().fill(Color.orange.opacity(0.2)))
+                .foregroundStyle(.orange)
         case .blocked(let reason):
             return Text("Blocked: \(reason)")
                 .font(.caption)
-                .padding(6)
-                .background(Capsule().fill(Color.red.opacity(0.2)))
+                .foregroundStyle(.red)
         case .checking:
             return Text("Checking…")
                 .font(.caption)
-                .padding(6)
-                .background(Capsule().fill(Color.gray.opacity(0.2)))
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -155,7 +171,10 @@ struct PullRequestRowView: View {
         }
 
         let pathPart = ref.type == .issue ? "issues" : "pull"
-        return URL(string: "https://github.com/\(ref.repositoryNameWithOwner)/\(pathPart)/\(ref.number)")
+        guard var origin = URLComponents(url: presentation.pullRequest.url, resolvingAgainstBaseURL: false) else { return nil }
+        origin.path = "/\(ref.repositoryNameWithOwner)/\(pathPart)/\(ref.number)"
+        origin.query = nil; origin.fragment = nil
+        return origin.url
     }
 }
 

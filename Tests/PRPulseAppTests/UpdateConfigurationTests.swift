@@ -2,6 +2,15 @@ import XCTest
 @testable import PRPulseApp
 
 final class UpdateConfigurationTests: XCTestCase {
+    func testRequiresSignedFeedAsWellAsArchiveVerification() {
+        let info: [String: Any] = [
+            "PRPulseUpdatesEnabled": true, "SUFeedURL": "https://example.com/appcast.xml",
+            "SUPublicEDKey": Data(repeating: 1, count: 32).base64EncodedString(),
+            "SUVerifyUpdateBeforeExtraction": true
+        ]
+        XCTAssertNotNil(UpdateConfiguration.validationError(info: info))
+    }
+
     func testMissingTrustConfigurationDisablesUpdates() {
         XCTAssertNotNil(UpdateConfiguration.validationError(info: [:]))
     }
@@ -11,7 +20,7 @@ final class UpdateConfigurationTests: XCTestCase {
             XCTAssertNotNil(UpdateConfiguration.validationError(info: [
                 "PRPulseUpdatesEnabled": true, "SUFeedURL": feed,
                 "SUPublicEDKey": Data(repeating: 1, count: 32).base64EncodedString(),
-                "SUVerifyUpdateBeforeExtraction": true
+                "SUVerifyUpdateBeforeExtraction": true, "SURequireSignedFeed": true
             ]))
         }
     }
@@ -20,7 +29,7 @@ final class UpdateConfigurationTests: XCTestCase {
         var info: [String: Any] = [
             "PRPulseUpdatesEnabled": true, "SUFeedURL": "https://example.com/appcast.xml",
             "SUPublicEDKey": Data(repeating: 1, count: 32).base64EncodedString(),
-            "SUVerifyUpdateBeforeExtraction": true
+            "SUVerifyUpdateBeforeExtraction": true, "SURequireSignedFeed": true
         ]
         XCTAssertNil(UpdateConfiguration.validationError(info: info))
         info["SUPublicEDKey"] = "invalid"

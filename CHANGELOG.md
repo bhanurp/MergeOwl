@@ -1,6 +1,88 @@
 # Changelog
 
-All notable changes to PR Pulse are documented in this file.
+All notable changes to MergeOwl (formerly PR Pulse) are documented in this file.
+
+## [0.2.4] - 2026-11-18
+
+### Added
+
+- Connect GitHub Enterprise Server accounts using their HTTPS server address and a server-issued token, without selecting a GHES version. Scope account identity by server and user ID while retaining existing GitHub.com accounts. Route validation, PR/CI reads and account links to the selected host; block credential redirects to other origins.
+- Team PRs: choose a visible GitHub team and load open PRs authored by its members across accessible repositories. Persist the selection per account and paginate members/PRs with explicit coverage limits.
+
+### Changed
+
+- Preserve CI permission and partial-response warnings, explain missing revisions and conclusions, and offer a retry from the CI inspector. Keep actual completed conclusions visible without claiming incomplete checks passed.
+- Use the official MIT-licensed GitHub Primer Octicons pull-request vector in every PR row, including Team PRs. Cache the native template image and retain readable state labels.
+
+## [0.2.3] - 2026-11-03
+
+### Changed
+
+- Share overlapping in-flight CI discovery reads within each account client while keeping completed results uncached and failure revalidation live. Independent cancellation preserves other consumers.
+- Index previously loaded PRs once during page enrichment to reduce work on large lists. Synthetic overlapping reads fell from 12 to 3 requests; three 2,500-row refreshes fell from 3.339 to 0.170 seconds. These isolated measurements are not network or frame-rate guarantees.
+- Refine Tabbed and Compact with native system typography, tighter headers, flat PR rows and a solid system background. Tabbed remains the default and the existing saved preference is preserved.
+- Combine Compact's view picker, search and filters on one row. Keep Snooze and More as accessible icon controls, and expose the Actionable filter in the toolbar.
+- Reuse the visible PR list within each render and keep observation timestamps in the CI inspector/tooltips, without adding decorative animations or continuous row timers.
+
+## [0.2.2]
+
+### Added
+
+- CI check status and details in both layouts, with links to individual checks and explicit incomplete/stale coverage.
+- Opt-in failure alerts for accessible open My PRs, independent polling intervals and per-PR mute controls.
+- Shared request budgeting, fair failure verification, quiet hours and retryable notification delivery.
+
+### Changed
+
+- Rename the app to MergeOwl and use the approved transparent amber owl for the app and menu-bar icons.
+- Package future releases as MergeOwl.app while retaining existing account, Keychain and local-data identifiers, plus legacy generic download aliases.
+- Update onboarding and contributor documentation; existing PR Pulse releases and historical screenshots retain their original names.
+
+### Fixed
+
+- Load installed owl resources without relying on the developer's build directory; keep a visible fallback for missing artwork.
+- Refresh older CI snapshots when reopening the menu-bar popover, show observation age and display Checking CI while refreshing.
+- Exclude merged/closed PRs from default lists and linked PR references, including PRs merged between search and detail loading.
+
+## [0.2.1] - 2026-10-26
+
+### Added
+
+- Tabbed (B, default) and Compact (A) popover layouts with a shared, persisted app-wide preference.
+- More → Layout switching and native Appearance settings with layout previews.
+- Backward-compatible layout defaults for existing preferences; layout changes preserve account, view, search, filters and triage state.
+
+### Changed
+
+- Compact PR rows with clickable titles and secondary triage actions, grouped filters, and a quieter Activity/sync footer.
+- Settings and Quit move to More; both layouts share the same data, actions and keyboard shortcuts.
+
+## [0.2.0] - 2026-10-16
+
+### Added
+
+- Multiple GitHub.com account profiles with separate Keychain tokens and one active dashboard.
+- Account-specific repositories, local triage, activity and saved PR views; shared refresh/notification preferences.
+- Rule-based saved views with repository, state and text matching, editing, ordering and enable/disable controls.
+- Loaded-data actionable counts, deduplicated global badge and app-scoped keyboard shortcuts.
+- Safe, retryable legacy-data migration and isolated-account regression tests.
+
+### Fixed
+
+- Replaced competing Settings scenes with one retained native preferences window.
+- Reject retired account responses and stop cancelled refresh timers before they run another action.
+- Preserve in-memory triage state when an atomic write fails.
+- Restore standard text-editing menu actions in the AppKit application bootstrap.
+- Reuse an account-bound credential snapshot during a session instead of repeatedly reading Keychain for API requests.
+- Honor explicit refresh during pagination and preserve triage edits made while a page is loading.
+- Recompute loaded lists when delayed GitHub identity lookup completes.
+- Remove a deleted account's pending and delivered profile-scoped notifications without clearing other accounts' reminders.
+- Route the popover's Add account action to Account even when Settings retains another selected pane.
+- Remove the Advanced action that opened an ignored profile settings file.
+
+### Still deferred
+
+- Automatic updates, Developer ID signing and Apple notarization. Updates remain manual.
 
 ## [0.1.5] - 2026-10-13
 

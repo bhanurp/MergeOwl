@@ -1,13 +1,15 @@
-# Contributing to PR Pulse
+# Contributing to MergeOwl
 
-Thanks for helping improve PR Pulse.
+Thanks for helping improve MergeOwl.
 
 ## Local setup
 
 1. Install Xcode or a Swift toolchain compatible with Swift 6.2, then select Xcode with `xcode-select`.
 2. Clone the repository and change into it.
 3. Run `swift test`.
-4. Run `swift build -c release --product PRPulseApp`.
+4. Run `swift build -c release --product MergeOwl`.
+
+The executable product is MergeOwl. The internal `PRPulseApp` Swift target and existing storage, bundle and Keychain identifiers are intentionally retained for compatibility; a cosmetic rename must not reset users' profiles or credentials. Package resources include the approved transparent owl and a Finder ICNS built by `swift scripts/make_app_icon.swift` followed by `iconutil`.
 
 ## Pull requests
 

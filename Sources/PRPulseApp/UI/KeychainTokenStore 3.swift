@@ -9,14 +9,17 @@ import Foundation
 import Security
 
 public struct KeychainTokenStore {
-    private var service: String {
+    private let service: String
+    private let account: String
+
+    public init(service: String? = nil, account: String = "github-token") {
+        self.account = account
         #if E2E_TESTING
-        return ProcessInfo.processInfo.environment["PRPULSE_E2E_KEYCHAIN_SERVICE"]!
+        self.service = service ?? ProcessInfo.processInfo.environment["PRPULSE_E2E_KEYCHAIN_SERVICE"]!
         #else
-        return "com.yourcompany.PullRequestDashboard.token"
+        self.service = service ?? "com.yourcompany.PullRequestDashboard.token"
         #endif
     }
-    private let account = "github-token"
     
     private func baseQuery() -> [String: Any] {
         return [
@@ -54,16 +57,22 @@ public struct KeychainTokenStore {
     }
     
     public func getToken() -> String? {
+        try? readToken()
+    }
+
+    public func readToken() throws -> String? {
         var query = baseQuery()
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
         
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
-        guard status == errSecSuccess,
+        if status == errSecItemNotFound { return nil }
+        guard status == errSecSuccess else { throw KeychainError.unexpectedStatus(status) }
+        guard
               let data = item as? Data,
               let token = String(data: data, encoding: .utf8) else {
-            return nil
+            throw KeychainError.utf8EncodingFailed
         }
         return token
     }

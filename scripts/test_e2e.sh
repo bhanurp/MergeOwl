@@ -20,4 +20,5 @@ xcodebuild test \
   -project Tests/E2E/PRPulseE2E.xcodeproj -scheme PRPulseE2E \
   -destination 'platform=macOS' -derivedDataPath .build/e2e/DerivedData \
   -resultBundlePath "$PRPULSE_RESULTS" \
-  -parallel-testing-enabled NO "$@"
+  -parallel-testing-enabled NO \
+  "PRPULSE_E2E_HOSTED_CI=${GITHUB_ACTIONS:-false}" "$@"

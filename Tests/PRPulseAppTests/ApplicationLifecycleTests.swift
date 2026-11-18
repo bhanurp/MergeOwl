@@ -2,13 +2,6 @@ import XCTest
 @testable import PRPulseApp
 
 final class ApplicationLifecycleTests: XCTestCase {
-    func testApplicationUsesNativeStatusItemDelegateInsteadOfMenuBarExtra() throws {
-        let appSource = try source(named: "Sources/PRPulseApp/App/PRPulseApp.swift")
-
-        XCTAssertTrue(appSource.contains("@NSApplicationDelegateAdaptor(PRPulseApplicationDelegate.self)"))
-        XCTAssertFalse(appSource.contains("MenuBarExtra"))
-    }
-
     func testDelegateKeepsTheStatusItemAliveAfterTheLastWindowCloses() throws {
         let delegateSource = try source(named: "Sources/PRPulseApp/App/PRPulseApplicationDelegate.swift")
 

@@ -9,7 +9,9 @@ actor RefreshScheduler {
 
         task = Task {
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+                do { try await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000)) }
+                catch { return }
+                guard !Task.isCancelled else { return }
                 await action()
             }
         }

@@ -2,7 +2,8 @@ import SwiftUI
 
 struct SettingsShellView: View {
     @ObservedObject var viewModel: DashboardViewModel
-    @ObservedObject var updateService: AppUpdateService
+    @ObservedObject var accounts: AccountSessionCoordinator
+    @ObservedObject var updates: AppUpdateService
     @State private var selection = SettingsPane.defaultPane
 
     var body: some View {
@@ -22,24 +23,44 @@ struct SettingsShellView: View {
                 Group {
                     switch selectedPane {
                     case .account:
-                        AccountSettingsView(viewModel: viewModel)
+                        ProfilesAccountSettingsView(accounts: accounts, dashboard: viewModel)
+                    case .appearance:
+                        AppearanceSettingsView(viewModel: viewModel)
                     case .refresh:
                         RefreshSettingsView(viewModel: viewModel)
                     case .notifications:
                         NotificationSettingsView(viewModel: viewModel)
                     case .repositories:
-                        RepositoriesSettingsView(viewModel: viewModel)
+                        if accounts.activeProfileID == nil {
+                            ContentUnavailableView("Connect an account first", systemImage: "person.crop.circle", description: Text("Watched repositories belong to a GitHub account. Connect one in Account settings."))
+                        } else { RepositoriesSettingsView(viewModel: viewModel) }
+                    case .team:
+                        if accounts.activeProfileID == nil {
+                            ContentUnavailableView("Connect an account first", systemImage: "person.crop.circle", description: Text("Team selections belong to a GitHub account. Connect one in Account settings."))
+                        } else { TeamSettingsView(viewModel: viewModel) }
+                    case .savedViews:
+                        if accounts.activeProfileID == nil {
+                            ContentUnavailableView("Connect an account first", systemImage: "person.crop.circle", description: Text("Saved views belong to a GitHub account. Connect one in Account settings."))
+                        } else { SavedViewsSettingsView(viewModel: viewModel) }
                     case .updates:
-                        UpdatesSettingsView(service: updateService)
+                        UpdatesSettingsView(service: updates)
                     case .advanced:
                         AdvancedSettingsView(viewModel: viewModel)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .disabled(!viewModel.isReady && selectedPane != .account && selectedPane != .updates)
+                if selectedPane != .updates, let message = viewModel.errorMessage {
+                    Label(message, systemImage: "exclamationmark.triangle")
+                        .font(.callout).foregroundStyle(.orange).textSelection(.enabled).padding(12)
+                }
             }
         }
         .navigationSplitViewStyle(.balanced)
         .frame(minWidth: 760, minHeight: 520)
+        .onChange(of: accounts.addingAccountRequested) {
+            if accounts.addingAccountRequested { selection = .account }
+        }
     }
 
     private var selectedPane: SettingsPane {
@@ -74,14 +95,20 @@ struct SettingsShellView: View {
         switch pane {
         case .account:
             "Connect and manage your GitHub account."
+        case .appearance:
+            "Choose how your menu-bar popover is arranged."
         case .refresh:
-            "Choose when PRPulse checks for updates."
+            "Choose when MergeOwl refreshes pull requests."
         case .notifications:
             "Control alerts and digest delivery."
         case .repositories:
-            "Select the repositories PRPulse watches."
+            "Select the repositories MergeOwl watches."
+        case .team:
+            "Show open PRs authored by members of a GitHub team."
+        case .savedViews:
+            "Group this account’s loaded PRs with reusable rules."
         case .updates:
-            "Keep PR Pulse up to date, on your terms."
+            "Keep MergeOwl up to date, independently of your GitHub accounts."
         case .advanced:
             "Inspect status and access diagnostic tools."
         }
