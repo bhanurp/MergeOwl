@@ -26,6 +26,7 @@ final class DashboardViewModel: ObservableObject {
     @Published private(set) var availableTeams: [GitHubTeam] = []
     @Published private(set) var isLoadingTeams = false
     @Published private(set) var teamError: String?
+    @Published private(set) var teamDirectoryError: String?
     private var hasLoadedTeamDirectory = false
 
     func loadTeams(force: Bool = false) async {
@@ -42,10 +43,10 @@ final class DashboardViewModel: ObservableObject {
                current.name != selected.name {
                 settings.selectedTeam = current
             }
-            teamError = nil
+            teamDirectoryError = nil
         } catch {
             guard !retired else { return }
-            teamError = "Could not load teams: \(error.localizedDescription) Check organization membership read permission and SSO authorization."
+            teamDirectoryError = "Could not load teams: \(error.localizedDescription) Check organization membership read permission and SSO authorization."
         }
     }
 
@@ -181,6 +182,7 @@ final class DashboardViewModel: ObservableObject {
         availableTeams = []
         teamError = nil
         hasLoadedTeamDirectory = false
+        teamDirectoryError = nil
         selectedSavedViewID = nil
         errorMessage = nil
         digestSnapshot = DigestSnapshot(openedCount: 0, reviewedCount: 0, timeframeDescription: "N/A")
@@ -231,6 +233,12 @@ final class DashboardViewModel: ObservableObject {
         guard !retired else { return }
         if selectedSavedViewID != nil { await refreshAllLoaded() }
         else { await loadPage(for: selectedTab, reset: true) }
+    }
+
+    func retryCIForCurrentView() async {
+        guard !retired else { return }
+        if selectedSavedViewID != nil { await refreshAllLoaded(preserveLoadedPages: true) }
+        else { await loadPage(for: selectedTab, reset: true, preserveLoadedPages: true) }
     }
 
     func refreshForPopoverOpen(now: Date = Date()) async {
@@ -339,13 +347,14 @@ final class DashboardViewModel: ObservableObject {
         }
     }
 
-    func refreshAllLoaded() async {
+    func refreshAllLoaded(preserveLoadedPages: Bool = false) async {
         guard !retired, !isRefreshing else { return }
         isRefreshing = true
         defer { isRefreshing = false }
         for tab in PullRequestTab.allCases {
             guard !retired else { return }
-            await loadPage(for: tab, reset: true)
+            if preserveLoadedPages, (listStates[tab]?.loadedPageCount ?? 0) == 0 { continue }
+            await loadPage(for: tab, reset: true, preserveLoadedPages: preserveLoadedPages)
         }
         guard !retired else { return }
         await updateDigest()

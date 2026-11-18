@@ -14,8 +14,11 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundlePackageType</key><string>APPL</string>
 </dict></plist>
 PLIST
-cp "$ROOT_DIR/Sources/PRPulseApp/Resources/MergeOwl.png" "$APP/Contents/Resources/MergeOwl_PRPulseApp.bundle/"
-cp "$ROOT_DIR/Sources/PRPulseApp/Resources/Octicons/git-pull-request-16.svg" "$APP/Contents/Resources/MergeOwl_PRPulseApp.bundle/"
+# Copy the actual SwiftPM output layout, so packaging omissions cannot be
+# concealed by copying source fixtures into the paths under test.
+swift build --package-path "$ROOT_DIR"
+BUILD_PRODUCTS="$(swift build --package-path "$ROOT_DIR" --show-bin-path)"
+cp -R "$BUILD_PRODUCTS/MergeOwl_PRPulseApp.bundle/." "$APP/Contents/Resources/MergeOwl_PRPulseApp.bundle/"
 cat > "$TEST_DIR/ModuleTrap.swift" <<'SWIFT'
 import Foundation
 extension Bundle {

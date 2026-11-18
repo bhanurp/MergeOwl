@@ -22,7 +22,7 @@ struct ProfilesAccountSettingsView: View {
                         }
                         Spacer()
                         Button("Manage") { selectProfile(profile.id) }
-                            .accessibilityLabel("Manage \(profile.login)")
+                            .accessibilityLabel("Manage \(profile.displayName)")
                     }
                 }
                 Button("Add account") { selectProfile(nil) }

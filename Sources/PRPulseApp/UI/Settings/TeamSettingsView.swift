@@ -11,7 +11,8 @@ struct TeamPickerView: View {
             .accessibilityIdentifier("prpulse.team-picker")
             if viewModel.isLoadingTeams { ProgressView("Loading teams…").controlSize(.small) }
             if let error = viewModel.teamError { Text(error).font(.caption).foregroundStyle(.orange).textSelection(.enabled) }
-            if viewModel.availableTeams.isEmpty && !viewModel.isLoadingTeams && viewModel.teamError == nil {
+            if let error = viewModel.teamDirectoryError { Text(error).font(.caption).foregroundStyle(.orange).textSelection(.enabled) }
+            if viewModel.availableTeams.isEmpty && !viewModel.isLoadingTeams && viewModel.teamError == nil && viewModel.teamDirectoryError == nil {
                 Text("No visible teams returned. Check organization membership and token access, then reload teams.").font(.caption).foregroundStyle(.secondary)
             }
             if viewModel.settings.selectedTeam == nil {

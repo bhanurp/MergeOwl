@@ -209,7 +209,7 @@ struct ContentView: View {
                                         !viewModel.ciMonitor.isMuted(presentation.id), for: presentation.id)
                                 } catch { viewModel.errorMessage = "Could not save CI mute. Please try again." }
                             } : nil,
-                        retryCI: { Task { await viewModel.refreshActiveTab() } }
+                        retryCI: { Task { await viewModel.retryCIForCurrentView() } }
                     )
                     Divider().padding(.leading, 26)
                 }

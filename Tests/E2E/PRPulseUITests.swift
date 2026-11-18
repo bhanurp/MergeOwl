@@ -719,6 +719,7 @@ final class PRPulseUITests: XCTestCase {
         launch(token: "invalid")
         XCTAssertTrue(app.buttons["Connection issue"].waitForExistence(timeout: 10))
         settings()
+        enter("invalid", in: app.windows["MergeOwl Settings"].descendants(matching: .any)["prpulse.token-input"].firstMatch)
         app.windows["MergeOwl Settings"].buttons["Test connection"].firstMatch.click()
         XCTAssertTrue(app.staticTexts["GitHub could not verify this token (HTTP 401). Check expiration and permissions."].waitForExistence(timeout: 10))
     }

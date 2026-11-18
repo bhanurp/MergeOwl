@@ -33,7 +33,7 @@ For a PR you authored, open **More PR actions (…) → Mute CI failure alerts**
 
 ## Availability and limits
 
-From v0.2.4, the inspector preserves server permission/partial-response warnings, explains missing revision or conclusion data, and shows a check's actual completed conclusion. **Retry CI** refreshes the active list (or contributing lists for a saved view) using the existing request budgets. Network/VPN, permissions, a changing revision and deferred request budgets remain distinct causes; retry does not bypass them. A live affected PR is needed to diagnose a specific incident.
+From v0.2.4, the inspector preserves server permission/partial-response warnings, explains missing revision or conclusion data, and shows a check's actual completed conclusion. **Retry CI** refreshes the active list (or contributing lists for a saved view), preserving previously loaded pages and using the existing request budgets. The normal manual Refresh control still resets to the first page. Network/VPN, permissions, a changing revision and deferred request budgets remain distinct causes; retry does not bypass them. A live affected PR is needed to diagnose a specific incident.
 
 - The app must be running and the Mac awake. Closing the popover is fine; quitting the app stops monitoring. Polling is not immediate push delivery, and sleep/network delays can extend the interval.
 - Token permissions, organization SSO, GitHub search limits and rate limits can limit coverage. A valid account connection does not guarantee access to checks. The monitor reports incomplete coverage and backs off after rate-limit responses. GitHub search returns at most 1,000 results; the app does not claim exhaustive coverage beyond that limit.
