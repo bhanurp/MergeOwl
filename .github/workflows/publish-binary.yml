@@ -77,6 +77,7 @@ jobs:
 
           find "$BIN_PATH" -maxdepth 1 -type d -name '*.bundle' -exec cp -R {} "$APP_RESOURCES" \;
           cp Sources/PRPulseApp/Resources/MergeOwl.icns "$APP_RESOURCES/MergeOwl.icns"
+          bash scripts/package_sparkle.sh "$APP_BUNDLE" "$BIN_ARM64/Sparkle.framework"
 
           cat > "${APP_CONTENTS}/Info.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
@@ -137,7 +138,8 @@ jobs:
         with:
           name: MergeOwl ${{ github.ref_name }}
           prerelease: false
-          make_latest: true
+          # Once activated, publish-appcast promotes only after feed upload.
+          make_latest: ${{ vars.UPDATER_PUBLICATION_APPROVED != 'true' }}
           overwrite_files: true
           files: |
             dist/MergeOwl.dmg

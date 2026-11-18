@@ -24,6 +24,9 @@ if [[ "$*" == "build -c release" ]]; then
   printf 'fresh binary\n' > "$TEST_RELEASE_BIN/MergeOwl"
   chmod +x "$TEST_RELEASE_BIN/MergeOwl"
   mkdir -p "$TEST_RELEASE_BIN/MergeOwl_PRPulseApp.bundle"
+  mkdir -p "$TEST_RELEASE_BIN/Sparkle.framework"
+  printf 'framework fixture\n' > "$TEST_RELEASE_BIN/Sparkle.framework/Sparkle"
+  chmod +x "$TEST_RELEASE_BIN/Sparkle.framework/Sparkle"
   printf 'owl asset\n' > "$TEST_RELEASE_BIN/MergeOwl_PRPulseApp.bundle/MergeOwl.png"
   exit 0
 fi
@@ -82,5 +85,15 @@ fi
 
 if [[ "$(<"$INSTALL_ROOT/Contents/Resources/MergeOwl_PRPulseApp.bundle/MergeOwl.png")" != "owl asset" ]]; then
   echo "expected installed app to include SwiftPM resource bundles" >&2
+  exit 1
+fi
+
+if [[ ! -x "$INSTALL_ROOT/Contents/Frameworks/Sparkle.framework/Sparkle" ]]; then
+  echo "expected installer to embed the updater framework" >&2
+  exit 1
+fi
+
+if ! cmp -s "$PROJECT_DIR/ThirdPartyNotices/Sparkle-LICENSE" "$INSTALL_ROOT/Contents/Resources/ThirdPartyNotices/Sparkle-LICENSE"; then
+  echo "expected installer to retain Sparkle license notices" >&2
   exit 1
 fi

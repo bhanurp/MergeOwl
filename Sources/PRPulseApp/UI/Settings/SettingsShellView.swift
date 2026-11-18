@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsShellView: View {
     @ObservedObject var viewModel: DashboardViewModel
     @ObservedObject var accounts: AccountSessionCoordinator
+    @ObservedObject var updates: AppUpdateService
     @State private var selection = SettingsPane.defaultPane
 
     var body: some View {
@@ -41,13 +42,15 @@ struct SettingsShellView: View {
                         if accounts.activeProfileID == nil {
                             ContentUnavailableView("Connect an account first", systemImage: "person.crop.circle", description: Text("Saved views belong to a GitHub account. Connect one in Account settings."))
                         } else { SavedViewsSettingsView(viewModel: viewModel) }
+                    case .updates:
+                        UpdatesSettingsView(service: updates)
                     case .advanced:
                         AdvancedSettingsView(viewModel: viewModel)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .disabled(!viewModel.isReady && selectedPane != .account)
-                if let message = viewModel.errorMessage {
+                .disabled(!viewModel.isReady && selectedPane != .account && selectedPane != .updates)
+                if selectedPane != .updates, let message = viewModel.errorMessage {
                     Label(message, systemImage: "exclamationmark.triangle")
                         .font(.callout).foregroundStyle(.orange).textSelection(.enabled).padding(12)
                 }
@@ -95,7 +98,7 @@ struct SettingsShellView: View {
         case .appearance:
             "Choose how your menu-bar popover is arranged."
         case .refresh:
-            "Choose when MergeOwl checks for updates."
+            "Choose when MergeOwl refreshes pull requests."
         case .notifications:
             "Control alerts and digest delivery."
         case .repositories:
@@ -104,6 +107,8 @@ struct SettingsShellView: View {
             "Show open PRs authored by members of a GitHub team."
         case .savedViews:
             "Group this account’s loaded PRs with reusable rules."
+        case .updates:
+            "Keep MergeOwl up to date, independently of your GitHub accounts."
         case .advanced:
             "Inspect status and access diagnostic tools."
         }

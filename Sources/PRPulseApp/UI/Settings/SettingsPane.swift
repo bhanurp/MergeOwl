@@ -6,6 +6,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     case repositories = "Repositories"
     case team = "Team"
     case savedViews = "Saved Views"
+    case updates = "Updates"
     case advanced = "Advanced"
 
     static let defaultPane: Self = .account
@@ -28,6 +29,8 @@ enum SettingsPane: String, CaseIterable, Identifiable {
             "person.3"
         case .savedViews:
             "line.3.horizontal.decrease.circle"
+        case .updates:
+            "arrow.down.circle"
         case .advanced:
             "slider.horizontal.3"
         }

@@ -3,6 +3,7 @@ import SwiftUI
 struct PopoverMoreMenu: View {
     @ObservedObject var viewModel: DashboardViewModel
     var actions: DashboardHostActions
+    var updates: AppUpdateService? = nil
 
     var body: some View {
         Menu {
@@ -27,6 +28,7 @@ struct PopoverMoreMenu: View {
             }
             .accessibilityIdentifier("prpulse.settings")
             .keyboardShortcut(",")
+            if let updates { CheckForUpdatesMenuButton(service: updates) }
             Button("Quit MergeOwl", action: actions.quit)
                 .accessibilityIdentifier("prpulse.quit")
                 .keyboardShortcut("q")
@@ -186,5 +188,16 @@ struct AppearanceSettingsView: View {
             .background(
                 selected ? Color.accentColor.opacity(0.2) : Color.secondary.opacity(0.1),
                 in: RoundedRectangle(cornerRadius: 4))
+    }
+}
+
+private struct CheckForUpdatesMenuButton: View {
+    @ObservedObject var service: AppUpdateService
+    var body: some View {
+        Button("Check for Updates…") {
+            DispatchQueue.main.async { service.checkForUpdates() }
+        }
+        .disabled(!service.canCheckForUpdates)
+        .accessibilityIdentifier("prpulse.menu-check-updates")
     }
 }

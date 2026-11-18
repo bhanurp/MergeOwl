@@ -3,12 +3,12 @@ import SwiftUI
 import Combine
 
 @MainActor
-final class PRPulseApplicationDelegate: NSObject, NSApplicationDelegate {
+final class PRPulseApplicationDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     let dependencies = AppDependencies()
     private let statusItemController = PRPulseStatusItemController()
     private var sessionObserver: AnyCancellable?
     private lazy var settingsOwner = NativeWindowOwner { [unowned self] in
-        let window = makeWindow(title: "MergeOwl Settings", content: AccountSettingsHost(accounts: dependencies.accounts).frame(minWidth: 760, minHeight: 520))
+        let window = makeWindow(title: "MergeOwl Settings", content: AccountSettingsHost(accounts: dependencies.accounts, updates: dependencies.updates).frame(minWidth: 760, minHeight: 520))
         window.contentMinSize = NSSize(width: 760, height: 520)
         window.setContentSize(NSSize(width: 900, height: 600))
         window.center()
@@ -22,6 +22,7 @@ final class PRPulseApplicationDelegate: NSObject, NSApplicationDelegate {
             NSApplication.shared.appearance = NSAppearance(named: .aqua)
         }
         #endif
+        dependencies.updates.start()
         installApplicationMenu()
         sessionObserver = dependencies.accounts.$dashboard.sink { [weak self] dashboard in
             guard let self else { return }
@@ -31,7 +32,7 @@ final class PRPulseApplicationDelegate: NSObject, NSApplicationDelegate {
                     showSettings: { [weak self] in self?.showSettings() },
                     showConnectionErrors: { [weak self] in self?.showConnectionErrors() },
                     quit: { NSApplication.shared.terminate(nil) }
-                ), accounts: dependencies.accounts
+                ), accounts: dependencies.accounts, updates: dependencies.updates
             )
         }
     }
@@ -53,6 +54,12 @@ final class PRPulseApplicationDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
+    @objc private func checkForUpdates() { dependencies.updates.checkForUpdates() }
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        menuItem.action != #selector(checkForUpdates) || dependencies.updates.canCheckForUpdates
+    }
+
     private func installApplicationMenu() {
         let menu = NSMenu()
         let applicationItem = NSMenuItem()
@@ -60,6 +67,9 @@ final class PRPulseApplicationDelegate: NSObject, NSApplicationDelegate {
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(showSettings), keyEquivalent: ",")
         settingsItem.target = self
         applicationMenu.addItem(settingsItem)
+        let updatesItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
+        updatesItem.target = self
+        applicationMenu.addItem(updatesItem)
         applicationMenu.addItem(.separator())
         applicationMenu.addItem(withTitle: "Quit MergeOwl", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         applicationItem.submenu = applicationMenu

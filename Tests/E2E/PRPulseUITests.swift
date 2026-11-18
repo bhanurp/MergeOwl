@@ -631,6 +631,17 @@ final class PRPulseUITests: XCTestCase {
         XCTAssertFalse(prTitle("Review API change").exists)
     }
 
+    func testUpdatesPaneCannotInstallWithoutTrustConfiguration() {
+        launch()
+        settings()
+        pane("Updates")
+        let window = app.windows["MergeOwl Settings"]
+        XCTAssertTrue(window.staticTexts["Updates are disabled in this development or test build."].exists)
+        XCTAssertFalse(window.buttons["prpulse.check-updates"].isEnabled)
+        XCTAssertFalse(window.buttons["prpulse.install-update"].exists)
+        XCTAssertTrue(window.links["View releases on GitHub"].exists)
+    }
+
     func testMenuBarPopoverBadgeSettingsAndQuit() {
         launch()
         XCTAssertTrue(app.descendants(matching: .any)["Connected as @octocat"].firstMatch.waitForExistence(timeout: 10))

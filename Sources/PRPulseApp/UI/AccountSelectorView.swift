@@ -32,8 +32,9 @@ struct AccountSelectorView: View {
 
 struct AccountSettingsHost: View {
     @ObservedObject var accounts: AccountSessionCoordinator
+    @ObservedObject var updates: AppUpdateService
     var body: some View {
-        SettingsShellView(viewModel: accounts.dashboard, accounts: accounts)
+        SettingsShellView(viewModel: accounts.dashboard, accounts: accounts, updates: updates)
             .id(accounts.activeProfileID)
     }
 }

@@ -2,11 +2,21 @@ import Foundation
 
 @MainActor
 final class AppDependencies: ObservableObject {
+    let updates: AppUpdateService
     let accounts: AccountSessionCoordinator
     var dashboard: DashboardViewModel { accounts.dashboard }
 
-    init(useMockClient: Bool = false) {
+    init(useMockClient: Bool = false, updateDriver: (any UpdateDriver)? = nil) {
         let useMockClient = useMockClient || Self.shouldUseMockClient
+        if let updateDriver {
+            updates = AppUpdateService(driver: updateDriver)
+        } else {
+            #if canImport(Sparkle) && !E2E_TESTING
+            updates = AppUpdateService(driver: useMockClient ? DisabledUpdateDriver() : SparkleUpdateDriver())
+            #else
+            updates = AppUpdateService(driver: DisabledUpdateDriver())
+            #endif
+        }
         #if E2E_TESTING
         let environment = ProcessInfo.processInfo.environment
         if let token = environment["PRPULSE_E2E_INITIAL_TOKEN"] {

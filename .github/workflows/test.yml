@@ -31,3 +31,5 @@ jobs:
           bash Tests/InstallerTests/test_install_latest_release.sh
           bash Tests/InstallerTests/test_install_prpulse.sh
           bash Tests/InstallerTests/test_installed_owl_resources.sh
+          python3 -m unittest discover -s Tests/InstallerTests -p 'test_package_sparkle.py'
+          python3 -m unittest discover -s Tests/UpdaterTests

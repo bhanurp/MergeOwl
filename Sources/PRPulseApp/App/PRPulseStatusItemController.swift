@@ -53,12 +53,12 @@ final class PRPulseStatusItemController {
         self.popover = popover
     }
 
-    func install(with dashboard: DashboardViewModel, actions: DashboardHostActions, accounts: AccountSessionCoordinator? = nil) {
+    func install(with dashboard: DashboardViewModel, actions: DashboardHostActions, accounts: AccountSessionCoordinator? = nil, updates: AppUpdateService? = nil) {
         self.dashboard = dashboard
         if button == nil {
             button = statusBar.makeButton { [weak self] in self?.togglePopover() }
         }
-        let hosting = NSHostingController(rootView: ContentView(viewModel: dashboard, hostActions: actions, accounts: accounts))
+        let hosting = NSHostingController(rootView: ContentView(viewModel: dashboard, hostActions: actions, accounts: accounts, updates: updates))
         // AppKit owns these fixed bounds. Lazy rows must not feed their changing
         // intrinsic size back into the popover during scrolling/layout.
         hosting.sizingOptions = []

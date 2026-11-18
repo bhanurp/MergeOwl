@@ -24,7 +24,7 @@ Publish artifacts successfully before publishing a feed item that points to them
 
 ## Controls and states
 
-Add an Updates Settings pane with current version, Check for Updates, Automatically download updates (enabled by default in production), last-check time, and progress/status. Explain that turning this off disables scheduled checks/downloads but manual checks remain available. If a verified update is already staged, disabling automatic updates must not silently install it at quit; retain an explicit manual install option instead.
+Add an Updates Settings pane with current version, Check for Updates, Automatically download updates (enabled by default in production), last-check time, and progress/status. Explain that turning this off disables future scheduled checks/downloads but manual checks remain available. User-approved amendment (2026-10-15): a verified update already staged by Sparkle still installs on quit; the preference description must state this explicitly.
 
 States: disabled/unconfigured, idle, checking, downloading, ready for next restart, up to date, and failed. Surface invalid signatures, read-only/translocated app location, network errors, and installation permission problems with actionable text. A background failure must leave the running app usable and must not present repeated modal alerts. Manual checks may use Sparkle's standard UI. When ready, offer an explicit Install and Relaunch action but never invoke it without the user's choice.
 
@@ -36,7 +36,7 @@ Updater preferences are app-wide and do not switch with GitHub accounts. Preserv
 
 ## Rollout
 
-v0.1.4 contains no updater or embedded signing key and cannot bootstrap itself. Ship one manually installed updater-enabled release first. Only announce automatic updates after an older updater-enabled build successfully discovers, verifies, stages, and installs a newer build. Keep manual DMG downloads available.
+The currently released v0.2.4 contains no updater or embedded signing key and cannot bootstrap itself. Ship one manually installed updater-enabled release first. Only announce automatic updates after an older updater-enabled build successfully discovers, verifies, stages, and installs a newer build. Keep manual DMG downloads available.
 
 Do not enable production auto-install until the signing key, protected release signing, feed hosting, bundle packaging, and upgrade validation are ready. Test feeds and throwaway apps use separate test keys, bundle identities, installation directories, Keychain services, and data roots. Never run upgrade tests against /Applications/PRPulseApp.app or user credentials.
 

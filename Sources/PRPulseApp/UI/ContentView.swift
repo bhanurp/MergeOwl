@@ -6,6 +6,7 @@ struct ContentView: View {
     @ObservedObject var viewModel: DashboardViewModel
     var hostActions: DashboardHostActions = .noop
     var accounts: AccountSessionCoordinator? = nil
+    var updates: AppUpdateService? = nil
     @State private var showDigest = false
     @FocusState private var searchFocused: Bool
 
@@ -118,7 +119,7 @@ struct ContentView: View {
                 .help("Refresh now").accessibilityLabel("Refresh")
                 .accessibilityIdentifier("prpulse.refresh").keyboardShortcut("r")
                 .disabled(viewModel.isRefreshing)
-                PopoverMoreMenu(viewModel: viewModel, actions: hostActions)
+                PopoverMoreMenu(viewModel: viewModel, actions: hostActions, updates: updates)
             }
             if viewModel.selectedTab == .team && viewModel.selectedSavedViewID == nil {
                 TeamPickerView(viewModel: viewModel)
