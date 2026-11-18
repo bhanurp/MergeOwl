@@ -541,17 +541,24 @@ final class PRPulseUITests: XCTestCase {
         openDashboard()
         app.descendants(matching: .any)["prpulse.account-selector"].firstMatch.click()
         app.menuItems["octocat · enterprise.example.test"].click()
+        assertAccountSelectorContains("enterprise.example.test")
         XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
         for layout in ["Tabbed", "Compact"] {
             chooseLayout(layout)
             XCTAssertTrue(prTitle("Review API change").exists)
-            XCTAssertTrue(app.descendants(matching: .any)["prpulse.account-selector"].firstMatch.label.contains("enterprise.example.test"))
+            assertAccountSelectorContains("enterprise.example.test")
         }
         app.terminate()
         app.launchEnvironment.removeValue(forKey: "PRPULSE_E2E_INITIAL_TOKEN")
         app.launch()
         openDashboard()
-        XCTAssertTrue(app.descendants(matching: .any)["prpulse.account-selector"].firstMatch.label.contains("enterprise.example.test"))
+        assertAccountSelectorContains("enterprise.example.test")
+    }
+
+    private func assertAccountSelectorContains(_ value: String) {
+        let selector = app.descendants(matching: .any)["prpulse.account-selector"].firstMatch
+        let selected = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", value), object: selector)
+        XCTAssertEqual(XCTWaiter.wait(for: [selected], timeout: 10), .completed, app.debugDescription)
     }
 
     func testMultipleAccountsSwitchAndRestoreSelection() {

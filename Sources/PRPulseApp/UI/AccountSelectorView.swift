@@ -22,6 +22,7 @@ struct AccountSelectorView: View {
                     .lineLimit(1)
             }
             .accessibilityIdentifier("prpulse.account-selector")
+            .accessibilityLabel(accounts.profiles.first(where: { $0.id == accounts.activeProfileID })?.displayName ?? "Connect GitHub")
             .help(accounts.profiles.first(where: { $0.id == accounts.activeProfileID })?.displayName ?? "Connect a GitHub account")
             .disabled(accounts.isWorking)
             Spacer()
