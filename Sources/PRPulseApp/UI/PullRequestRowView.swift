@@ -9,12 +9,12 @@ struct PullRequestRowView: View {
     var ciRefreshing = false
     var ciMuted = false
     var toggleCIMute: (() -> Void)?
+    var retryCI: (() -> Void)? = nil
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "arrow.triangle.pull")
-                .font(.system(size: 14)).foregroundStyle(.secondary)
-                .frame(width: 18).padding(.top, 2).accessibilityHidden(true)
+            GitHubPullRequestIcon()
+                .frame(width: 18).padding(.top, 2)
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .top, spacing: 4) {
                     Button {
@@ -35,7 +35,7 @@ struct PullRequestRowView: View {
                 HStack(spacing: 8) {
                     CIStatusView(
                         pullRequest: presentation.pullRequest, refreshInterval: ciRefreshInterval,
-                        isRefreshing: ciRefreshing, condensed: true)
+                        isRefreshing: ciRefreshing, condensed: true, retry: retryCI)
                     if presentation.status.changesRequested > 0 {
                         Label(
                             "\(presentation.status.changesRequested) changes requested",
@@ -171,7 +171,10 @@ struct PullRequestRowView: View {
         }
 
         let pathPart = ref.type == .issue ? "issues" : "pull"
-        return URL(string: "https://github.com/\(ref.repositoryNameWithOwner)/\(pathPart)/\(ref.number)")
+        guard var origin = URLComponents(url: presentation.pullRequest.url, resolvingAgainstBaseURL: false) else { return nil }
+        origin.path = "/\(ref.repositoryNameWithOwner)/\(pathPart)/\(ref.number)"
+        origin.query = nil; origin.fragment = nil
+        return origin.url
     }
 }
 

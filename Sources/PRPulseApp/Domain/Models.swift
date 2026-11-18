@@ -164,6 +164,7 @@ enum PullRequestTab: String, CaseIterable, Identifiable, Codable {
     case mine = "My PRs"
     case reviewRequested = "Review Requested"
     case watched = "Watched"
+    case team = "Team PRs"
 
     var id: String { rawValue }
 
@@ -173,7 +174,7 @@ enum PullRequestTab: String, CaseIterable, Identifiable, Codable {
             return "is:pr is:open author:@me"
         case .reviewRequested:
             return "is:pr is:open review-requested:@me"
-        case .watched:
+        case .watched, .team:
             return "is:pr is:open" // refined by repo list inside data layer
         }
     }
@@ -270,6 +271,7 @@ struct AppSettings: Codable, Equatable {
     var digestCadence: DigestCadence
     var watchedRepositories: [RepositorySubscription]
     var popoverLayout: PopoverLayout = .tabbed
+    var selectedTeam: GitHubTeam? = nil
     var ciFailureAlerts: Bool = false
     var ciRefreshInterval: TimeInterval = 300
 
@@ -292,10 +294,11 @@ extension AppSettings {
     private enum CodingKeys: String, CodingKey {
         case token, refreshInterval, refreshOnLaunch, notifyNeedsReview, notifyNewReviewRequests
         case quietHours, snoozeDefaultHour, digestCadence, watchedRepositories, popoverLayout
-        case ciFailureAlerts, ciRefreshInterval
+        case ciFailureAlerts, ciRefreshInterval, selectedTeam
     }
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
+        selectedTeam = try values.decodeIfPresent(GitHubTeam.self, forKey: .selectedTeam)
         token = try values.decode(String.self, forKey: .token)
         refreshInterval = try values.decode(TimeInterval.self, forKey: .refreshInterval)
         refreshOnLaunch = try values.decode(Bool.self, forKey: .refreshOnLaunch)

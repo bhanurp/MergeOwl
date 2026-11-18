@@ -32,7 +32,7 @@ final class DashboardAccountConnectionHandoffTests: XCTestCase {
         XCTAssertEqual(viewModel.connectionPresentation, .connected(viewerLogin: "octocat"))
         XCTAssertTrue(viewModel.connectionErrors.isEmpty)
         try await eventually {
-            await client.pullRequestRequestCount >= requestsBeforeHandoff + PullRequestTab.allCases.count
+            await client.pullRequestRequestCount >= requestsBeforeHandoff + PullRequestTab.allCases.filter { $0 != .team }.count
         }
     }
 

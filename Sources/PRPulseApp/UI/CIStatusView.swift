@@ -6,6 +6,7 @@ struct CIStatusView: View {
     let refreshInterval: TimeInterval
     var isRefreshing = false
     var condensed = false
+    var retry: (() -> Void)? = nil
     @State private var showingChecks = false
     private var ci: CIStatus { pullRequest.detail.ci ?? .unavailable }
 
@@ -60,7 +61,8 @@ struct CIStatusView: View {
                             HStack(alignment: .top) {
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(check.name).font(.body)
-                                    Text(check.state.label).font(.caption).foregroundStyle(.secondary)
+                                    Text(check.conclusion?.replacingOccurrences(of: "_", with: " ").localizedCapitalized ?? check.state.label)
+                                        .font(.caption).foregroundStyle(.secondary)
                                     if check.state == .running, let start = check.startedAt {
                                         Text(start, style: .timer).font(.caption).monospacedDigit()
                                     }
@@ -81,6 +83,11 @@ struct CIStatusView: View {
                     }
                 }.frame(maxHeight: 280)
                 Link("Open checks on GitHub", destination: pullRequest.url.appendingPathComponent("checks"))
+                if let retry {
+                    Button(isRefreshing ? "Checking CI…" : "Retry CI") { retry() }
+                        .disabled(isRefreshing)
+                        .accessibilityIdentifier("prpulse.ci-retry.\(pullRequest.id)")
+                }
                 Text("CI results alone do not verify every merge requirement.")
                     .font(.caption).foregroundStyle(.secondary)
             }

@@ -33,6 +33,10 @@ struct SettingsShellView: View {
                         if accounts.activeProfileID == nil {
                             ContentUnavailableView("Connect an account first", systemImage: "person.crop.circle", description: Text("Watched repositories belong to a GitHub account. Connect one in Account settings."))
                         } else { RepositoriesSettingsView(viewModel: viewModel) }
+                    case .team:
+                        if accounts.activeProfileID == nil {
+                            ContentUnavailableView("Connect an account first", systemImage: "person.crop.circle", description: Text("Team selections belong to a GitHub account. Connect one in Account settings."))
+                        } else { TeamSettingsView(viewModel: viewModel) }
                     case .savedViews:
                         if accounts.activeProfileID == nil {
                             ContentUnavailableView("Connect an account first", systemImage: "person.crop.circle", description: Text("Saved views belong to a GitHub account. Connect one in Account settings."))
@@ -96,6 +100,8 @@ struct SettingsShellView: View {
             "Control alerts and digest delivery."
         case .repositories:
             "Select the repositories MergeOwl watches."
+        case .team:
+            "Show open PRs authored by members of a GitHub team."
         case .savedViews:
             "Group this account’s loaded PRs with reusable rules."
         case .advanced:

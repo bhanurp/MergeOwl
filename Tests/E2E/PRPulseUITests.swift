@@ -66,6 +66,30 @@ final class PRPulseUITests: XCTestCase {
         app.buttons[name].click()
     }
 
+    func testTeamAuthoredPRsInBothLayoutsAndSelectionPersists() {
+        launch()
+        selectTab("Team PRs")
+        let picker = app.popUpButtons["prpulse.team-picker"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 10))
+        picker.click()
+        XCTAssertTrue(app.menuItems["example/platform — Platform"].waitForExistence(timeout: 10))
+        app.menuItems["example/platform — Platform"].click()
+        XCTAssertTrue(prTitle("Team authored change").waitForExistence(timeout: 10))
+        XCTAssertFalse(prTitle("Improve documentation").exists)
+        for layout in ["Compact", "Tabbed"] {
+            chooseLayout(layout)
+            XCTAssertTrue(prTitle("Team authored change").waitForExistence(timeout: 5))
+            XCTAssertTrue(app.buttons["prpulse.ci.PR_30"].exists)
+            attachPopover("Team PRs \(layout)")
+        }
+        app.terminate()
+        app.launch()
+        openDashboard()
+        selectTab("Team PRs")
+        XCTAssertTrue(prTitle("Team authored change").waitForExistence(timeout: 10))
+        XCTAssertTrue(app.popUpButtons["prpulse.team-picker"].value as? String == "example/platform — Platform")
+    }
+
     func testMergedPRReferencesAreHiddenInBothLayouts() {
         launch(token: "e2e-linked")
         app.typeKey("1", modifierFlags: .command)
@@ -168,6 +192,8 @@ final class PRPulseUITests: XCTestCase {
         ci.click()
         XCTAssertTrue(app.staticTexts["Unit tests"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.links["Open check"].exists)
+        XCTAssertTrue(app.staticTexts["Failure"].exists)
+        XCTAssertTrue(app.buttons["prpulse.ci-retry.PR_1"].exists)
         app.typeKey(.escape, modifierFlags: [])
         chooseLayout("Compact")
         XCTAssertTrue(app.buttons["prpulse.ci.PR_1"].label.contains("CI failed"))
@@ -499,6 +525,42 @@ final class PRPulseUITests: XCTestCase {
         XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
     }
 
+    func testEnterpriseAccountCoexistsWithSameCloudIdentityInBothLayouts() {
+        launch()
+        settings()
+        let window = app.windows["MergeOwl Settings"]
+        window.buttons["Add account"].click()
+        window.descendants(matching: .any)["prpulse.github-service"].firstMatch.click()
+        app.menuItems["GitHub Enterprise Server"].click()
+        enter("https://enterprise.example.test", in: window.textFields["prpulse.server-url"])
+        enter("e2e-valid", in: window.descendants(matching: .any)["prpulse.token-input"].firstMatch)
+        window.buttons["Connect GitHub"].click()
+        XCTAssertTrue(window.buttons["Manage octocat · enterprise.example.test"].waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(window.buttons["Manage octocat"].exists)
+        window.buttons[XCUIIdentifierCloseWindow].click()
+        openDashboard()
+        app.descendants(matching: .any)["prpulse.account-selector"].firstMatch.click()
+        app.menuItems["octocat · enterprise.example.test"].click()
+        assertAccountSelectorContains("enterprise.example.test")
+        XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
+        for layout in ["Tabbed", "Compact"] {
+            chooseLayout(layout)
+            XCTAssertTrue(prTitle("Review API change").exists)
+            assertAccountSelectorContains("enterprise.example.test")
+        }
+        app.terminate()
+        app.launchEnvironment.removeValue(forKey: "PRPULSE_E2E_INITIAL_TOKEN")
+        app.launch()
+        openDashboard()
+        assertAccountSelectorContains("enterprise.example.test")
+    }
+
+    private func assertAccountSelectorContains(_ value: String) {
+        let selector = app.descendants(matching: .any)["prpulse.account-selector"].firstMatch
+        let selected = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", value), object: selector)
+        XCTAssertEqual(XCTWaiter.wait(for: [selected], timeout: 10), .completed, app.debugDescription)
+    }
+
     func testMultipleAccountsSwitchAndRestoreSelection() {
         launch()
         XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
@@ -664,6 +726,7 @@ final class PRPulseUITests: XCTestCase {
         launch(token: "invalid")
         XCTAssertTrue(app.buttons["Connection issue"].waitForExistence(timeout: 10))
         settings()
+        enter("invalid", in: app.windows["MergeOwl Settings"].descendants(matching: .any)["prpulse.token-input"].firstMatch)
         app.windows["MergeOwl Settings"].buttons["Test connection"].firstMatch.click()
         XCTAssertTrue(app.staticTexts["GitHub could not verify this token (HTTP 401). Check expiration and permissions."].waitForExistence(timeout: 10))
     }

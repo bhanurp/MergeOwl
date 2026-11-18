@@ -4,6 +4,28 @@ import XCTest
 
 @MainActor
 final class CIStatusFreshnessTests: XCTestCase {
+    func testCIRetryPreservesLaterPagesForDefaultAndSavedViews() async throws {
+        for saved in [false, true] {
+            let (dashboard, client, directory) = try await makeDashboard()
+            client.hasNextPage = true
+            client.distinctPages = true
+            client.holdPagination = false
+            await dashboard.refreshActiveTab()
+            dashboard.loadMoreCurrentTab()
+            for _ in 0..<100 where client.reads < 2 || dashboard.isCurrentListRefreshing { try await Task.sleep(for: .milliseconds(5)) }
+            if saved {
+                let view = SavedPRView(name: "All loaded")
+                try await dashboard.saveView(view)
+                dashboard.selectSavedView(id: view.id)
+            }
+            await dashboard.retryCIForCurrentView()
+            XCTAssertTrue(dashboard.currentItems.contains { $0.id == "PR_2" }, "CI retry must include the later-page row that initiated it")
+            XCTAssertEqual(dashboard.listStates[.reviewRequested]?.loadedPageCount, 2)
+            XCTAssertEqual(client.reads, 4, "Retry only the already loaded pages and sources")
+            await dashboard.retire()
+            try? FileManager.default.removeItem(at: directory)
+        }
+    }
     func testLargePageRefreshRetainsAllRows() async throws {
         let (dashboard, client, directory) = try await makeDashboard()
         defer { try? FileManager.default.removeItem(at: directory) }

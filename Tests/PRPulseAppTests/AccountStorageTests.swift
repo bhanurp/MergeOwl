@@ -2,6 +2,43 @@ import XCTest
 @testable import PRPulseApp
 
 final class AccountStorageTests: XCTestCase {
+    func testSelectedTeamPersistsPerAccountWithSharedPreferences() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let global = GlobalPreferencesStore(directory: root)
+        let firstDirectory = root.appendingPathComponent("first")
+        let secondDirectory = root.appendingPathComponent("second")
+        let first = PullRequestStore(directory: firstDirectory, globalPreferences: global)
+        var settings = AppSettings.default
+        let team = GitHubTeam(organization: "example", slug: "platform", name: "Platform")
+        settings.selectedTeam = team
+        try await first.save(settings: settings)
+        let immediate = await first.loadSettings()
+        XCTAssertEqual(immediate.selectedTeam, team)
+        let restored = PullRequestStore(directory: firstDirectory, globalPreferences: global)
+        let restoredSettings = await restored.loadSettings()
+        XCTAssertEqual(restoredSettings.selectedTeam, team)
+        let second = PullRequestStore(directory: secondDirectory, globalPreferences: global)
+        let secondSettings = await second.loadSettings()
+        XCTAssertNil(secondSettings.selectedTeam)
+        var otherSettings = settings
+        otherSettings.selectedTeam = GitHubTeam(organization: "other", slug: "mobile", name: "Mobile")
+        try await second.save(settings: otherSettings)
+        settings.selectedTeam = nil
+        try await restored.save(settings: settings)
+        let cleared = await PullRequestStore(directory: firstDirectory, globalPreferences: global).loadSettings()
+        XCTAssertNil(cleared.selectedTeam)
+        let otherRestored = await PullRequestStore(directory: secondDirectory, globalPreferences: global).loadSettings()
+        XCTAssertEqual(otherRestored.selectedTeam, otherSettings.selectedTeam)
+        let shared = try await global.load()
+        XCTAssertNil(shared.selectedTeam)
+        let teamFile = firstDirectory.appendingPathComponent("team.json")
+        let corrupt = Data("unreadable-team".utf8)
+        try corrupt.write(to: teamFile)
+        let damaged = PullRequestStore(directory: firstDirectory, globalPreferences: global)
+        do { try await damaged.save(settings: settings); XCTFail("Preserve the corrupt original") }
+        catch { XCTAssertEqual(try Data(contentsOf: teamFile), corrupt) }
+    }
     func testSynchronousSessionInvalidationRejectsQueuedWrites() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

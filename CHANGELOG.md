@@ -2,6 +2,18 @@
 
 All notable changes to MergeOwl (formerly PR Pulse) are documented in this file.
 
+## [0.2.4] - 2026-11-18
+
+### Added
+
+- Connect GitHub Enterprise Server accounts using their HTTPS server address and a server-issued token, without selecting a GHES version. Scope account identity by server and user ID while retaining existing GitHub.com accounts. Route validation, PR/CI reads and account links to the selected host; block credential redirects to other origins.
+- Team PRs: choose a visible GitHub team and load open PRs authored by its members across accessible repositories. Persist the selection per account and paginate members/PRs with explicit coverage limits.
+
+### Changed
+
+- Preserve CI permission and partial-response warnings, explain missing revisions and conclusions, and offer a retry from the CI inspector. Keep actual completed conclusions visible without claiming incomplete checks passed.
+- Use the official MIT-licensed GitHub Primer Octicons pull-request vector in every PR row, including Team PRs. Cache the native template image and retain readable state labels.
+
 ## [0.2.3] - 2026-11-03
 
 ### Changed

@@ -12,8 +12,8 @@ actor AccountMigration {
     func run(identity: VerifiedGitHubIdentity, profileID: UUID, token verifiedToken: String? = nil) async throws -> AccountProfile {
         let registry = AccountRegistry(directory: directory)
         var snapshot = try await registry.load()
-        if let existing = snapshot.profiles.first(where: { $0.githubUserID == identity.id }) { return existing }
-        guard !snapshot.migrationComplete, snapshot.profiles.isEmpty else {
+        if let existing = snapshot.profiles.first(where: { $0.githubUserID == identity.id && $0.server.isDotCom }) { return existing }
+        guard !snapshot.migrationComplete else {
             throw CocoaError(.fileWriteUnknown)
         }
         guard let token = try verifiedToken ?? credentials.read(profileID: nil), !token.isEmpty else { throw GitHubClientError.missingToken }
@@ -45,7 +45,10 @@ actor AccountMigration {
         }
         try credentials.write(token, profileID: profileID)
         let profile = AccountProfile(id: profileID, githubUserID: identity.id, login: identity.login)
-        snapshot = AccountRegistrySnapshot(profiles: [profile], activeProfileID: profileID, migrationComplete: true)
+        snapshot.profiles.append(profile)
+        snapshot.activeProfileID = snapshot.activeProfileID ?? profileID
+        snapshot.migrationComplete = true
+        snapshot.migrationProfileID = nil
         try await registry.save(snapshot)
         return profile
     }

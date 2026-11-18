@@ -5,6 +5,7 @@ actor PullRequestStore {
     nonisolated let lifetime = AccountSessionLifetime()
     private let globalPreferences: GlobalPreferencesStore?
     private let repositoriesURL: URL
+    private let teamURL: URL
     private var retired = false
     private let corruptFiles: Set<String>
     func retire() { lifetime.invalidate(); retired = true }
@@ -28,6 +29,7 @@ actor PullRequestStore {
         self.directory = directory
         self.globalPreferences = globalPreferences
         self.repositoriesURL = directory.appendingPathComponent("repositories.json")
+        self.teamURL = directory.appendingPathComponent("team.json")
         self.overridesURL = directory.appendingPathComponent("overrides.json")
         self.ledgerURL = directory.appendingPathComponent("ledger.json")
         self.settingsURL = directory.appendingPathComponent("settings.json")
@@ -51,6 +53,9 @@ actor PullRequestStore {
         decoded.token = "" // never load token from disk
         if fm.fileExists(atPath: repositoriesURL.path) {
             decoded.watchedRepositories = read([RepositorySubscription].self, at: repositoriesURL, fallback: [])
+        }
+        if globalPreferences != nil, fm.fileExists(atPath: teamURL.path) {
+            decoded.selectedTeam = read(GitHubTeam?.self, at: teamURL, fallback: nil)
         }
         self.settings = decoded
         self.activityEvents = read([ActivityEvent].self, at: activityURL, fallback: [])
@@ -88,6 +93,7 @@ actor PullRequestStore {
     func loadSettings() async -> AppSettings {
         if let globalPreferences, var global = try? await globalPreferences.load() {
             global.watchedRepositories = settings.watchedRepositories
+            global.selectedTeam = settings.selectedTeam
             return global
         }
         return settings
@@ -97,10 +103,12 @@ actor PullRequestStore {
         guard !retired, lifetime.isActive else { throw CancellationError() }
         try checkWritable(globalPreferences == nil ? settingsURL : repositoriesURL)
         if let globalPreferences {
+            try checkWritable(teamURL)
             // Layout has its own atomic writer; older settings snapshots cannot undo it.
             try await globalPreferences.save(newSettings, lifetime: lifetime, preservingPopoverLayout: true)
             guard !retired, lifetime.isActive else { throw CancellationError() }
             try encoder.encode(newSettings.watchedRepositories).write(to: repositoriesURL, options: .atomic)
+            try encoder.encode(newSettings.selectedTeam).write(to: teamURL, options: .atomic)
             settings = newSettings
             return
         }

@@ -14,7 +14,11 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundlePackageType</key><string>APPL</string>
 </dict></plist>
 PLIST
-cp "$ROOT_DIR/Sources/PRPulseApp/Resources/MergeOwl.png" "$APP/Contents/Resources/MergeOwl_PRPulseApp.bundle/"
+# Copy the actual SwiftPM output layout, so packaging omissions cannot be
+# concealed by copying source fixtures into the paths under test.
+swift build --package-path "$ROOT_DIR"
+BUILD_PRODUCTS="$(swift build --package-path "$ROOT_DIR" --show-bin-path)"
+cp -R "$BUILD_PRODUCTS/MergeOwl_PRPulseApp.bundle/." "$APP/Contents/Resources/MergeOwl_PRPulseApp.bundle/"
 cat > "$TEST_DIR/ModuleTrap.swift" <<'SWIFT'
 import Foundation
 extension Bundle {
@@ -27,8 +31,12 @@ import AppKit
     @MainActor static func main() {
         if CommandLine.arguments.contains("--missing") {
             precondition(StatusItemIconRenderer.owlImage == nil)
+            precondition(GitHubPullRequestIconRenderer.image == nil)
         } else {
             precondition(StatusItemIconRenderer.owlImage != nil, "Installed owl must load")
+            precondition(GitHubPullRequestIconRenderer.image?.isTemplate == true, "Installed official PR vector must load")
+            precondition(GitHubPullRequestIconRenderer.image?.size == NSSize(width: 16, height: 16))
+            precondition(GitHubPullRequestIconRenderer.image?.tiffRepresentation != nil)
         }
         let rendered = StatusItemIconRenderer.makeImage(actionableCount: 2)
         precondition(rendered.size == NSSize(width: 24, height: 24))
@@ -38,6 +46,7 @@ import AppKit
 }
 SWIFT
 swiftc -parse-as-library "$ROOT_DIR/Sources/PRPulseApp/App/StatusItemIconPresentation.swift" \
+  "$ROOT_DIR/Sources/PRPulseApp/UI/GitHubPullRequestIcon.swift" \
   "$TEST_DIR/ModuleTrap.swift" "$TEST_DIR/Probe.swift" -o "$APP/Contents/MacOS/ResourceProbe"
 "$APP/Contents/MacOS/ResourceProbe"
 rm -rf "$APP/Contents/Resources/MergeOwl_PRPulseApp.bundle"

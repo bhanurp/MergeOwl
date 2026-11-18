@@ -23,6 +23,7 @@ struct CICheck: Codable, Equatable, Hashable, Identifiable, Sendable {
     var url: URL?
     var startedAt: Date?
     var attempt: String = ""
+    var conclusion: String? = nil
     var failureKey: String { "\(id):\(attempt)" }
 }
 
@@ -61,6 +62,11 @@ struct CIStatus: Codable, Equatable, Hashable, Sendable {
         }
     }
     static var unavailable: Self { .init(headSHA: "", revision: "", checks: [], isComplete: false) }
+    static func unavailable(reason: String) -> Self {
+        var result = unavailable
+        result.warning = reason
+        return result
+    }
     static func retainingPrevious(_ previous: Self?, incoming: Self) -> Self {
         guard !incoming.isComplete, incoming.headSHA.isEmpty, var previous, !previous.headSHA.isEmpty else { return incoming }
         previous.isStale = true

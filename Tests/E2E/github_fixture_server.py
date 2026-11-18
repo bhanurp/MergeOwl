@@ -48,9 +48,20 @@ class Handler(BaseHTTPRequestHandler):
         query, variables = request["query"], request.get("variables", {})
         if "query Viewer" in query:
             self.respond(dict(data=dict(viewer=dict(login="hubot" if token == "e2e-hubot" else "octocat"))))
+        elif "query TeamDirectory" in query:
+            self.respond(dict(data=dict(viewer=dict(organizations=dict(nodes=[dict(login="example")],
+                pageInfo=dict(hasNextPage=False, endCursor=None))))))
+        elif "query OrganizationTeams" in query:
+            self.respond(dict(data=dict(organization=dict(teams=dict(nodes=[dict(slug="platform", name="Platform")],
+                pageInfo=dict(hasNextPage=False, endCursor=None))))))
+        elif "query TeamMembers" in query:
+            self.respond(dict(data=dict(organization=dict(team=dict(members=dict(nodes=[dict(login="teammate")],
+                pageInfo=dict(hasNextPage=False, endCursor=None)))))))
         elif "query SearchPRs" in query:
             search = variables["query"]
-            if token == "e2e-scroll":
+            if "author:teammate" in search:
+                nodes = [pr("PR_30", "Team authored change", "teammate")]
+            elif token == "e2e-scroll":
                 offset = 100 if "review-requested" in search else 0
                 nodes = [pr(f"PR_{offset + index}",
                             f"Scrolling regression {index}: long pull request title wrapping across multiple lines in the fixed popover",
