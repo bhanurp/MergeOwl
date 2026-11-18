@@ -151,13 +151,19 @@ def prepare(args):
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='mergeowl-appcast-') as scratch:
         stage = Path(scratch)
-        shutil.copyfile(archive, stage / archive.name)
-        if args.previous_feed:
-            shutil.copyfile(args.previous_feed, stage / 'appcast.xml')
-        run_private([generator, '--ed-key-file', args.ed_key_file,
-                     '--download-url-prefix', asset['browser_download_url'].rsplit('/', 1)[0] + '/',
-                     '--link', f'{REPO}/releases/tag/{release["tag_name"]}',
-                     '--maximum-versions', '0', '--maximum-deltas', '0', '--versions', str(build), stage])
+        existing = getattr(args, 'verify_existing_feed', None)
+        if existing:
+            # Recovery after upload succeeded but latest promotion failed:
+            # authenticate the published bytes, never regenerate/replace them.
+            shutil.copyfile(existing, stage / 'appcast.xml')
+        else:
+            shutil.copyfile(archive, stage / archive.name)
+            if args.previous_feed:
+                shutil.copyfile(args.previous_feed, stage / 'appcast.xml')
+            run_private([generator, '--ed-key-file', args.ed_key_file,
+                         '--download-url-prefix', asset['browser_download_url'].rsplit('/', 1)[0] + '/',
+                         '--link', f'{REPO}/releases/tag/{release["tag_name"]}',
+                         '--maximum-versions', '0', '--maximum-deltas', '0', '--versions', str(build), stage])
         feed = stage / 'appcast.xml'
         run_private([signer, '--verify', '--ed-key-file', args.ed_key_file, feed])
         root = ET.parse(feed).getroot()
@@ -185,6 +191,7 @@ def main():
         parser.add_argument('--' + name, type=Path, required=True)
     parser.add_argument('--public-key', required=True)
     parser.add_argument('--previous-feed', type=Path)
+    parser.add_argument('--verify-existing-feed', type=Path, help='Verify immutable published feed for promotion-only recovery')
     args = parser.parse_args()
     try:
         prepare(args)

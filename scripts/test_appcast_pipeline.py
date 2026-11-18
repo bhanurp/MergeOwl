@@ -61,6 +61,19 @@ def main():
                 ed_key_file=seed, public_key=public, previous_feed=previous, output=work / 'prepared/appcast.xml')
             feed.prepare(options)
             previous = options.output
+        # Simulate a signed feed already uploaded before a failed promotion.
+        # Recovery must verify and preserve those exact immutable bytes.
+        import xml.etree.ElementTree as ET
+        tree = ET.parse(previous)
+        ET.SubElement(tree.find('./channel/item'), 'description').text = 'Published feed must remain byte-for-byte immutable'
+        tree.write(previous, encoding='utf-8', xml_declaration=True)
+        run(args.sparkle_bin / 'sign_update', '--ed-key-file', seed, previous)
+        options.verify_existing_feed = previous
+        options.output = stage / 'recovered.xml'
+        feed.prepare(options)
+        if options.output.read_bytes() != previous.read_bytes():
+            raise RuntimeError('Recovery regenerated the already published immutable feed')
+        options.verify_existing_feed = None
         # A rerun cannot replace an existing output. A duplicated historical
         # version/build also fails even with a new output filename.
         for output in [previous, stage / 'duplicate.xml']:
@@ -73,7 +86,7 @@ def main():
             else:
                 raise RuntimeError('Duplicate publication unexpectedly accepted')
         original = previous.read_bytes()
-        tampered = original.replace(b'>101</sparkle:version>', b'>999</sparkle:version>', 1)
+        tampered = original.replace(b'>101</', b'>999</', 1)
         if original == tampered: raise RuntimeError('Could not modify signed feed content')
         previous.write_bytes(tampered)
         options.output = stage / 'bad-history.xml'

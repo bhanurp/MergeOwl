@@ -93,7 +93,10 @@ approved stable tag, with that same release tag as input and the newest feed's
 release as `previous_tag`. It requires protected `SPARKLE_ED25519_SEED`, public
 `SPARKLE_PUBLIC_KEY` and `DEVELOPER_TEAM_ID` configuration. It checks Developer ID,
 notarization, both slices and embedded trust before signing/uploading the feed,
-then promotes the release. It does not create an Apple identity, notarize an
+then promotes the release. If feed upload succeeded but promotion failed, rerun
+with the same tags: the workflow downloads and verifies the existing feed and
+archive against the embedded public key/history, preserves the feed bytes, skips
+upload, and retries only promotion. It never replaces an existing appcast. It does not create an Apple identity, notarize an
 ad-hoc archive, or silently turn an unconfigured app into an enabled build.
 
 A protected signing environment must restrict deployment refs to approved stable

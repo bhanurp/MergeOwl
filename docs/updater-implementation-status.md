@@ -30,3 +30,11 @@ Existing GHES accounts, Team PRs, saved views, native layouts and the single
 Settings-window owner are retained from released v0.2.4. They are not pending
 updater features. See [maintainer setup](automatic-updates.md) and the
 [implementation plan](superpowers/plans/2026-11-18-complete-auto-updates.md).
+
+November 18 verification: 156 Debug and 156 Release unit tests passed, as did both
+release architecture builds, native test-target compilation, three framework
+packaging tests, five publication policy/path tests, installer fixtures and the
+real signing/history/recovery pipeline. Independent review findings about stale
+reminders and partial publication recovery were reproduced and fixed. Local
+product UI journeys, production Developer ID/Keychain acceptance and hosted CI
+for the refreshed branch are not represented by these results.

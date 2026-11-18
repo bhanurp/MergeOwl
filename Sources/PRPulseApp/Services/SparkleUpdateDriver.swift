@@ -109,6 +109,10 @@ final class SparkleUpdateDriver: NSObject, UpdateDriver, SPUUpdaterDelegate, @Ma
         publish(.available(version: update.displayVersionString))
     }
 
+    func standardUserDriverWillFinishUpdateSession() {
+        if case .available = state { publish(.idle) }
+    }
+
     func updater(_ updater: SPUUpdater, willDownloadUpdate item: SUAppcastItem, with request: NSMutableURLRequest) {
         publish(.downloading(progress: nil))
     }
@@ -135,7 +139,6 @@ final class SparkleUpdateDriver: NSObject, UpdateDriver, SPUUpdaterDelegate, @Ma
             // No-update is a terminal result, not an unfinished check. Sparkle
             // can report it before finishing the cycle without an error.
             if case .upToDate = state { return }
-            if case .available = state { return }
             if case .failed = state { return }
             publish(.idle)
         }

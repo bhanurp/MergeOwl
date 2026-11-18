@@ -51,7 +51,7 @@
 
 ## Task 5 — Review and activation handoff
 
-- [ ] Review the complete diff, run relevant verification and update PR11's scope/status accurately if publication is authorized. Keep production installation disabled until trust and upgrade gates are genuinely met.
+- [x] Review the complete diff, run relevant verification and update PR11's scope/status accurately if publication is authorized. Keep production installation disabled until trust and upgrade gates are genuinely met.
 - [ ] Present concrete signing/feed configuration and test evidence for the maintainer's activation decision. Explain any required key/credential approval using the exact existing spec instruction. Do not claim a live automatic updater while signing/hosting is unconfigured.
 
 ## November 18 evidence checkpoint
@@ -61,3 +61,5 @@
 - Three framework packaging tests, five publication policy/path tests, installer fixtures and actual signing-tool feed/history pipeline pass.
 - Disposable framework upgrade passes staged → natural quit → replacement → new launch, preserving test preferences. Tampered archive, wrong key, signed-content feed tampering, missing archive signature, equal/older versions, offline/interrupted downloads and unwritable passive deferral are checked separately. No production app, Keychain, private signing key, remote secrets/environment/feed or release was changed.
 - Production activation and full product UI/Developer ID/Keychain acceptance remain explicitly pending, not test passes inferred from fixtures.
+
+Review outcome: one independent read-only whole-branch review found two P2 issues. Both were verified and fixed with regressions: successful Skip/Later completion now clears passive availability; feed-upload/promotion partial failure can resume by authenticating the existing immutable feed and archive, skipping replacement and retrying promotion. Final156 Debug/Release units, both release builds and real signing/recovery fixtures pass after these fixes. Native UI visual acceptance and production trust/Keychain gates remain pending; guarded code is not an enabled updater release.

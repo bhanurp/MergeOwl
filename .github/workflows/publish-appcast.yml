@@ -56,18 +56,25 @@ jobs:
           releases = [r for page in releases for r in page]
           carrying_feed = [r['tag_name'] for r in releases if stable.fullmatch(r['tag_name']) and any(a['name'] == 'appcast.xml' for a in r['assets'])]
           key = lambda value: tuple(map(int, value[1:].split('.')))
-          expected_previous = max(carrying_feed, key=key) if carrying_feed else ''
+          prior_feeds = [value for value in carrying_feed if value != tag]
+          expected_previous = max(prior_feeds, key=key) if prior_feeds else ''
           if previous != expected_previous:
               raise SystemExit('Previous tag must carry the newest published appcast')
           current = json.loads(gh('api', f'repos/{{owner}}/{{repo}}/releases/tags/{tag}'))
           latest = json.loads(gh('api', 'repos/{owner}/{repo}/releases/latest'))
-          if current['draft'] or current['prerelease'] or latest['tag_name'] == tag or tag in carrying_feed:
-              raise SystemExit('Publish artifacts as a stable non-latest release first; never replace a feed')
+          recovering = tag in carrying_feed
+          if current['draft'] or current['prerelease'] or (latest['tag_name'] == tag and not recovering):
+              raise SystemExit('Publish artifacts as a stable non-latest release first')
           stage = Path(os.environ['RUNNER_TEMP']) / 'updater-publication'
           stage.mkdir()
           (stage / 'release.json').write_text(json.dumps(current))
+          with open(os.environ['GITHUB_ENV'], 'a') as target:
+              target.write('RECOVER_PUBLICATION=' + str(recovering).lower() + '\n')
+              target.write('PROMOTION_NEEDED=' + str(latest['tag_name'] != tag).lower() + '\n')
           archive = f'MergeOwl-{tag[1:]}-macOS-universal.zip'
           subprocess.run(['gh', 'release', 'download', tag, '--pattern', archive, '--dir', str(stage)], check=True)
+          if recovering:
+              subprocess.run(['gh', 'release', 'download', tag, '--pattern', 'appcast.xml', '--dir', str(stage / 'current')], check=True)
           if previous:
               subprocess.run(['gh', 'release', 'download', previous, '--pattern', 'appcast.xml', '--dir', str(stage / 'previous')], check=True)
           PY
@@ -120,10 +127,13 @@ jobs:
             --output "$STAGE/prepared/appcast.xml"
           )
           if [[ -n "$PREVIOUS_TAG" ]]; then APPCAST_ARGS+=(--previous-feed "$STAGE/previous/appcast.xml"); fi
+          if [[ "$RECOVER_PUBLICATION" == "true" ]]; then APPCAST_ARGS+=(--verify-existing-feed "$STAGE/current/appcast.xml"); fi
           python3 scripts/prepare_appcast.py "${APPCAST_ARGS[@]}"
       - name: Publish feed before promoting release
         shell: bash
         run: |
           set -euo pipefail
-          gh release upload "$RELEASE_TAG" "$RUNNER_TEMP/updater-publication/prepared/appcast.xml"
-          gh release edit "$RELEASE_TAG" --latest
+          if [[ "$RECOVER_PUBLICATION" != "true" ]]; then
+            gh release upload "$RELEASE_TAG" "$RUNNER_TEMP/updater-publication/prepared/appcast.xml"
+          fi
+          if [[ "$PROMOTION_NEEDED" == "true" ]]; then gh release edit "$RELEASE_TAG" --latest; fi

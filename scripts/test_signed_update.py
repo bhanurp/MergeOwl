@@ -140,6 +140,7 @@ def main():
                 server.server_close()
             if args.case == 'unwritable': install.parent.chmod(0o555)
             env = dict(os.environ, MERGEOWL_PROBE_LOG=str(output / 'upgrade-events.log'))
+            if args.case == 'unwritable': env['MERGEOWL_PROBE_FINISH_SESSION'] = '1'
             process = subprocess.Popen([str(install / 'Contents/MacOS/Probe')], env=env,
                                        stdout=subprocess.DEVNULL, stderr=(output / 'framework-stderr.log').open('wb'))
             try:
@@ -170,6 +171,7 @@ def main():
             events = (output / 'upgrade-events.log').read_text()
             required = ['launch:1', 'continuity:preserved-fixture']
             if args.case == 'upgrade': required += ['ready:2', 'launch:2']
+            if args.case == 'unwritable': required += ['session-finished-idle']
             if not all(e in events for e in required):
                 raise RuntimeError('Missing staged/launch/persistence evidence')
             (output / 'result.json').write_text(json.dumps({'case': args.case, 'result': 'pass',

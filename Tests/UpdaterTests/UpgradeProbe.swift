@@ -27,7 +27,12 @@ final class UpgradeProbe: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
         passiveReminders.onStateChange = { state in
             if case .available = state {
                 self.record("attention-without-focus")
+                if ProcessInfo.processInfo.environment["MERGEOWL_PROBE_FINISH_SESSION"] == "1", let controller = self.controller {
+                    self.passiveReminders.updater(controller.updater, didFinishUpdateCycleFor: .updatesInBackground, error: nil)
+                }
                 NSApp.terminate(nil)
+            } else if state == .idle {
+                self.record("session-finished-idle")
             }
         }
         controller = SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: self, userDriverDelegate: passiveReminders)
