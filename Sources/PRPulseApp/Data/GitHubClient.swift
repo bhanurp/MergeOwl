@@ -58,6 +58,7 @@ enum GitHubClientError: LocalizedError {
 }
 
 struct GitHubAPIClient: GitHubClient {
+    let server: GitHubServer
     private let session: URLSession
     private let tokenProvider: @Sendable () -> String?
     private let watchedRepositoriesProvider: @Sendable () async -> [RepositorySubscription]
@@ -65,9 +66,11 @@ struct GitHubAPIClient: GitHubClient {
 
     init(
         session: URLSession = .shared,
+        server: GitHubServer = .dotCom,
         tokenProvider: @escaping @Sendable () -> String? = { KeychainTokenStore().getToken() },
         watchedRepositoriesProvider: @escaping @Sendable () async -> [RepositorySubscription] = { [] }
     ) {
+        self.server = server
         self.session = session
         self.tokenProvider = tokenProvider
         self.watchedRepositoriesProvider = watchedRepositoriesProvider
@@ -337,14 +340,14 @@ struct GitHubAPIClient: GitHubClient {
             throw GitHubClientError.missingToken
         }
 
-        var request = URLRequest(url: Self.graphQLEndpoint)
+        var request = URLRequest(url: graphQLEndpoint)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.httpBody = try Self.encoder.encode(GraphQLRequest(query: query, variables: variables))
 
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await session.data(for: request, delegate: GitHubRedirectPolicy())
         guard let http = response as? HTTPURLResponse else {
             throw GitHubClientError.invalidResponse
         }
@@ -428,7 +431,21 @@ struct GitHubAPIClient: GitHubClient {
         #endif
     }
 
-    private static var graphQLEndpoint: URL { apiURL("graphql") }
+    static func apiURL(_ path: String, server: GitHubServer) -> URL {
+        #if E2E_TESTING
+        return apiURL(path)
+        #else
+        return server.restURL(path)
+        #endif
+    }
+
+    private var graphQLEndpoint: URL {
+        #if E2E_TESTING
+        return Self.apiURL("graphql")
+        #else
+        return server.graphQLURL
+        #endif
+    }
 
     private static let encoder: JSONEncoder = {
         let encoder = JSONEncoder()

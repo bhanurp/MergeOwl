@@ -24,7 +24,7 @@ struct ContentView: View {
                 .font(.caption)
                 .foregroundStyle(.orange)
                 .help(viewModel.accessWarnings.joined(separator: "\n"))
-                Link("Manage GitHub token access", destination: URL(string: "https://github.com/settings/tokens")!)
+                Link("Manage GitHub token access", destination: (accounts?.profiles.first { $0.id == accounts?.activeProfileID }?.server ?? .dotCom).tokenURL)
                     .font(.caption)
             }
             listContent(items)

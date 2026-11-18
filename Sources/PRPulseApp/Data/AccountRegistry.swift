@@ -25,7 +25,7 @@ actor AccountRegistry {
     private func validate(_ snapshot: AccountRegistrySnapshot) throws {
         let ids = Set(snapshot.profiles.map(\.id))
         guard ids.count == snapshot.profiles.count,
-              Set(snapshot.profiles.map(\.githubUserID)).count == snapshot.profiles.count,
+              Set(snapshot.profiles.map(\.identityKey)).count == snapshot.profiles.count,
               snapshot.profiles.allSatisfy({ !$0.githubUserID.isEmpty && !$0.login.isEmpty }),
               snapshot.activeProfileID.map({ ids.contains($0) }) ?? true,
               (snapshot.pendingRemovalIDs ?? []).allSatisfy({ ids.contains($0) }) else {

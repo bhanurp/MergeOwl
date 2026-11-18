@@ -13,6 +13,7 @@ final class AccountSessionCoordinator: ObservableObject {
     private let registry: AccountRegistry
     private let globalPreferences: GlobalPreferencesStore
     private let validate: (String) async throws -> VerifiedGitHubIdentity
+    private let validateServer: (String, GitHubServer) async throws -> VerifiedGitHubIdentity
     private let makeClient: ((UUID?, String?) -> any GitHubClient)?
     private let removeNotifications: (UUID) async -> Void
     private var snapshot = AccountRegistrySnapshot()
@@ -21,6 +22,7 @@ final class AccountSessionCoordinator: ObservableObject {
 
     init(directory: URL, credentials: any AccountCredentialStore = KeychainAccountCredentials(),
          validate: @escaping (String) async throws -> VerifiedGitHubIdentity = GitHubAccountValidator.validate,
+         validateServer: @escaping (String, GitHubServer) async throws -> VerifiedGitHubIdentity = { try await GitHubAccountValidator.validate(token: $0, server: $1) },
          makeClient: ((UUID?, String?) -> any GitHubClient)? = nil,
          removeNotifications: @escaping (UUID) async -> Void = { await ProfileNotificationCleanup.remove(profileID: $0) }) {
         self.directory = directory
@@ -28,6 +30,7 @@ final class AccountSessionCoordinator: ObservableObject {
         self.registry = AccountRegistry(directory: directory)
         let global = GlobalPreferencesStore(directory: directory)
         self.globalPreferences = global
+        self.validateServer = validateServer
         self.validate = validate
         self.makeClient = makeClient
         self.removeNotifications = removeNotifications
@@ -68,35 +71,41 @@ final class AccountSessionCoordinator: ObservableObject {
         await start()
     }
 
-    func connect(token: String, replacing id: UUID?) async throws {
+    @discardableResult
+    func connect(token: String, replacing id: UUID?, server: GitHubServer = .dotCom) async throws -> UUID {
         guard storageReady, !isWorking else { throw GitHubClientError.apiFailure("Account storage is not ready. Please reopen the app and retry.") }
         isWorking = true
         defer { isWorking = false }
         let token = token.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !token.isEmpty else { throw GitHubClientError.missingToken }
-        let identity = try await validate(token)
-        if profiles.isEmpty, !snapshot.migrationComplete {
-            _ = try await AccountMigration(directory: directory, credentials: credentials).run(identity: identity, profileID: UUID(), token: token)
+        if let id, profiles.first(where: { $0.id == id })?.server != server {
+            throw GitHubClientError.apiFailure("Use Add account to connect a different GitHub server.")
+        }
+        let identity = try await server.isDotCom ? validate(token) : validateServer(token, server)
+        if server.isDotCom, !snapshot.migrationComplete {
+            let migrated = try await AccountMigration(directory: directory, credentials: credentials).run(identity: identity, profileID: UUID(), token: token)
             snapshot = try await registry.load()
             profiles = snapshot.profiles
-            await activate(snapshot.activeProfileID, knownToken: token)
+            if activeProfileID == nil || activeProfileID == migrated.id {
+                await activate(snapshot.activeProfileID, knownToken: snapshot.activeProfileID == migrated.id ? token : nil)
+            }
             errorMessage = nil
-            return
+            return migrated.id
         }
         if let id {
             guard let existing = profiles.first(where: { $0.id == id }), existing.githubUserID == identity.id else {
                 throw GitHubClientError.apiFailure("This token belongs to a different GitHub account. Use Add account instead.")
             }
         }
-        let existing = profiles.first { $0.githubUserID == identity.id }
-        let profile = AccountProfile(id: existing?.id ?? UUID(), githubUserID: identity.id, login: identity.login)
+        let existing = profiles.first { $0.githubUserID == identity.id && $0.server == server }
+        let profile = AccountProfile(id: existing?.id ?? UUID(), githubUserID: identity.id, login: identity.login, server: server)
         let previousToken = try credentials.read(profileID: profile.id)
         try credentials.write(token, profileID: profile.id)
         var next = snapshot
         if let index = next.profiles.firstIndex(where: { $0.id == profile.id }) { next.profiles[index] = profile }
         else { next.profiles.append(profile) }
         next.activeProfileID = next.activeProfileID ?? profile.id
-        next.migrationComplete = true
+        next.migrationComplete = snapshot.migrationComplete || server.isDotCom
         do { try await registry.save(next) }
         catch {
             if let previousToken { try? credentials.write(previousToken, profileID: profile.id) }
@@ -105,14 +114,20 @@ final class AccountSessionCoordinator: ObservableObject {
         }
         snapshot = next
         profiles = next.profiles
-        if activeProfileID == nil || activeProfileID == profile.id { await activate(next.activeProfileID, restoreSavedSelection: true, knownToken: token) }
+        if activeProfileID == nil || activeProfileID == profile.id { await activate(next.activeProfileID, restoreSavedSelection: true, knownToken: next.activeProfileID == profile.id ? token : nil) }
         errorMessage = nil
+        return profile.id
     }
 
-    func testConnection(token: String?, profileID: UUID?) async throws -> String {
+    func testConnection(token: String?, profileID: UUID?, server: GitHubServer? = nil) async throws -> String {
+        let savedServer = profiles.first { $0.id == profileID }?.server ?? .dotCom
+        let server = server ?? savedServer
+        guard token != nil || server == savedServer else {
+            throw GitHubClientError.apiFailure("Enter a token for the selected server.")
+        }
         let candidate = try token ?? credentials.read(profileID: profileID)
         guard let candidate, !candidate.isEmpty else { throw GitHubClientError.missingToken }
-        return try await validate(candidate).login
+        return try await server.isDotCom ? validate(candidate).login : validateServer(candidate, server).login
     }
 
     func switchAccount(to id: UUID) async throws {
@@ -168,16 +183,16 @@ final class AccountSessionCoordinator: ObservableObject {
             errorMessage = "Could not read the saved token from Keychain. Unlock your login Keychain or allow access, then retry account setup."
         }
         dashboard = Self.makeDashboard(directory: directory, id: id, cachedToken: cachedToken, client: makeClient?(id, cachedToken), globalPreferences: globalPreferences,
-                                       allowLegacy: !snapshot.migrationComplete, restoreSavedSelection: restoreSavedSelection)
+                                       server: profiles.first { $0.id == id }?.server ?? .dotCom, allowLegacy: !snapshot.migrationComplete, restoreSavedSelection: restoreSavedSelection)
         dashboard.selectedTab = tab
     }
 
     private static func makeDashboard(directory: URL, id: UUID?, cachedToken: String?,
-                                      client: (any GitHubClient)?, globalPreferences: GlobalPreferencesStore, allowLegacy: Bool = true, restoreSavedSelection: Bool = false) -> DashboardViewModel {
+                                      client: (any GitHubClient)?, globalPreferences: GlobalPreferencesStore, server: GitHubServer = .dotCom, allowLegacy: Bool = true, restoreSavedSelection: Bool = false) -> DashboardViewModel {
         let path = id.map { directory.appendingPathComponent("profiles/\($0.uuidString)") }
             ?? (allowLegacy ? directory : directory.appendingPathComponent("onboarding"))
         let store = PullRequestStore(directory: path, globalPreferences: globalPreferences)
-        let api = client ?? GitHubAPIClient(tokenProvider: { cachedToken },
+        let api = client ?? GitHubAPIClient(server: server, tokenProvider: { cachedToken },
                                             watchedRepositoriesProvider: { await store.loadSettings().watchedRepositories })
         return DashboardViewModel(client: api, store: store, notifier: NotificationDispatcher(store: store, namespace: id?.uuidString ?? "legacy"), scheduler: RefreshScheduler(), digestComputer: DigestComputer(), restoreSavedSelection: restoreSavedSelection)
     }

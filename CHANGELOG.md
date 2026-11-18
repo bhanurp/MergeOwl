@@ -2,6 +2,12 @@
 
 All notable changes to MergeOwl (formerly PR Pulse) are documented in this file.
 
+## Unreleased
+
+### Added
+
+- Connect GitHub Enterprise Server accounts using their HTTPS server address and a server-issued token, without selecting a GHES version. Scope account identity by server and user ID while retaining existing GitHub.com accounts. Route validation, PR/CI reads and account links to the selected host; block credential redirects to other origins.
+
 ## [0.2.3] - 2026-11-03
 
 ### Changed

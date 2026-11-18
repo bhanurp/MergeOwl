@@ -499,6 +499,35 @@ final class PRPulseUITests: XCTestCase {
         XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
     }
 
+    func testEnterpriseAccountCoexistsWithSameCloudIdentityInBothLayouts() {
+        launch()
+        settings()
+        let window = app.windows["MergeOwl Settings"]
+        window.buttons["Add account"].click()
+        window.descendants(matching: .any)["prpulse.github-service"].firstMatch.click()
+        app.menuItems["GitHub Enterprise Server"].click()
+        enter("https://enterprise.example.test", in: window.textFields["prpulse.server-url"])
+        enter("e2e-valid", in: window.descendants(matching: .any)["prpulse.token-input"].firstMatch)
+        window.buttons["Connect GitHub"].click()
+        XCTAssertTrue(window.buttons["Manage octocat · enterprise.example.test"].waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(window.buttons["Manage octocat"].exists)
+        window.buttons[XCUIIdentifierCloseWindow].click()
+        openDashboard()
+        app.descendants(matching: .any)["prpulse.account-selector"].firstMatch.click()
+        app.menuItems["octocat · enterprise.example.test"].click()
+        XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))
+        for layout in ["Tabbed", "Compact"] {
+            chooseLayout(layout)
+            XCTAssertTrue(prTitle("Review API change").exists)
+            XCTAssertTrue(app.descendants(matching: .any)["prpulse.account-selector"].firstMatch.label.contains("enterprise.example.test"))
+        }
+        app.terminate()
+        app.launchEnvironment.removeValue(forKey: "PRPULSE_E2E_INITIAL_TOKEN")
+        app.launch()
+        openDashboard()
+        XCTAssertTrue(app.descendants(matching: .any)["prpulse.account-selector"].firstMatch.label.contains("enterprise.example.test"))
+    }
+
     func testMultipleAccountsSwitchAndRestoreSelection() {
         launch()
         XCTAssertTrue(prTitle("Review API change").waitForExistence(timeout: 10))

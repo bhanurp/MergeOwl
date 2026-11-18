@@ -76,9 +76,9 @@ These older captures use synthetic GitHub fixture data. The GIF cycles through c
 
 </details>
 
-**Requirements:** macOS 14 or newer, an Apple Silicon or Intel Mac, and a GitHub.com account with a personal access token. No Xcode is needed for the download.
+**Requirements:** macOS 14 or newer, an Apple Silicon or Intel Mac, and a GitHub.com or GitHub Enterprise Server account with a personal access token. No Xcode is needed for the download.
 
-**Early release:** the app is ad-hoc signed, not Apple-notarized. Read the first-launch instructions below before installing. GitHub.com and macOS are the supported targets; GitLab, Windows, Linux, and custom GitHub Enterprise Server hosts are not supported.
+**Early release:** the app is ad-hoc signed, not Apple-notarized. Read the first-launch instructions below before installing. GitHub.com and GitHub Enterprise Server over HTTPS are supported on macOS; GitLab, Windows and Linux are not supported. Enterprise support is available in source builds after v0.2.3; the v0.2.3 download supports GitHub.com only.
 
 <a id="install"></a>
 
@@ -100,6 +100,10 @@ Use the manual DMG installation above. Automated release installation is not rec
 ## Connect GitHub
 
 MergeOwl does not automatically reuse your browser or GitHub CLI login. Connect your account inside the app.
+
+### GitHub Enterprise Server
+
+In source builds after v0.2.3, choose **GitHub Enterprise Server** under **Settings → Account → Add account**, enter its HTTPS web address, and use a token created on that server. No server-version selection is required. See the [Enterprise Server guide](docs/enterprise-server.md) for network, certificate and API availability details.
 
 ### Create a token
 

@@ -171,7 +171,10 @@ struct PullRequestRowView: View {
         }
 
         let pathPart = ref.type == .issue ? "issues" : "pull"
-        return URL(string: "https://github.com/\(ref.repositoryNameWithOwner)/\(pathPart)/\(ref.number)")
+        guard var origin = URLComponents(url: presentation.pullRequest.url, resolvingAgainstBaseURL: false) else { return nil }
+        origin.path = "/\(ref.repositoryNameWithOwner)/\(pathPart)/\(ref.number)"
+        origin.query = nil; origin.fragment = nil
+        return origin.url
     }
 }
 

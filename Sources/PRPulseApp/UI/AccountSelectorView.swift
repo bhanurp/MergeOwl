@@ -11,18 +11,18 @@ struct AccountSelectorView: View {
                         Task { do { try await accounts.switchAccount(to: profile.id) }
                             catch { accounts.errorMessage = "Could not switch accounts. Please retry." } }
                     } label: {
-                        if accounts.activeProfileID == profile.id { Label(profile.login, systemImage: "checkmark") }
-                        else { Text(profile.login) }
+                        if accounts.activeProfileID == profile.id { Label(profile.displayName, systemImage: "checkmark") }
+                        else { Text(profile.displayName) }
                     }
                 }
                 Divider()
                 Button("Add account…") { accounts.addingAccountRequested = true; showSettings() }
             } label: {
-                Label(accounts.profiles.first(where: { $0.id == accounts.activeProfileID })?.login ?? "Connect GitHub", systemImage: "person.crop.circle")
+                Label(accounts.profiles.first(where: { $0.id == accounts.activeProfileID })?.displayName ?? "Connect GitHub", systemImage: "person.crop.circle")
                     .lineLimit(1)
             }
             .accessibilityIdentifier("prpulse.account-selector")
-            .help(accounts.profiles.first(where: { $0.id == accounts.activeProfileID })?.login ?? "Connect a GitHub account")
+            .help(accounts.profiles.first(where: { $0.id == accounts.activeProfileID })?.displayName ?? "Connect a GitHub account")
             .disabled(accounts.isWorking)
             Spacer()
         }
