@@ -3,6 +3,29 @@ import XCTest
 @testable import PRPulseApp
 
 final class GitHubCITests: XCTestCase {
+    func testCheckConclusionsAndNetworkReasonsRemainSpecific() async throws {
+        let ci = try await client().fetchCI(for: pr)
+        XCTAssertEqual(ci.checks.first(where: { $0.state == .failure })?.conclusion, "FAILURE")
+        XCTAssertTrue(CIUnavailableExplanation.message(for: URLError(.notConnectedToInternet)).contains("connection"))
+        XCTAssertTrue(CIUnavailableExplanation.message(for: GitHubClientError.ciBudgetDeferred(Date())).contains("budget"))
+        XCTAssertTrue(CIUnavailableExplanation.message(for: GitHubClientError.obsoleteCI).contains("PR changed"))
+        // Old persisted snapshots have no conclusion field.
+        let legacy = Data(#"{"id":"old","name":"Build","state":"success","attempt":""}"#.utf8)
+        XCTAssertNil(try JSONDecoder().decode(CICheck.self, from: legacy).conclusion)
+    }
+    func testUnavailableSnapshotExplainsMissingRevisionAndPermissionWarnings() async throws {
+        let missing = try await client("missing-head").fetchCI(for: pr)
+        XCTAssertEqual(missing.state, .unavailable)
+        XCTAssertTrue(missing.warning?.contains("revision") == true)
+        let deniedRevision = try await client("partial-missing-head").fetchCI(for: pr)
+        XCTAssertTrue(deniedRevision.warning?.contains("Check permission denied") == true,
+            "Missing revision data must not hide the server's access explanation")
+        let partial = try await client("partial").fetchCI(for: pr)
+        XCTAssertTrue(partial.warning?.contains("Check permission denied") == true)
+        let absent = try await client("missing-conclusion").fetchCI(for: pr)
+        XCTAssertEqual(absent.state, .unavailable)
+        XCTAssertTrue(absent.warning?.contains("conclusion") == true)
+    }
     func testOverlappingCIReadsShareRequestsButLaterReadsStayFresh() async throws {
         let mode = "perf-\(UUID().uuidString)"
         let api = client(mode)
@@ -160,9 +183,10 @@ private final class CIProtocol: URLProtocol, @unchecked Sendable {
         func suite(_ name: String) -> [String: Any] {
             ["createdAt": "2026-10-01T00:00:00Z", "app": ["id": "APP"], "workflowRun": ["event": "pull_request", "workflow": ["name": name]]]
         }
-        let check: [String: Any] = ["__typename": "CheckRun", "id": "C1", "name": "Build", "status": "COMPLETED",
+        var check: [String: Any] = ["__typename": "CheckRun", "id": "C1", "name": "Build", "status": "COMPLETED",
                                    "conclusion": "FAILURE", "detailsUrl": "https://github.com/example/repo/actions/runs/1",
                                    "startedAt": "2026-10-01T00:00:00Z", "completedAt": "2026-10-01T00:01:00Z", "checkSuite": suite("Build workflow")]
+        if mode.contains("missing-conclusion") { check.removeValue(forKey: "conclusion") }
         func commit(_ id: String, _ oid: String, _ checks: [[String: Any]], more: Bool = false) -> [String: Any] {
             ["id": id, "oid": oid, "statusCheckRollup": ["contexts": ["nodes": checks, "pageInfo": ["hasNextPage": more, "endCursor": more ? "page2" as Any : NSNull()]]]]
         }
@@ -200,6 +224,9 @@ private final class CIProtocol: URLProtocol, @unchecked Sendable {
         } else {
             result = ["data": ["node": ["state": "OPEN", "headRefOid": "head", "commits": ["nodes": [["commit": commit("H", "head", [])]]],
                                        "potentialMergeCommit": commit("M", "merge", [check], more: true)]]]
+        }
+        if mode.contains("missing-head"), !raw.contains("query PRCIRevision") {
+            result = ["data": ["node": ["state": "OPEN"]]]
         }
         if mode.contains("partial") { result["errors"] = [["message": "Check permission denied"]] }
         let limited = mode.contains("limited")

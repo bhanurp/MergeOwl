@@ -78,7 +78,7 @@ These older captures use synthetic GitHub fixture data. The GIF cycles through c
 
 **Requirements:** macOS 14 or newer, an Apple Silicon or Intel Mac, and a GitHub.com or GitHub Enterprise Server account with a personal access token. No Xcode is needed for the download.
 
-**Early release:** the app is ad-hoc signed, not Apple-notarized. Read the first-launch instructions below before installing. GitHub.com and GitHub Enterprise Server over HTTPS are supported on macOS; GitLab, Windows and Linux are not supported. Enterprise support is available in source builds after v0.2.3; the v0.2.3 download supports GitHub.com only.
+**Early release:** the app is ad-hoc signed, not Apple-notarized. Read the first-launch instructions below before installing. GitHub.com and GitHub Enterprise Server over HTTPS are supported on macOS; GitLab, Windows and Linux are not supported. Enterprise support is included from v0.2.4; v0.2.3 and earlier downloads support GitHub.com only.
 
 <a id="install"></a>
 
@@ -103,7 +103,9 @@ MergeOwl does not automatically reuse your browser or GitHub CLI login. Connect 
 
 ### GitHub Enterprise Server
 
-In source builds after v0.2.3, choose **GitHub Enterprise Server** under **Settings → Account → Add account**, enter its HTTPS web address, and use a token created on that server. No server-version selection is required. See the [Enterprise Server guide](docs/enterprise-server.md) for network, certificate and API availability details.
+From v0.2.4, choose **GitHub Enterprise Server** under **Settings → Account → Add account**, enter its HTTPS web address, and use a token created on that server. No server-version selection is required. See the [Enterprise Server guide](docs/enterprise-server.md) for network, certificate and API availability details.
+
+Also from v0.2.4: **Team PRs** lists open PRs authored by the selected team's members, with account-specific selection and loaded-coverage counts. See the [Team PRs guide](docs/team-prs.md). The CI inspector explains unavailable results and offers **Retry CI**; incomplete data remains explicitly unavailable.
 
 ### Create a token
 
@@ -140,7 +142,7 @@ The account and saved-view workflows below require v0.2.0 or a source build cont
 2. Use the account menu above the PR tabs to select the account to display. Only one account is loaded at a time; adding another does not switch away from an existing active account.
 3. To replace a token, click **Manage** beside that account, enter the replacement, and choose **Update token**. A token belonging to another GitHub identity must be added as a separate account.
 
-Accounts have separate watched repositories, TODO/N/A marks, snoozes, activity and saved views. Refresh and notification preferences are shared. Selection persists after relaunch. Re-adding the same GitHub user updates its credential instead of creating a duplicate profile.
+Accounts have separate watched repositories, TODO/N/A marks, snoozes, activity, saved views and selected team. Refresh and notification preferences are shared. Selection persists after relaunch. Re-adding the same GitHub user on the same server updates its credential instead of creating a duplicate profile.
 
 <img src="docs/screenshots/settings-accounts-current.png" width="900" alt="Current Account settings with synthetic octocat and hubot profiles, hubot active, Manage and Add account controls, and a blank saved-token field">
 
@@ -180,11 +182,11 @@ The menu-bar badge counts actionable PRs. Click the icon to see the list; the PR
 
 Open **Settings → Saved Views → Create saved view**. Give it a unique name (1–40 characters), optionally enter exact `owner/repo` names separated by commas, choose a PR-state rule, and optionally match text in the title or repository. All supplied rules must match. **Cancel** leaves the existing definition unchanged.
 
-In Tabbed layout, enabled saved views appear beneath the default tabs. Use **All saved views** to reach names outside the scrollable strip. In Compact layout, select them in the view picker. In Settings you can edit, reorder, disable or delete views; the three default PR lists remain available. Views belong only to the selected account.
+In Tabbed layout, enabled saved views appear beneath the default tabs. Use **All saved views** to reach names outside the scrollable strip. In Compact layout, select them in the view picker. In Settings you can edit, reorder, disable or delete views; the default PR lists remain available (four from v0.2.4). Views belong only to the selected account.
 
-Saved views combine the PRs already loaded from My PRs, Review Requested and Watched. Counts cover **loaded data**, not every PR on GitHub. **Refresh** fetches the first page of each source; **Load more** fetches another page from sources that have more results. PRs shared by several lists or views count once in the global badge. Snoozed and N/A PRs do not count as actionable, and search filters do not change the badge.
+Saved views combine the PRs already loaded from My PRs, Review Requested, Watched and the selected Team (from v0.2.4). Counts cover **loaded data**, not every PR on GitHub. **Refresh** fetches the first page of each source; **Load more** fetches another page from sources that have more results. PRs shared by several lists or views count once in the global badge. Snoozed and N/A PRs do not count as actionable, and search filters do not change the badge.
 
-With the popover active, use **Command-1/2/3** for the default tabs, **Command-F** for search and **Command-R** to refresh. These are app-scoped shortcuts, not global hotkeys.
+With the popover active, use **Command-1/2/3** for My PRs, Reviews and Watched, plus **Command-4** for Team PRs from v0.2.4, **Command-F** for search and **Command-R** to refresh. These are app-scoped shortcuts, not global hotkeys.
 
 ### Triage without changing GitHub
 
@@ -224,7 +226,7 @@ To uninstall, remove each saved account in **Settings → Account** first, then 
 
 ## Current scope and roadmap
 
-The source includes three PR lists, actionable badge, search and filters, local triage, snooze, watched repositories, refresh/notification preferences, digest, Keychain-backed account profiles and account-specific rule-based saved views. See the version notes above when using an older downloaded build.
+From v0.2.4, the source includes four PR lists (including Team PRs), an actionable badge, search and filters, local triage, snooze, watched repositories, refresh/notification preferences, digest, Keychain-backed account profiles and account-specific rule-based saved views. See the version notes above when using an older downloaded build.
 
 **Deferred:** [secure automatic updates](docs/superpowers/specs/2026-10-11-secure-auto-updates-design.md), Developer ID signing and notarization. Updates still require manual DMG replacement. Manual per-PR collections, team sharing and cloud sync are not implemented. See the [product roadmap](docs/superpowers/specs/2026-09-12-prpulse-public-product-roadmap-design.md), [open issues](https://github.com/bhanurp/MergeOwl/issues), and [changelog](CHANGELOG.md). Roadmap items are intentions, not promises of availability.
 

@@ -20,6 +20,8 @@ targets:
         buildPhase: resources
       - path: ../../Sources/PRPulseApp/Resources/MergeOwl.icns
         buildPhase: resources
+      - path: ../../Sources/PRPulseApp/Resources/Octicons/git-pull-request-16.svg
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.prpulse.e2e

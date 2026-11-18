@@ -107,26 +107,48 @@ extension GitHubAPIClient {
     private nonisolated(nonsending) func readCI(for pullRequest: PullRequest, revalidation: Bool) async throws -> CIStatus {
         let variables = CIIDVariables(id: pullRequest.id)
         let (data, warnings): (CIPRData, [String]) = try await performGraphQLResult(query: Self.ciQuery, variables: variables, isCI: true, isCIRevalidation: revalidation)
-        guard let pr = data.node, pr.state == "OPEN", let head = pr.headRefOid,
-              let headCommit = pr.commits?.nodes?.last?.commit, headCommit.oid == head else { return .unavailable }
+        func unavailable(_ reason: String) -> CIStatus {
+            .unavailable(reason: ([reason] + warnings).joined(separator: "\n"))
+        }
+        guard let pr = data.node else {
+            return unavailable("GitHub did not return this pull request. Check repository access and retry.")
+        }
+        guard pr.state == "OPEN" else {
+            return unavailable("This pull request is no longer open, or GitHub could not return its state. Refresh the list.")
+        }
+        guard let head = pr.headRefOid,
+              let headCommit = pr.commits?.nodes?.last?.commit, headCommit.oid == head else {
+            return unavailable("GitHub did not return a matching head revision. Retry after the pull request finishes updating.")
+        }
         // Test-merge results take precedence only when GitHub reports checks there.
         let merge = pr.potentialMergeCommit
         let applicable = merge?.statusCheckRollup != nil ? merge! : headCommit
         var snapshot = CIStatus(headSHA: head, revision: applicable.oid, checks: [], isComplete: warnings.isEmpty)
+        var explanations = warnings
         var connection = applicable.statusCheckRollup?.contexts
         var seen = Set<String>()
         var contexts: [CIContext] = []
         while let page = connection {
             contexts += page.nodes.compactMap { $0 }
-            if page.nodes.contains(where: { $0 == nil }) { snapshot.isComplete = false }
+            if page.nodes.contains(where: { $0 == nil }) {
+                snapshot.isComplete = false
+                explanations.append("GitHub omitted one or more checks. Verify repository and Checks access.")
+            }
             guard page.pageInfo.hasNextPage else { break }
             guard let cursor = page.pageInfo.endCursor, seen.insert(cursor).inserted else {
-                snapshot.isComplete = false; break
+                snapshot.isComplete = false
+                explanations.append("GitHub returned incomplete check pagination. Retry to load all checks.")
+                break
             }
             let (next, issues): (CICommitData, [String]) = try await performGraphQLResult(
                 query: Self.ciContextsQuery, variables: CIPageVariables(id: applicable.id, after: cursor), isCI: true, isCIRevalidation: revalidation)
+            explanations += issues
             guard let commit = next.node, commit.oid == applicable.oid,
-                  let nextPage = commit.statusCheckRollup?.contexts else { snapshot.isComplete = false; break }
+                  let nextPage = commit.statusCheckRollup?.contexts else {
+                snapshot.isComplete = false
+                explanations.append("GitHub could not return the next page of checks for this revision. Retry to verify all checks.")
+                break
+            }
             snapshot.isComplete = snapshot.isComplete && issues.isEmpty
             connection = nextPage
         }
@@ -137,13 +159,20 @@ extension GitHubAPIClient {
             latest[context.groupKey] = context
         }
         snapshot.checks = latest.values.map(\.check).sorted { $0.name < $1.name || ($0.name == $1.name && $0.id < $1.id) }
+        if snapshot.checks.contains(where: { $0.state == .unknown }) {
+            explanations.append("GitHub returned a check without a recognized status or conclusion. Open the check for details, or retry.")
+        }
         let (current, issues): (CIPRData, [String]) = try await performGraphQLResult(query: Self.ciRevisionQuery, variables: variables, isCI: true, isCIRevalidation: revalidation)
         guard current.node?.state == "OPEN", current.node?.headRefOid == head,
               current.node?.potentialMergeCommit?.oid == pr.potentialMergeCommit?.oid else {
             throw GitHubClientError.obsoleteCI
         }
         snapshot.isComplete = snapshot.isComplete && issues.isEmpty
-        if !snapshot.isComplete { snapshot.warning = "Some checks could not be read. Open GitHub to verify all requirements." }
+        explanations += issues
+        if !explanations.isEmpty {
+            var unique = Set<String>()
+            snapshot.warning = explanations.filter { unique.insert($0).inserted }.joined(separator: "\n")
+        }
         await requestGate.recordCIRefresh(pullRequest.id)
         return snapshot
     }
@@ -246,6 +275,25 @@ private struct CIContext: Decodable {
         }
         let url = (detailsUrl ?? targetUrl).flatMap(URL.init(string:)).flatMap { $0.scheme == "https" ? $0 : nil }
         return CICheck(id: id, name: name ?? context ?? "Unknown check", state: value, url: url,
-                       startedAt: startedAt.flatMap(GitHubAPIClient.parseISODate), attempt: startedAt ?? createdAt ?? "")
+                       startedAt: startedAt.flatMap(GitHubAPIClient.parseISODate), attempt: startedAt ?? createdAt ?? "",
+                       conclusion: __typename == "StatusContext" ? state : (status == "COMPLETED" ? conclusion : nil))
+    }
+}
+
+enum CIUnavailableExplanation {
+    static func message(for error: Error) -> String {
+        if let error = error as? GitHubClientError { return error.localizedDescription }
+        if error is DecodingError {
+            return "The server returned a check response this app could not read. Retry, or open checks on GitHub."
+        }
+        if let error = error as? URLError {
+            switch error.code {
+            case .notConnectedToInternet, .networkConnectionLost, .timedOut, .cannotFindHost, .cannotConnectToHost:
+                return "Could not reach GitHub to read checks. Check your connection or enterprise VPN, then retry."
+            default:
+                return "The connection to GitHub failed while reading checks. Retry, or open checks on GitHub."
+            }
+        }
+        return "Checks could not be read. Retry, or open checks on GitHub for details."
     }
 }

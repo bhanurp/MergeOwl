@@ -120,6 +120,9 @@ struct ContentView: View {
                 .disabled(viewModel.isRefreshing)
                 PopoverMoreMenu(viewModel: viewModel, actions: hostActions)
             }
+            if viewModel.selectedTab == .team && viewModel.selectedSavedViewID == nil {
+                TeamPickerView(viewModel: viewModel)
+            }
             if viewModel.settings.popoverLayout == .tabbed {
                 DefaultPRTabs(viewModel: viewModel)
                     .onMoveCommand { direction in
@@ -194,7 +197,7 @@ struct ContentView: View {
                         actionHandler: { action in
                             viewModel.perform(action: action, on: presentation)
                         },
-                        showAuthor: viewModel.selectedTab == .reviewRequested,
+                        showAuthor: viewModel.selectedTab != .mine || viewModel.selectedSavedViewID != nil,
                         ciRefreshInterval: viewModel.settings.ciRefreshInterval,
                         ciRefreshing: viewModel.isCurrentListRefreshing,
                         ciMuted: viewModel.ciMonitor.isMuted(presentation.id),
@@ -205,7 +208,8 @@ struct ContentView: View {
                                     try viewModel.ciMonitor.setMuted(
                                         !viewModel.ciMonitor.isMuted(presentation.id), for: presentation.id)
                                 } catch { viewModel.errorMessage = "Could not save CI mute. Please try again." }
-                            } : nil
+                            } : nil,
+                        retryCI: { Task { await viewModel.refreshActiveTab() } }
                     )
                     Divider().padding(.leading, 26)
                 }

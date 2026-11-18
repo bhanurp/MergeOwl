@@ -66,6 +66,30 @@ final class PRPulseUITests: XCTestCase {
         app.buttons[name].click()
     }
 
+    func testTeamAuthoredPRsInBothLayoutsAndSelectionPersists() {
+        launch()
+        selectTab("Team PRs")
+        let picker = app.popUpButtons["prpulse.team-picker"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 10))
+        picker.click()
+        XCTAssertTrue(app.menuItems["example/platform — Platform"].waitForExistence(timeout: 10))
+        app.menuItems["example/platform — Platform"].click()
+        XCTAssertTrue(prTitle("Team authored change").waitForExistence(timeout: 10))
+        XCTAssertFalse(prTitle("Improve documentation").exists)
+        for layout in ["Compact", "Tabbed"] {
+            chooseLayout(layout)
+            XCTAssertTrue(prTitle("Team authored change").waitForExistence(timeout: 5))
+            XCTAssertTrue(app.buttons["prpulse.ci.PR_30"].exists)
+            attachPopover("Team PRs \(layout)")
+        }
+        app.terminate()
+        app.launch()
+        openDashboard()
+        selectTab("Team PRs")
+        XCTAssertTrue(prTitle("Team authored change").waitForExistence(timeout: 10))
+        XCTAssertTrue(app.popUpButtons["prpulse.team-picker"].value as? String == "example/platform — Platform")
+    }
+
     func testMergedPRReferencesAreHiddenInBothLayouts() {
         launch(token: "e2e-linked")
         app.typeKey("1", modifierFlags: .command)
@@ -168,6 +192,8 @@ final class PRPulseUITests: XCTestCase {
         ci.click()
         XCTAssertTrue(app.staticTexts["Unit tests"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.links["Open check"].exists)
+        XCTAssertTrue(app.staticTexts["Failure"].exists)
+        XCTAssertTrue(app.buttons["prpulse.ci-retry.PR_1"].exists)
         app.typeKey(.escape, modifierFlags: [])
         chooseLayout("Compact")
         XCTAssertTrue(app.buttons["prpulse.ci.PR_1"].label.contains("CI failed"))

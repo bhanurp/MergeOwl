@@ -4,6 +4,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     case refresh = "Refresh"
     case notifications = "Notifications"
     case repositories = "Repositories"
+    case team = "Team"
     case savedViews = "Saved Views"
     case advanced = "Advanced"
 
@@ -23,6 +24,8 @@ enum SettingsPane: String, CaseIterable, Identifiable {
             "bell"
         case .repositories:
             "folder"
+        case .team:
+            "person.3"
         case .savedViews:
             "line.3.horizontal.decrease.circle"
         case .advanced:

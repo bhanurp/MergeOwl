@@ -23,6 +23,52 @@ final class DashboardViewModel: ObservableObject {
         case snooze(Date)
     }
 
+    @Published private(set) var availableTeams: [GitHubTeam] = []
+    @Published private(set) var isLoadingTeams = false
+    @Published private(set) var teamError: String?
+    private var hasLoadedTeamDirectory = false
+
+    func loadTeams(force: Bool = false) async {
+        guard !retired, !isLoadingTeams, force || !hasLoadedTeamDirectory else { return }
+        isLoadingTeams = true
+        defer { isLoadingTeams = false }
+        do {
+            let teams = try await client.fetchTeams()
+            guard !retired else { return }
+            availableTeams = GitHubTeam.pickerChoices(available: teams, selected: nil)
+            hasLoadedTeamDirectory = true
+            if let selected = settings.selectedTeam,
+               let current = availableTeams.first(where: { $0.id == selected.id }),
+               current.name != selected.name {
+                settings.selectedTeam = current
+            }
+            teamError = nil
+        } catch {
+            guard !retired else { return }
+            teamError = "Could not load teams: \(error.localizedDescription) Check organization membership read permission and SSO authorization."
+        }
+    }
+
+    func selectTeam(_ team: GitHubTeam?) {
+        guard team != settings.selectedTeam else { return }
+        settings.selectedTeam = team
+        var empty = PullRequestListState()
+        empty.isLoading = listStates[.team]?.isLoading == true
+        listStates[.team] = empty
+        teamError = nil
+        recomputeDisplayedItems()
+        updateBadgeCount()
+        launch { [self] in await loadPage(for: .team, reset: true) }
+    }
+
+    private func fetchPage(for tab: PullRequestTab, cursor: String?) async throws -> PullRequestPage {
+        if tab == .team {
+            guard let team = settings.selectedTeam else { return PullRequestPage(items: [], cursor: nil, hasNextPage: false) }
+            return try await client.fetchTeamPullRequests(team: team, cursor: cursor)
+        }
+        return try await client.fetchPullRequests(tab: tab, cursor: cursor)
+    }
+
     @Published var selectedTab: PullRequestTab = .reviewRequested
     @Published var filterState = FilterState()
     @Published private(set) var savedViews: [SavedPRView] = []
@@ -132,6 +178,9 @@ final class DashboardViewModel: ObservableObject {
         connectionPresentation = .checking
         filterState = FilterState()
         savedViews = []
+        availableTeams = []
+        teamError = nil
+        hasLoadedTeamDirectory = false
         selectedSavedViewID = nil
         errorMessage = nil
         digestSnapshot = DigestSnapshot(openedCount: 0, reviewedCount: 0, timeframeDescription: "N/A")
@@ -266,7 +315,7 @@ final class DashboardViewModel: ObservableObject {
         if let current {
             let next = current + (forward ? 1 : -1)
             if views.indices.contains(next) { selectSavedView(id: views[next].id) }
-            else if next < 0 { selectDefaultTab(.watched) }
+            else if next < 0, let last = PullRequestTab.allCases.last { selectDefaultTab(last) }
         } else if let index = PullRequestTab.allCases.firstIndex(of: selectedTab) {
             let next = index + (forward ? 1 : -1)
             if PullRequestTab.allCases.indices.contains(next) { selectDefaultTab(PullRequestTab.allCases[next]) }
@@ -528,9 +577,11 @@ final class DashboardViewModel: ObservableObject {
         activeLoads[tab] = requestID
         defer { finishLoad(for: tab, requestID: requestID) }
 
+        let teamAtStart = settings.selectedTeam
         let cursor = reset ? nil : state.cursor
         do {
-            var page = try await client.fetchPullRequests(tab: tab, cursor: cursor)
+            var page = try await fetchPage(for: tab, cursor: cursor)
+            guard tab != .team || settings.selectedTeam == teamAtStart else { return }
             guard !retired else { return }
             var pagesRead = 1
             var seenCursors = Set<String>()
@@ -541,7 +592,8 @@ final class DashboardViewModel: ObservableObject {
                 guard let nextCursor = page.cursor, seenCursors.insert(nextCursor).inserted else {
                     throw GitHubClientError.invalidResponse
                 }
-                let next = try await client.fetchPullRequests(tab: tab, cursor: nextCursor)
+                let next = try await fetchPage(for: tab, cursor: nextCursor)
+                guard tab != .team || settings.selectedTeam == teamAtStart else { return }
                 guard !retired else { return }
                 page.items += next.items
                 page.cursor = next.cursor
@@ -599,6 +651,8 @@ final class DashboardViewModel: ObservableObject {
                 if let previous = unique[item.id], previous.updatedAt > item.updatedAt { continue }
                 unique[item.id] = item
             }
+            guard tab != .team || settings.selectedTeam == teamAtStart else { return }
+            if tab == .team { teamError = nil }
             state.rawItems = order.compactMap { unique[$0] }
 
             state.cursor = page.cursor
@@ -606,7 +660,7 @@ final class DashboardViewModel: ObservableObject {
             state.loadedPageCount = reset ? pagesRead : state.loadedPageCount + pagesRead
             state.warnings = reset ? page.warnings : Array(Set(state.warnings + page.warnings)).sorted()
             let coverage = page.coverageWarning.map { [$0] } ?? []
-            state.coverageWarnings = reset ? coverage : Array(Set(state.coverageWarnings + coverage)).sorted()
+            state.coverageWarnings = reset || tab == .team ? coverage : Array(Set(state.coverageWarnings + coverage)).sorted()
             state.isLoading = false
             listStates[tab] = state
             finishLoad(for: tab, requestID: requestID)
@@ -622,6 +676,11 @@ final class DashboardViewModel: ObservableObject {
             state = listStates[tab] ?? state
             state.isLoading = false
             listStates[tab] = state
+            if tab == .team {
+                guard settings.selectedTeam == teamAtStart else { return }
+                if !(error is CancellationError) { teamError = error.localizedDescription }
+                return
+            }
             // Ignore benign cancellations (e.g., overlapping refreshes)
             if (error as? CancellationError) != nil {
                 return
@@ -638,6 +697,7 @@ final class DashboardViewModel: ObservableObject {
     private func finishLoad(for tab: PullRequestTab, requestID: UUID) {
         guard activeLoads[tab] == requestID else { return }
         activeLoads.removeValue(forKey: tab)
+        if var state = listStates[tab] { state.isLoading = false; listStates[tab] = state }
         let waiters = resetWaiters.removeValue(forKey: tab) ?? []
         waiters.forEach { $0.resume() }
     }

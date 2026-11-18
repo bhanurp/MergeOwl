@@ -1,6 +1,6 @@
 # GitHub Enterprise Server accounts
 
-Available in source builds after v0.2.3. The v0.2.3 download supports GitHub.com only.
+Available from v0.2.4. The v0.2.3 and earlier downloads support GitHub.com only.
 
 1. Open **More → Settings → Account → Add account**.
 2. Choose **GitHub Enterprise Server** under **GitHub service**.

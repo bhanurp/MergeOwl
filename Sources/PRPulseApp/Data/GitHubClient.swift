@@ -2,12 +2,16 @@ import Foundation
 
 protocol GitHubClient {
     nonisolated(nonsending) func fetchViewer() async throws -> String
+    nonisolated(nonsending) func fetchTeams() async throws -> [GitHubTeam]
+    nonisolated(nonsending) func fetchTeamPullRequests(team: GitHubTeam, cursor: String?) async throws -> PullRequestPage
     nonisolated(nonsending) func fetchPullRequests(tab: PullRequestTab, cursor: String?) async throws -> PullRequestPage
     nonisolated(nonsending) func fetchCI(for pullRequest: PullRequest) async throws -> CIStatus
     nonisolated(nonsending) func revalidateCI(for pullRequest: PullRequest) async throws -> CIStatus
 }
 
 extension GitHubClient {
+    nonisolated(nonsending) func fetchTeams() async throws -> [GitHubTeam] { [] }
+    nonisolated(nonsending) func fetchTeamPullRequests(team: GitHubTeam, cursor: String?) async throws -> PullRequestPage { PullRequestPage(items: [], cursor: nil, hasNextPage: false) }
     nonisolated(nonsending) func fetchCI(for pullRequest: PullRequest) async throws -> CIStatus { .unavailable }
     nonisolated(nonsending) func revalidateCI(for pullRequest: PullRequest) async throws -> CIStatus { try await fetchCI(for: pullRequest) }
 }
@@ -87,10 +91,17 @@ struct GitHubAPIClient: GitHubClient {
         case .mine, .reviewRequested:
             let query = Self.searchQuery(for: tab)
             page = try await fetchSearchPage(query: query, cursor: cursor, scope: tab)
+        case .team:
+            return PullRequestPage(items: [], cursor: nil, hasNextPage: false)
         case .watched:
             page = try await fetchWatchedPage(cursor: cursor)
         }
 
+        return try await enrich(page)
+    }
+
+    nonisolated(nonsending) func enrich(_ initialPage: PullRequestPage) async throws -> PullRequestPage {
+        var page = initialPage
         guard !page.items.isEmpty else {
             return page
         }
@@ -112,8 +123,7 @@ struct GitHubAPIClient: GitHubClient {
                 if error is CancellationError { throw error }
                 if case GitHubClientError.rateLimited = error { throw error }
                 var ci = CIStatus.unavailable
-                if case GitHubClientError.ciBudgetDeferred = error { ci.warning = error.localizedDescription }
-                else { ci.warning = "Check access could not be verified. Open GitHub for details." }
+                ci.warning = CIUnavailableExplanation.message(for: error)
                 copy.detail.ci = ci
             }
             enriched.append(copy)
@@ -122,7 +132,7 @@ struct GitHubAPIClient: GitHubClient {
         return PullRequestPage(items: page.items.compactMap { enrichedByID[$0.id] }, cursor: page.cursor, hasNextPage: page.hasNextPage, warnings: page.warnings, coverageWarning: page.coverageWarning, isSearchIncomplete: page.isSearchIncomplete)
     }
 
-    private func fetchSearchPage(query: String, cursor: String?, scope: PullRequestTab) async throws -> PullRequestPage {
+    func fetchSearchPage(query: String, cursor: String?, scope: PullRequestTab) async throws -> PullRequestPage {
         let variables = SearchVariables(query: query, after: cursor)
         let (data, warnings): (SearchData, [String]) = try await performGraphQLResult(query: Self.searchPullRequestsQuery, variables: variables)
 
@@ -160,7 +170,7 @@ struct GitHubAPIClient: GitHubClient {
 
         let coverageWarning: String?
         if scope != .watched, (data.search.issueCount ?? 0) > 1000 {
-            let label = scope == .mine ? "My PRs" : "Reviews"
+            let label = scope == .reviewRequested ? "Reviews" : scope.rawValue
             coverageWarning = "\(label): GitHub search returns at most 1,000 PRs. List coverage is incomplete."
         } else { coverageWarning = nil }
         return PullRequestPage(
@@ -389,7 +399,7 @@ struct GitHubAPIClient: GitHubClient {
             return "is:pr is:open author:@me sort:updated-desc"
         case .reviewRequested:
             return "is:pr is:open review-requested:@me sort:updated-desc"
-        case .watched:
+        case .watched, .team:
             return "is:pr is:open sort:updated-desc"
         }
     }

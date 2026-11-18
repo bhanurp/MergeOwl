@@ -6,7 +6,7 @@ final class SettingsPaneTests: XCTestCase {
         XCTAssertEqual(SettingsPane.defaultPane, .account)
         XCTAssertEqual(
             SettingsPane.allCases,
-            [.account, .appearance, .refresh, .notifications, .repositories, .savedViews, .advanced]
+            [.account, .appearance, .refresh, .notifications, .repositories, .team, .savedViews, .advanced]
         )
     }
 
